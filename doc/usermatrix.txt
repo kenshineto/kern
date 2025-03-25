@@ -1,0 +1,53 @@
+Process/Syscall matrix
+======================
+
+System calls in this system:
+	process management:	exit, waitpid, fork, exec, kill
+	i/o:			read	write
+	information:		getpid	getppid	gettime	getprio
+	other:			sleep, setprio
+
+There is also a "bogus" system call which attempts to use an invalid
+system call code; this should be caught by the syscall handler and
+the process should be terminated.
+
+These are the system calls which are used in each of the user-level
+main functions.  Some main functions only invoke certain system calls
+when given specific command-line arguments.
+
+Note that some system calls are nested inside library functions - e.g.,
+cwrite*() and swrite*() perform write(), etc.
+
+    progABC runs for userA, userB, and userC
+    progDE  runs for userD and userE
+    progFG  runs for userF and userG
+    progKL  runs for userK and userL
+    progMN  runs for userM and userN
+    progTUV runs for userT, userU, and userV
+    all others run individual main functions
+
+                       baseline system calls in use
+prog   ext  wtp  for  exe  rea  wrt  gpi  gpp  gti  kil  slp  gtp  stp  bog
+-----  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---
+init    .    X    .    .    .    X    .    .    .    .    .    .    .    .
+idle    X    .    .    .    .    X    X    .    X    .    .    X    X    .
+shell   X    X    X    X    X    X    .    .    .    .    .    .    .    .
+-----  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---  ---
+abc     X    .    .    .    .    X    .    .    .    .    .    .    .    .
+de      .    .    .    .    .    X    .    .    .    .    .    .    .    .
+fg      X    .    .    .    .    X    .    .    .    .    X    .    .    .
+h       X    .    X    X    .    X    .    .    .    .    X    .    .    .
+i       X    X    X    X    .    X    .    .    .    X    X    .    .    .
+j       X    .    X    X    .    X    .    .    .    .    .    .    .    .
+kl      X    .    X    X    .    X    .    .    .    .    X    .    .    .
+mn      X    .    X    X    .    X    .    .    .    .    .    .    .    .
+p       X    .    .    .    .    X    .    .    X    .    X    .    .    .
+q       X    .    .    .    .    X    .    .    .    .    .    .    .    X
+r       X    .    X    .    .    X    X    X    .    .    X    .    .    .
+s       X    .    .    .    .    X    .    .    .    .    X    .    .    .
+tuv     X    X    X    X    .    X    .    .    .    X    X    .    .    .
+w       X    .    .    .    .    X    X    .    X    .    X    .    .    .
+x       X    .    .    .    .    X    .    .    .    .    .    .    .    .
+y       X    .    .    .    .    X    X    .    .    .    X    .    .    .
+z       X    .    .    .    .    X    X    .    .    .    X    .    .    .
+...........................................................................
