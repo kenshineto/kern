@@ -3,11 +3,22 @@
 .SILENT:
 
 QEMU = qemu-system-i386
-QEMUOPTS = -drive file=bin/disk.img,index=0,media=disk,format=raw
+QEMUOPTS = -drive file=bin/disk.img,index=0,media=disk,format=raw \
+		   -no-reboot -d cpu_reset \
+		   -serial mon:stdio \
+		   -m 4G \
+		   -display sdl \
+		   -enable-kvm \
+		   -name kern
 
 qemu: bin/disk.img
-	$(QEMU) -serial mon:stdio $(QEMUOPTS)
+	$(QEMU) $(QEMUOPTS)
 
+qemu-gdb: bin/disk.img
+	$(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
+
+gdb:
+	gdb -q -n -x util/gdbinit
 
 clean:
 	rm -fr .zig-cache
