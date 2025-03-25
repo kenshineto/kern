@@ -106,7 +106,7 @@ static uint8_t ier;
 
 // queue for read-blocked processes
 #ifdef QNAME
-QTYPE QNAME;
+extern QTYPE QNAME;
 #endif
 
 /*
@@ -253,7 +253,7 @@ static void sio_isr( int vector, int ecode ) {
 			sprint( b256, "sio isr: IIR %02x\n", ((uint32_t) iir) & 0xff );
 			PANIC( 0, b256 );
 		}
-	
+
 	}
 
 	// should never reach this point!
@@ -329,7 +329,7 @@ void sio_init( void ) {
 	*/
 
 	outb( UA4_LCR, UA4_LCR_WLS_8 | UA4_LCR_1_STOP_BIT | UA4_LCR_NO_PARITY );
-	
+
 	/*
 	** Set the ISEN bit to enable the interrupt request signal,
 	** and the DTR and RTS bits to enable two-way communication.
@@ -450,7 +450,7 @@ int sio_readc( void ) {
 	// assume there is no character available
 	ch = -1;
 
-	// 
+	//
 	// If there is a character, return it
 	//
 
@@ -675,7 +675,7 @@ void sio_dump( bool_t full ) {
 
 	if( incount ) {
 		cio_puts( "SIO input queue: \"" );
-		ptr = innext; 
+		ptr = innext;
 		for( n = 0; n < incount; ++n ) {
 			put_char_or_code( *ptr++ );
 		}
@@ -685,7 +685,7 @@ void sio_dump( bool_t full ) {
 	if( outcount ) {
 		cio_puts( "SIO output queue: \"" );
 		cio_puts( " ot: \"" );
-		ptr = outnext; 
+		ptr = outnext;
 		for( n = 0; n < outcount; ++n )  {
 			put_char_or_code( *ptr++ );
 		}
