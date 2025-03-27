@@ -230,6 +230,7 @@ const BuildKernBinaryOpts = struct {
     sources: []const []const []const u8,
     linker: ?[]const u8 = null,
     entry: []const u8 = "_start",
+    strip: bool = false,
 };
 
 fn build_kern_binary(b: *std.Build, opts: BuildKernBinaryOpts) void {
@@ -238,7 +239,7 @@ fn build_kern_binary(b: *std.Build, opts: BuildKernBinaryOpts) void {
         .name = opts.name,
         .target = opts.target,
         .optimize = opts.optimize,
-        .strip = true,
+        .strip = opts.strip,
     });
 
     // add include path
@@ -342,6 +343,7 @@ pub fn build(b: *std.Build) !void {
                 ulib_src,
             },
             .linker = "user/user.ld",
+            .strip = true,
         });
     }
 
