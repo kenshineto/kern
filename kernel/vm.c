@@ -100,26 +100,28 @@ static void *uva2kva(pde_t *pdir, void *va)
 **
 ** Dump the non-zero entries of a page table or directory
 **
-** @param pt   The page table
-** @param dir  Is this a page directory?
+** @param pt     The page table
+** @param dir    Is this a page directory?
+** @param start  First entry to process
+** @param num    Number of entries to process
 */
-static void ptdump(void *pt, bool_t dir)
+static void ptdump(pte_t *pt, bool_t dir, uint32_t start, uint32_t num)
 {
-	cio_printf("\n\nP% dump", dir ? 'D' : 'T');
-	cio_printf(" of %08x\n", (uint32_t)pt);
+	cio_printf("\n\nP%c dump", dir ? 'D' : 'T');
+	cio_printf(" of %08x", (uint32_t)pt);
+	cio_printf(" [%03x] through [%03x]\n", start, start + num - 1);
 
 	uint_t n = 0;
 	uint_t z = 0;
-	pte_t *ptr = pt;
 
-	for (uint_t i = 0; i < N_PTE; ++i) {
-		pte_t entry = *ptr++;
+	for (uint_t i = 0; i < num; ++i) {
+		pte_t entry = pt[start + i];
 		// four entries per line
 		if (n && ((n & 0x3) == 0)) {
 			cio_putchar('\n');
 		}
 		if (IS_PRESENT(entry)) {
-			cio_printf(" %03x", i);
+			cio_printf(" %03x", start + i);
 			if (IS_LARGE(entry)) {
 				cio_printf(" 8 %05x", GET_4MFRAME(entry) << 10);
 			} else {
@@ -327,7 +329,7 @@ pde_t *vm_mkkvm(void)
 	}
 #if TRACING_VM
 	cio_puts("\nEntering vm_mkkvm\n");
-	ptdump(pdir, true);
+	ptdump(pdir, true, 0, N_PDE);
 #endif
 
 	// clear it out to disable all the entries
@@ -351,7 +353,7 @@ pde_t *vm_mkkvm(void)
 	}
 #if TRACING_VM
 	cio_puts("\nvm_mkkvm() final PD:\n");
-	ptdump(pdir, true);
+	ptdump(pdir, true, 0, N_PDE);
 #endif
 
 	return pdir;
@@ -577,8 +579,8 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 	char *last = (char *)PGDOWN(((uint32_t)va) + size - 1);
 
 #if TRACING_VM
-	// keep this in case we need it
-	uint32_t startpa = pa;
+	cio_printf("\n\nvm_map pdir %08x va %08x pa %08x size %08x perm %03x\n",
+			   (uint32_t)pdir, (uint32_t)va, pa, size, perm);
 #endif
 
 	while (addr <= last) {
@@ -588,27 +590,28 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 			// couldn't find it
 			return E_NO_PTE;
 		}
+#if TRACING_VM
+		cio_printf("  addr %08x pa %08x last %08x pte %08x *pte %08x\n",
+				   (uint32_t)addr, pa, (uint32_t)last, (uint32_t)pte, *pte);
+#endif
 
 		// if this entry has already been mapped, we're in trouble
 		if (IS_PRESENT(*pte)) {
 #if TRACING_VM
-			// get some debugging help
-			cio_printf(
-				"\n\nvm_map pdir %08x va %08x pa %08x size %08x perm %03x\n",
-				(uint32_t)pdir, (uint32_t)va, startpa, size, perm);
-			cio_printf("  addr %08x pa %08x last %08x pte %08x *pte %08x\n",
-					   (uint32_t)addr, pa, (uint32_t)last, (uint32_t)pte, *pte);
+			cio_puts(" ALREADY MAPPED?");
 			cio_printf("  PDIX 0x%x PTIX 0x%x\n", PDIX(addr), PTIX(addr));
 
 			// dump the directory
-			ptdump(pdir, true);
+			ptdump(pdir, true, 0, N_PDE);
 
 			// find the relevant PDE entry
 			uint32_t ix = PDIX(va);
 			pde_t entry = pdir[ix];
 			if (!IS_LARGE(entry)) {
+				// round the PMT index down
+				uint32_t ix2 = PTIX(va) & MOD4_MASK;
 				// dump the PMT for the relevant directory entry
-				ptdump((void *)P2V(PDE_ADDR(entry)), false);
+				ptdump((void *)P2V(PDE_ADDR(entry)), false, ix2, 8);
 			}
 #endif
 
