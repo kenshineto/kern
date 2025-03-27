@@ -46,5 +46,5 @@ bin/user.img: build
 bin/disk.img: build bin/boot.bin bin/user.img
 	cd bin && \
 		./BuildImage -d usb -o disk.img -b boot.bin \
-		kernel 0x10000 user.img 0x40000
+		kernel 0x10000 user.img 0x30000
 

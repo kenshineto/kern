@@ -25,15 +25,27 @@ SECTIONS
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
 	}
 
+	/* Could put STABs here */
+	.stab : {
+		PROVIDE(__STAB_BEGIN__ = .);
+		*(.stab);
+		PROVIDE(__STAB_END__ = .);
+	}
+	.stabstr : {
+		PROVIDE(__STABSTR_BEGIN__ = .);
+		*(.stabstr);
+		PROVIDE(__STABSTR_END__ = .);
+	}
+
 	/* Align the data segment at the next page boundary */
-	/* . = ALIGN(0x1000); */
+	. = ALIGN(0x1000);
 
 	PROVIDE(data = .);
 	PROVIDE(_data = .);
 
 	/* The data segment */
 	.data : {
-		*(.data)
+		*(.data .data.*)
 	}
 
 	PROVIDE(edata = .);
@@ -45,13 +57,15 @@ SECTIONS
 	PROVIDE(__bss_start = .);
 
 	.bss : {
-		*(.bss)
+		*(.bss .bss.*)
+		*(COMMON)
 	}
 
 	PROVIDE(end = .);
 	PROVIDE(_end = .);
 
 	/DISCARD/ : {
-		*(.stab .stab_info .stabstr .eh_frame .note.GNU-stack .note.gnu.property .comment)
+		/* *(.stab .stab_info .stabstr) */
+		*(.eh_frame .note.GNU-stack .note.gnu.property .comment)
 	}
 }
