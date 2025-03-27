@@ -591,10 +591,11 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 			// couldn't find it
 			return E_NO_PTE;
 		}
-#if TRACING_VM
-		cio_printf("  addr %08x pa %08x last %08x pte %08x *pte %08x\n",
-				   (uint32_t)addr, pa, (uint32_t)last, (uint32_t)pte, *pte);
-#endif
+		// #if TRACING_VM
+		//		cio_printf( "  addr %08x pa %08x last %08x pte %08x *pte %08x\n",
+		//			(uint32_t) addr, pa, (uint32_t) last, (uint32_t) pte, *pte
+		//		);
+		//#endif
 
 		// create the new entry
 		pde_t entry = pa | perm | PTE_P;

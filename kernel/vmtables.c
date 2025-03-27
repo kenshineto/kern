@@ -365,6 +365,8 @@ const pte_t id_map[N_PTE] = {
 };
 #endif /* MAKE_IDENTITY_MAP */
 
+extern int _end;
+
 /*
 ** Kernel address mappings, present in every page table
 */
@@ -372,7 +374,8 @@ const mapping_t kmap[] = {
 	// va                pa_start     pa_end       perms
 	{ KERN_BASE, 0, EXT_BASE, PDE_RW },
 	{ KERN_VLINK, KERN_PLINK, V2P(_data), PDE_RW },
-	{ (uint32_t)_data, V2P(_data), KERN_BASE, PDE_RW },
+	//	{ (uint32_t) _data,  V2P(_data),  V2P(_end),   PDE_RW },
+	{ (uint32_t)_data, V2P(_data), PHYS_TOP, PDE_RW },
 	{ DEV_BASE, DEV_BASE, 0, PDE_RW }
 };
 const uint_t n_kmap = sizeof(kmap) / sizeof(kmap[0]);
