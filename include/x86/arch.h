@@ -41,7 +41,6 @@
 ** See IA-32 Intel Architecture SW Dev. Manual, Volume 3: System
 ** Programming Guide, page 2-8.
 */
-
 /*
 ** EFLAGS
 */
@@ -142,7 +141,6 @@
 **    4:    base address 23:16
 **    7:    base address 31:24
 */
-
 /*
 ** Byte 5:    access control bits
 **    7:    present
@@ -261,7 +259,6 @@
 /*
 ** Interrupt vectors
 */
-
 // predefined by the architecture
 #define VEC_DIVIDE_ERROR 0x00
 #define VEC_DEBUG_EXCEPTION 0x01

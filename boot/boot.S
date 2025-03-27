@@ -17,7 +17,7 @@
 **
 ** The bootstrap initially sets up a stack in low memory.  Next, it
 ** loads a second sector at 0000:7E00 (immediately following the
-** boot block).  Then it loads the target program at TARGET_ADDR, 
+** boot block).  Then it loads the target program at TARGET_ADDR,
 ** switches to protected mode, and branches to the target program.
 **
 ** NOTE: To zero out the BSS segment, define CLEAR_BSS when this code
@@ -222,11 +222,11 @@ done_loading:
 	call	dispMsg
 
 	jmp	switch		/* move to the next phase */
-	
+
 /*
 ** Support routine - display a message byte by byte to the monitor.
 */
-dispMsg:	
+dispMsg:
 	pushw	%ax
 	pushw	%bx
 repeat:
@@ -238,7 +238,7 @@ repeat:
 	jz	getOut		/* if we've reached the NUL, get out */
 
 	int	$BIOS_VIDEO	/* otherwise, print and repeat */
-	jmp	repeat	
+	jmp	repeat
 
 getOut:				/* we're done, so return */
 	popw	%bx
@@ -373,7 +373,7 @@ switch:
 	movl	%cr0, %eax	/* get current CR0 */
 	orl	$1, %eax	/* set the PE bit */
 	movl	%eax, %cr0	/* and store it back. */
-	
+
 	/*
 	** We'll be in protected mode at the start of the user's code
 	** right after this jump executes.
@@ -447,13 +447,13 @@ enable_A20:
 
 a20wait:	/* wait until bit 1 of the device register is clear */
 	movl    $65536, %ecx	/* loop a lot if need be */
-wait_loop: 
+wait_loop:
 	inb     $KBD_STAT, %al	/* grab the byte */
 	test    $2, %al		/* is the bit clear? */
 	jz      wait_exit	/* yes */
 	loop    wait_loop	/* no, so loop */
 	jmp     a20wait		/* if still not clear, go again */
-wait_exit:    
+wait_exit:
 	ret
 
 a20wait2:	/* like a20wait, but waits until bit 0 is set. */

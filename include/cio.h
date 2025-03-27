@@ -11,7 +11,7 @@
 ** Declarations and descriptions of console I/O routines
 **
 **  These routines provide a rudimentary capability for printing to
-**  the screen and reading from the keyboard.  
+**  the screen and reading from the keyboard.
 **
 ** Screen output:
 **  There are two families of functions.  The first provides a window
@@ -50,7 +50,7 @@
 ** Keyboard input:
 **  Two functions are provided: getting a single character and getting
 **  a newline-terminated line.  A third function returns a count of
-**  the number of characters available for immediate reading. 
+**  the number of characters available for immediate reading.
 **  No conversions are provided (yet).
 */
 

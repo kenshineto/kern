@@ -54,7 +54,6 @@ static inline void movsb(void *dst, const void *src, uint32_t len) OPSINLINED
 						 :
 						 : "memory");
 }
-
 static inline void movsw(void *dst, const void *src, uint32_t len) OPSINLINED
 {
 	__asm__ __volatile__("cld; rep movsw"
@@ -62,7 +61,6 @@ static inline void movsw(void *dst, const void *src, uint32_t len) OPSINLINED
 						 :
 						 : "memory");
 }
-
 static inline void movsl(void *dst, const void *src, uint32_t len) OPSINLINED
 {
 	__asm__ __volatile__("cld; rep movsl"
@@ -70,7 +68,6 @@ static inline void movsl(void *dst, const void *src, uint32_t len) OPSINLINED
 						 :
 						 : "memory");
 }
-
 static inline void movsq(void *dst, const void *src, uint32_t len) OPSINLINED
 {
 	__asm__ __volatile__("cld; rep movsq"
@@ -97,7 +94,6 @@ static inline void stosb(void *dst, uint8_t val, uint32_t len) OPSINLINED
 						 : "0"(dst), "1"(len), "a"(val)
 						 : "memory", "cc");
 }
-
 static inline void stosw(void *dst, uint16_t val, uint32_t len) OPSINLINED
 {
 	__asm__ __volatile__("cld; rep stos2"
@@ -105,7 +101,6 @@ static inline void stosw(void *dst, uint16_t val, uint32_t len) OPSINLINED
 						 : "0"(dst), "1"(len), "a"(val)
 						 : "memory", "cc");
 }
-
 static inline void stosl(void *dst, uint32_t val, uint32_t len) OPSINLINED
 {
 	__asm__ __volatile__("cld; rep stosl"
@@ -134,42 +129,36 @@ static inline uint32_t r_cr0(void) OPSINLINED
 	__asm__ __volatile__("movl %%cr0,%0" : "=r"(val));
 	return val;
 }
-
 static inline uint32_t r_cr2(void) OPSINLINED
 {
 	uint32_t val;
 	__asm__ __volatile__("movl %%cr2,%0" : "=r"(val));
 	return val;
 }
-
 static inline uint32_t r_cr3(void) OPSINLINED
 {
 	uint32_t val;
 	__asm__ __volatile__("movl %%cr3,%0" : "=r"(val));
 	return val;
 }
-
 static inline uint32_t r_cr4(void) OPSINLINED
 {
 	uint32_t val;
 	__asm__ __volatile__("movl %%cr4,%0" : "=r"(val));
 	return val;
 }
-
 static inline uint32_t r_eflags(void) OPSINLINED
 {
 	uint32_t val;
 	__asm__ __volatile__("pushfl; popl %0" : "=r"(val));
 	return val;
 }
-
 static inline uint32_t r_ebp(void) OPSINLINED
 {
 	uint32_t val;
 	__asm__ __volatile__("movl %%ebp,%0" : "=r"(val));
 	return val;
 }
-
 static inline uint32_t r_esp(void) OPSINLINED
 {
 	uint32_t val;
@@ -188,22 +177,18 @@ static inline void w_cr0(uint32_t val) OPSINLINED
 {
 	__asm__ __volatile__("movl %0,%%cr0" : : "r"(val));
 }
-
 static inline void w_cr2(uint32_t val) OPSINLINED
 {
 	__asm__ __volatile__("movl %0,%%cr2" : : "r"(val));
 }
-
 static inline void w_cr3(uint32_t val) OPSINLINED
 {
 	__asm__ __volatile__("movl %0,%%cr3" : : "r"(val));
 }
-
 static inline void w_cr4(uint32_t val) OPSINLINED
 {
 	__asm__ __volatile__("movl %0,%%cr4" : : "r"(val));
 }
-
 static inline void w_eflags(uint32_t eflags) OPSINLINED
 {
 	__asm__ __volatile__("pushl %0; popfl" : : "r"(eflags));
@@ -222,7 +207,6 @@ static inline void w_gdt(void *addr) OPSINLINED
 {
 	__asm__ __volatile__("lgdt (%0)" : : "r"(addr));
 }
-
 static inline void w_idt(void *addr) OPSINLINED
 {
 	__asm__ __volatile__("lidt (%0)" : : "r"(addr));
@@ -246,7 +230,6 @@ static inline void cpuid(uint32_t op, uint32_t *ap, uint32_t *bp, uint32_t *cp,
 	__asm__ __volatile__("cpuid"
 						 : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
 						 : "a"(op));
-
 	if (ap)
 		*ap = eax;
 	if (bp)
@@ -308,14 +291,12 @@ static inline uint8_t inb(int port) OPSINLINED
 	__asm__ __volatile__("inb %w1,%0" : "=a"(data) : "d"(port));
 	return data;
 }
-
 static inline uint16_t inw(int port) OPSINLINED
 {
 	uint16_t data;
 	__asm__ __volatile__("inw %w1,%0" : "=a"(data) : "d"(port));
 	return data;
 }
-
 static inline uint32_t inl(int port) OPSINLINED
 {
 	uint32_t data;
@@ -339,12 +320,10 @@ static inline void outb(int port, uint8_t data) OPSINLINED
 {
 	__asm__ __volatile__("outb %0,%w1" : : "a"(data), "d"(port));
 }
-
 static inline void outw(int port, uint16_t data) OPSINLINED
 {
 	__asm__ __volatile__("outw %0,%w1" : : "a"(data), "d"(port));
 }
-
 static inline void outl(int port, uint32_t data) OPSINLINED
 {
 	__asm__ __volatile__("outl %0,%w1" : : "a"(data), "d"(port));

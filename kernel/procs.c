@@ -339,7 +339,7 @@ void pcb_zombify(register pcb_t *victim)
 	**
 	** Also note: it's possible that the exiting process' parent is
 	** also init, which means we're letting one of zombie children
-	** of the exiting process be cleaned up by init before the 
+	** of the exiting process be cleaned up by init before the
 	** existing process itself is cleaned up by init. This will work,
 	** because after init cleans up the zombie, it will loop and
 	** call waitpid() again, by which time this exiting process will

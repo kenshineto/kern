@@ -4,7 +4,7 @@
 ** Idle process:  write, getpid, gettime, exit
 **
 ** Reports itself, then loops forever delaying and printing a character.
-** MUST NOT SLEEP, as it must always be available in the ready queue 
+** MUST NOT SLEEP, as it must always be available in the ready queue
 ** when there is no other process to dispatch.
 **
 ** Invoked as:	idle

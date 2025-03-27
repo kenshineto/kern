@@ -12,13 +12,11 @@
 /*
 ** BIOS-related memory addresses
 */
-
 #define BIOS_BDA 0x0400
 
 /*
 ** Selected BIOS interrupt numbers
 */
-
 #define BIOS_TIMER 0x08
 #define BIOS_KBD 0x09
 #define BIOS_VIDEO 0x10

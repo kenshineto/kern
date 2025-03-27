@@ -29,7 +29,6 @@
 #define DRIVE_USB 0x80
 
 #define SECT_SIZE 512
-
 char *progname; /* invocation name of this program */
 char *bootstrap_filename; /* path of file holding bootstrap program */
 char *output_filename; /* path of disk image file */
@@ -45,9 +44,7 @@ short drive = DRIVE_USB; /* boot drive */
 ** device) are the only limiting factors on how many program sections
 ** can be loaded.
 */
-
 #define N_INFO (SECT_SIZE / sizeof(short))
-
 short info[N_INFO];
 int n_info = N_INFO;
 
@@ -69,6 +66,7 @@ void quit(char *msg, int call_perror)
 		errno = err_num;
 		if (call_perror) {
 			perror(msg);
+
 		} else {
 			fprintf(stderr, "%s\n", msg);
 		}
@@ -77,9 +75,9 @@ void quit(char *msg, int call_perror)
 		unlink(output_filename);
 	}
 	exit(EXIT_FAILURE);
+
 	// NOTREACHED
 }
-
 const char usage_error_msg[] =
 	"\nUsage: %s [ -d drive ] -b bootfile -o outfile { progfile loadpt } "
 	"...\n\n"
@@ -100,6 +98,7 @@ void usage_error(void)
 {
 	fprintf(stderr, usage_error_msg, progname);
 	quit(NULL, FALSE);
+
 	// NOTREACHED
 }
 
@@ -127,7 +126,6 @@ int copy_file(FILE *in)
 		// pad this sector out to block size
 		if (n_bytes < sizeof(buf)) {
 			int i;
-
 			for (i = n_bytes; i < sizeof(buf); i += 1) {
 				buf[i] = '\0';
 			}
@@ -180,25 +178,24 @@ void process_file(char *name, char *addr)
 		if (strlen(addr) == 9 && cp == addr + 4) {
 			char *ep1, *ep2;
 			int a1, a2;
-
 			segment = strtol(addr, &ep1, 16);
 			offset = strtol(addr + 5, &ep2, 16);
 			address = (segment << 4) + offset;
 			valid_address = *ep1 == '\0' && *ep2 == '\0';
+
 		} else {
 			fprintf(stderr, "Bad address format - '%s'\n", addr);
 			quit(NULL, FALSE);
 		}
+
 	} else {
 		// just a number, possibly hex or octal
 		char *ep;
-
 		address = strtol(addr, &ep, 0);
 		segment = (short)(address >> 4);
 		offset = (short)(address & 0xf);
 		valid_address = *ep == '\0' && address <= 0x0009ffff;
 	}
-
 	if (!valid_address) {
 		fprintf(stderr, "%s: Invalid address: %s\n", progname, addr);
 		quit(NULL, FALSE);
@@ -212,7 +209,6 @@ void process_file(char *name, char *addr)
 				(unsigned int)address);
 		quit(NULL, FALSE);
 	}
-
 	if (n_info < 3) {
 		quit("Too many programs!", FALSE);
 	}
@@ -222,7 +218,6 @@ void process_file(char *name, char *addr)
   */
 	fprintf(stderr, "  %s: %d sectors, loaded at 0x%x\n", name, n_sectors,
 			(unsigned int)address);
-
 	info[--n_info] = n_sectors;
 	info[--n_info] = segment;
 	info[--n_info] = offset;
@@ -231,7 +226,6 @@ void process_file(char *name, char *addr)
 /*
 ** Global variables set by getopt()
 */
-
 extern int optind, optopt;
 extern char *optarg;
 
@@ -244,21 +238,17 @@ extern char *optarg;
 void process_args(int ac, char **av)
 {
 	int c;
-
 	while ((c = getopt(ac, av, ":d:o:b:")) != EOF) {
 		switch (c) {
 		case ':': /* missing arg value */
 			fprintf(stderr, "missing operand after -%c\n", optopt);
-			/* FALL THROUGH */
 
-		case '?': /* error */
+		/* FALL THROUGH */ case '?': /* error */
 			usage_error();
-			/* NOTREACHED */
 
-		case 'b': /* -b bootstrap_file */
+		/* NOTREACHED */ case 'b': /* -b bootstrap_file */
 			bootstrap_filename = optarg;
 			break;
-
 		case 'd': /* -d drive */
 			switch (*optarg) {
 			case 'f':
@@ -271,21 +261,17 @@ void process_args(int ac, char **av)
 				usage_error();
 			}
 			break;
-
 		case 'o': /* -o output_file */
 			output_filename = optarg;
 			break;
-
 		default:
 			usage_error();
 		}
 	}
-
 	if (!bootstrap_filename) {
 		fprintf(stderr, "%s: no bootstrap file specified\n", progname);
 		exit(2);
 	}
-
 	if (!output_filename) {
 		fprintf(stderr, "%s: no disk image file specified\n", progname);
 		exit(2);
@@ -326,6 +312,7 @@ int main(int ac, char **av)
 	progname = strrchr(av[0], '/');
 	if (progname != NULL) {
 		progname++;
+
 	} else {
 		progname = av[0];
 	}
@@ -338,7 +325,6 @@ int main(int ac, char **av)
 	/*
   ** Open the output file
   */
-
 	out = fopen(output_filename, "wb+");
 	if (out == NULL) {
 		quit(output_filename, TRUE);
@@ -358,7 +344,6 @@ int main(int ac, char **av)
   */
 	int n_sectors = copy_file(bootimage);
 	fclose(bootimage);
-
 	bootimage_size = n_sectors * SECT_SIZE;
 	fprintf(stderr, "  %s: %d sectors\n", bootstrap_filename, n_sectors);
 
@@ -414,8 +399,6 @@ int main(int ac, char **av)
   */
 	fseek(out, 508, SEEK_SET);
 	fwrite((void *)&drive, sizeof(drive), 1, out);
-
 	fclose(out);
-
 	return EXIT_SUCCESS;
 }

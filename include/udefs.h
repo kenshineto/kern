@@ -43,7 +43,7 @@
 	} while (0)
 
 /*
-** We need the list of program IDs so that we can request 
+** We need the list of program IDs so that we can request
 ** their execution
 */
 

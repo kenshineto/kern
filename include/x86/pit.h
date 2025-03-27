@@ -25,7 +25,6 @@
 ** M   - mode
 ** BCD - binary or BCD counter
 */
-
 /* Frequency settings */
 #define PIT_DEFAULT_TICKS_PER_SECOND 18 // actually 18.2065Hz
 #define PIT_DEFAULT_MS_PER_TICK (1000 / PIT_DEFAULT_TICKS_PER_SECOND)
@@ -68,6 +67,7 @@
 #define PIT_2_RATE 0x06 // square-wave, for USART
 
 /* Timer read-back */
+
 #define PIT_READBACK 0xc0 // perform a read-back
 #define PIT_RB_NOT_COUNT 0x20 // don't latch the count
 #define PIT_RB_NOT_STATUS 0x10 // don't latch the status

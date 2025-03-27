@@ -319,7 +319,7 @@ int main(void)
 
 	/*
 	** Create the initial user process
-	** 
+	**
 	** This code is largely stolen from the fork() and exec()
 	** implementations in syscalls.c; if those change, this must
 	** also change.

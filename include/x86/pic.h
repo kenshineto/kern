@@ -16,7 +16,6 @@
 ** Our expected configuration is two PICs, with the secondary connected
 ** through the IRQ2 pin of the primary.
 */
-
 /*
 ** Port addresses for the command port and interrupt mask register port
 ** for both the primary and secondary PICs.
@@ -42,7 +41,6 @@
 ** PIC2_* defines are intended for the secondary PIC
 ** PIC_* defines are sent to both PICs
 */
-
 /*
 ** ICW1: initialization, send to command port
 */
@@ -79,7 +77,6 @@
 **
 ** After the init sequence, can send these
 */
-
 /*
 ** OCW1: interrupt mask; send to data port
 */

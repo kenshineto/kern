@@ -34,6 +34,7 @@ build:
 
 fmt:
 	clang-format -i $(shell find -type f -name "*.[ch]")
+	sed -i 's/[ \t]*$$//' $(shell find -type f -name "*.[chS]" -or -name "*.ld")
 
 bin/boot.bin: build
 	cd bin && \

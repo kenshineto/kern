@@ -5,6 +5,7 @@
 **
 ** Create a binary blob from a collection of ELF files.
 */
+
 #define _DEFAULT_SOURCE
 
 #include <elf.h>
@@ -38,11 +39,11 @@
 **		size         Size of this ELF file, in bytes
 **		flags        Flags related to this file
 */
-
 // blob header
 typedef struct header_s {
 	char magic[4];
 	uint32_t num;
+
 } header_t;
 
 // length of the file name field
@@ -67,8 +68,8 @@ typedef struct node_s {
 	prog_t *data;
 	char *fullname;
 	struct node_s *next;
-} node_t;
 
+} node_t;
 node_t *progs, *last_prog; // list pointers
 uint32_t n_progs; // number of files being copied
 uint32_t offset; // current file area offset
@@ -114,12 +115,10 @@ void process(const char *name)
 	Elf32_Ehdr hdr;
 	int n = read(fd, &hdr, sizeof(Elf32_Ehdr));
 	close(fd);
-
 	if (n != sizeof(Elf32_Ehdr)) {
 		fprintf(stderr, "%s: header read was short - only %d\n", name, n);
 		return;
 	}
-
 	if (hdr.e_ident[EI_MAG0] != ELFMAG0 || hdr.e_ident[EI_MAG1] != ELFMAG1 ||
 		hdr.e_ident[EI_MAG2] != ELFMAG2 || hdr.e_ident[EI_MAG3] != ELFMAG3) {
 		fprintf(stderr, "%s: bad ELF magic number\n", name);
@@ -132,14 +131,12 @@ void process(const char *name)
 		fprintf(stderr, "%s: calloc prog returned NULL\n", name);
 		return;
 	}
-
 	node_t *node = calloc(1, sizeof(node_t));
 	if (node == NULL) {
 		free(new);
 		fprintf(stderr, "%s: calloc node returned NULL\n", name);
 		return;
 	}
-
 	node->data = new;
 	node->fullname = strdup(name);
 
@@ -150,11 +147,11 @@ void process(const char *name)
 	if (slash == NULL) {
 		// only the file name
 		slash = name;
+
 	} else {
 		// skip the slash
 		++slash;
 	}
-
 	strncpy(new->name, slash, sizeof(new->name) - 1);
 	new->offset = offset;
 	new->size = info.st_size;
@@ -167,6 +164,7 @@ void process(const char *name)
 	if ((info.st_size & FSIZE_MASK) != 0) {
 		// nope, so we must round it up when we write it out
 		new->flags |= FL_ROUNDUP;
+
 		// increases the offset to the next file
 		offset += 8 - (info.st_size & FSIZE_MASK);
 	}
@@ -175,6 +173,7 @@ void process(const char *name)
 	if (progs == NULL) {
 		// first entry
 		progs = node;
+
 	} else {
 		// add to the end
 		if (last_prog == NULL) {
@@ -207,23 +206,24 @@ void copy(FILE *ofd, node_t *node)
 		perror(node->fullname);
 		return;
 	}
-
 	uint8_t buf[512];
 
 	// copy it block-by-block
 	do {
 		int n = read(fd, buf, 512);
+
 		// no bytes --> we're done
 		if (n < 1) {
 			break;
 		}
+
 		// copy it, and verify the copy count
 		int k = fwrite(buf, 1, n, ofd);
 		if (k != n) {
 			fprintf(stderr, "%s: write of %d returned %d\n", prog->name, n, k);
 		}
-	} while (1);
 
+	} while (1);
 	printf("%s: copied %d", prog->name, prog->size);
 
 	// do we need to round up?
@@ -249,14 +249,12 @@ void copy(FILE *ofd, node_t *node)
 	// all done!
 	close(fd);
 }
-
 int main(int argc, char *argv[])
 {
 	// construct program list
 	for (int i = 1; i < argc; ++i) {
 		process(argv[i]);
 	}
-
 	if (n_progs < 1) {
 		fputs("Nothing to do... exiting.", stderr);
 		exit(0);
@@ -269,14 +267,12 @@ int main(int argc, char *argv[])
 		perror("user.img");
 		exit(1);
 	}
-
 	printf("Processing %d ELF files\n", n_progs);
 
 	// we need to adjust the offset values so they are relative to the
 	// start of the blob, not relative to the start of the file area.
 	// do this by adding the sum of the file header and program entries
 	// to each offset field.
-
 	uint32_t hlen = sizeof(header_t) + n_progs * sizeof(prog_t);
 	node_t *curr = progs;
 	while (curr != NULL) {
@@ -314,8 +310,6 @@ int main(int argc, char *argv[])
 		free(tmp->fullname);
 		free(tmp);
 	}
-
 	fclose(ofd);
-
 	return 0;
 }

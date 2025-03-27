@@ -183,7 +183,7 @@ isr_restore:
 /*
 ** DEBUGGING CODE PART 1
 **
-** This code will execute during each context restore, and 
+** This code will execute during each context restore, and
 ** should be modified to print out whatever debugging information
 ** is desired.
 **

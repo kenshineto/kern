@@ -66,7 +66,6 @@
 ** accessed (0 selects Line Control, 1 selects Divisor Latch), with the
 ** remaining bits selecting fields within the indicated register.
 */
-
 /*
 ** Receiver Data Register (read-only)
 */

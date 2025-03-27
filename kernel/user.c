@@ -35,7 +35,7 @@
 ** Location of the "user blob" in memory.
 **
 ** These variables are filled in by the code in startup.S using values
-** passed to it from the bootstrap. 
+** passed to it from the bootstrap.
 **
 ** These are visible so that the startup code can find them.
 */
@@ -503,7 +503,7 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
 	** The user code was linked with a startup function that defines
 	** the entry point (_start), calls main(), and then calls exit()
 	** if main() returns. We need to set up the stack this way:
-	** 
+	**
 	**      esp ->  context      <- context save area
 	**              ...          <- context save area
 	**              context      <- context save area
