@@ -335,6 +335,7 @@ pub fn build(b: *std.Build) !void {
                 lib_src,
                 ulib_src,
             },
+            .linker = "user/user.ld",
         });
     }
 
