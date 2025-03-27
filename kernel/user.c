@@ -748,7 +748,7 @@ int user_duplicate(pcb_t *new, pcb_t *old)
 
 	// Next, add a USER_PDE page table that's a duplicate of the
 	// current process' page table
-	if (!vm_uvmdup(old->pdir, new->pdir)) {
+	if (!vm_uvmdup(new->pdir, old->pdir)) {
 		// check for memory leak?
 		return E_NO_MEMORY;
 	}

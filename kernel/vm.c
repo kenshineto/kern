@@ -168,8 +168,16 @@ void vm_init(void)
 	kpdir = vm_mkkvm();
 	assert(kpdir != NULL);
 
+#if TRACING_VM
+	cio_printf("vm_init: kpdir is %08x\n", kpdir);
+#endif
+
 	// switch to it
 	vm_set_kvm();
+
+#if TRACING_VM
+	cio_puts("vm_init: running on new kpdir\n");
+#endif
 
 	// install the page fault handler
 	install_isr(VEC_PAGE_FAULT, vm_isr);
@@ -327,9 +335,9 @@ pde_t *vm_mkkvm(void)
 	if (pdir == NULL) {
 		return NULL;
 	}
-#if TRACING_VM
-	cio_puts("\nEntering vm_mkkvm\n");
-	ptdump(pdir, true, 0, N_PDE);
+#if 0 && TRACING_VM
+	cio_puts( "\nEntering vm_mkkvm\n" );
+	ptdump( pdir, true, 0, N_PDE );
 #endif
 
 	// clear it out to disable all the entries
@@ -351,10 +359,10 @@ pde_t *vm_mkkvm(void)
 			return 0;
 		}
 	}
-#if TRACING_VM
-	cio_puts("\nvm_mkkvm() final PD:\n");
-	ptdump(pdir, true, 0, 16);
-	ptdump(pdir, true, 0x200, 16);
+#if 0 && TRACING_VM
+	cio_puts( "\nvm_mkkvm() final PD:\n" );
+	ptdump( pdir, true, 0, 16 );
+	ptdump( pdir, true, 0x200, 16 );
 #endif
 
 	return pdir;
@@ -399,7 +407,13 @@ pde_t *vm_mkuvm(void)
 */
 void vm_set_kvm(void)
 {
+#if TRACING_VM
+	cio_puts("Entering vm_set_kvm()\n");
+#endif
 	w_cr3(V2P(kpdir)); // switch to the kernel page table
+#if TRACING_VM
+	cio_puts("Exiting vm_set_kvm()\n");
+#endif
 }
 
 /**
@@ -411,10 +425,16 @@ void vm_set_kvm(void)
 */
 void vm_set_uvm(pcb_t *p)
 {
+#if TRACING_VM
+	cio_puts("Entering vm_set_uvm()\n");
+#endif
 	assert(p != NULL);
 	assert(p->pdir != NULL);
 
 	w_cr3(V2P(p->pdir)); // switch to process's address space
+#if TRACING_VM
+	cio_puts("Entering vm_set_uvm()\n");
+#endif
 }
 
 /**
@@ -449,8 +469,8 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 	}
 
 #if TRACING_VM
-	cio_printf("vm_add: pdir %08x, %s, va %08x (%u, %u pgs)\n", (uint32_t)pdir,
-			   wr ? "W" : "!W", (uint32_t)va, size);
+	cio_printf("vm_add: pdir %08x, %s, va %08x size %u (%u pgs)\n",
+			   (uint32_t)pdir, wr ? "W" : "!W", (uint32_t)va, size, npages);
 	cio_printf("        from %08x, %u bytes, perms %08x\n", (uint32_t)data,
 			   bytes, entrybase);
 #endif
@@ -511,6 +531,10 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 */
 void vm_free(pde_t *pdir)
 {
+#if TRACING_VM
+	cio_printf("vm_free(%08x)\n", (uint32_t)pdir);
+#endif
+
 	// do we have anything to do?
 	if (pdir == NULL) {
 		return;
@@ -519,6 +543,8 @@ void vm_free(pde_t *pdir)
 	// iterate through the page directory entries, freeing the
 	// PMTS and the frames they point to
 	pde_t *curr = pdir;
+	int nf = 0;
+	int nt = 0;
 	for (int i = 0; i < N_PDE; ++i) {
 		// the entry itself
 		pde_t entry = *curr;
@@ -537,6 +563,7 @@ void vm_free(pde_t *pdir)
 				if (IS_PRESENT(*pmt)) {
 					// yes - free the frame
 					km_page_free((void *)PTE_ADDR(*pmt));
+					++nf;
 					// mark it so we don't get surprised
 					*pmt = 0;
 				}
@@ -545,6 +572,7 @@ void vm_free(pde_t *pdir)
 			}
 			// now, free the PMT itself
 			km_page_free((void *)PDE_ADDR(entry));
+			++nt;
 			*curr = 0;
 		}
 
@@ -554,6 +582,11 @@ void vm_free(pde_t *pdir)
 
 	// finally, free the PDIR itself
 	km_page_free((void *)pdir);
+	++nt;
+
+#if TRACING_VM
+	cio_printf("vm_free: %d pages, %d tables\n", nf, nt);
+#endif
 }
 
 /*
@@ -580,7 +613,7 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 	char *last = (char *)PGDOWN(((uint32_t)va) + size - 1);
 
 #if TRACING_VM
-	cio_printf("\n\nvm_map pdir %08x va %08x pa %08x size %08x perm %03x\n",
+	cio_printf("vm_map pdir %08x va %08x pa %08x size %08x perm %03x\n",
 			   (uint32_t)pdir, (uint32_t)va, pa, size, perm);
 #endif
 
@@ -591,24 +624,27 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 			// couldn't find it
 			return E_NO_PTE;
 		}
-		// #if TRACING_VM
-		//		cio_printf( "  addr %08x pa %08x last %08x pte %08x *pte %08x\n",
-		//			(uint32_t) addr, pa, (uint32_t) last, (uint32_t) pte, *pte
-		//		);
-		//#endif
+#if 0 && TRACING_VM
+		cio_printf( "  addr %08x pa %08x last %08x pte %08x *pte %08x\n",
+			(uint32_t) addr, pa, (uint32_t) last, (uint32_t) pte, *pte
+		);
+#endif
 
-		// create the new entry
-		pde_t entry = pa | perm | PTE_P;
+		// create the new entry for the page table
+		pde_t newpte = pa | perm | PTE_P;
 
 		// if this entry has already been mapped, we're in trouble
 		if (IS_PRESENT(*pte)) {
-			if (*pte != entry) {
+			if (*pte != newpte) {
 #if TRACING_VM
-				cio_puts(" ALREADY MAPPED?");
-				cio_printf("  PDIX 0x%x PTIX 0x%x\n", PDIX(addr), PTIX(addr));
+				cio_printf(
+					"vm_map: va %08x pa %08x pte %08x *pte %08x entry %08x\n",
+					(uint32_t)va, pa, (uint32_t)pte, (uint32_t)*pte, newpte);
+				cio_printf(" addr %08x PDIX 0x%x PTIX 0x%x\n", (uint32_t)addr,
+						   PDIX(addr), PTIX(addr));
 
 				// dump the directory
-				ptdump(pdir, true, 0, N_PDE);
+				ptdump(pdir, true, PDIX(addr), 4);
 
 				// find the relevant PDE entry
 				uint32_t ix = PDIX(va);
@@ -617,16 +653,15 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 					// round the PMT index down
 					uint32_t ix2 = PTIX(va) & MOD4_MASK;
 					// dump the PMT for the relevant directory entry
-					ptdump((void *)P2V(PDE_ADDR(entry)), false, ix2, 8);
+					ptdump((void *)P2V(PDE_ADDR(entry)), false, ix2, 4);
 				}
 #endif
-
 				PANIC(0, "mapping an already-mapped address");
 			}
 		}
 
 		// ok, set the PTE as requested
-		*pte = entry;
+		*pte = newpte;
 
 		// nope - move to the next page
 		addr += SZ_PAGE;
@@ -647,16 +682,20 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 ** now have two sets of page tables that refer to the same physical
 ** frames in memory.
 **
-** @param old  Existing page directory
 ** @param new  New page directory
+** @param old  Existing page directory
 **
 ** @return status of the duplication attempt
 */
-int vm_uvmdup(pde_t *old, pde_t *new)
+int vm_uvmdup(pde_t *new, pde_t *old)
 {
 	if (old == NULL || new == NULL) {
 		return E_BAD_PARAM;
 	}
+
+#if TRACING_VM
+	cio_printf("vmdup: old %08x new %08x\n", (uint32_t)old, (uint32_t)new);
+#endif
 
 	// we only want to deal with the "user" half of the address space
 	for (int i = 0; i < (N_PDE >> 1); ++i) {

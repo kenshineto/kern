@@ -432,12 +432,12 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm);
 ** hierarchy. We assume that the "new" page directory exists and
 ** the system portions of it should not be touched.
 **
-** @param old  Existing page directory
 ** @param new  New page directory
+** @param old  Existing page directory
 **
 ** @return status of the duplication attempt
 */
-int vm_uvmdup(pde_t *old, pde_t *new);
+int vm_uvmdup(pde_t *new, pde_t *old);
 
 #endif /* !ASM_SRC */
 

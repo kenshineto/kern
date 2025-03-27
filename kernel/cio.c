@@ -67,8 +67,9 @@ static void (*notify)(int);
 
 // calculate the memory address of a specific character position
 // within VGA memory
-#define VIDEO_ADDR(x, y) \
-	(unsigned short *)(VID_BASE_ADDR + 2 * ((y) * SCREEN_X_SIZE + (x)))
+#define VIDEO_ADDR(x, y)                                                   \
+	(unsigned short *)((VID_BASE_ADDR + 2 * ((y) * SCREEN_X_SIZE + (x))) | \
+					   0x80000000)
 
 // port addresses
 #define VGA_CTRL_IX_ADDR 0x3d4
