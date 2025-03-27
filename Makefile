@@ -7,7 +7,7 @@ UNAME := $(shell uname)
 
 QEMU = qemu-system-i386
 QEMUOPTS = -drive file=bin/disk.img,index=0,media=disk,format=raw \
-		   -no-reboot -d cpu_reset \
+		   -no-reboot \
 		   -serial mon:stdio \
 		   -m 4G \
 		   -name kern
