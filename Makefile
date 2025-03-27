@@ -12,10 +12,6 @@ QEMUOPTS = -drive file=bin/disk.img,index=0,media=disk,format=raw \
 		   -m 4G \
 		   -name kern
 
-ifeq ($(UNAME), Linux)
-QEMUOPTS += -enable-kvm -display sdl
-endif
-
 qemu: bin/disk.img
 	$(QEMU) $(QEMUOPTS)
 
@@ -40,12 +36,16 @@ bin/boot.bin: build
 	cd bin && \
 		objcopy -S -O binary -j .text boot boot.bin
 
+bin/kernel.bin: build
+	cd bin && \
+		objcopy -S -O binary kernel kernel.bin
+
 bin/user.img: build
 	cd bin && \
 		./mkblob init idle prog* shell
 
-bin/disk.img: build bin/boot.bin bin/user.img
+bin/disk.img: bin/kernel.bin bin/boot.bin bin/user.img
 	cd bin && \
 		./BuildImage -d usb -o disk.img -b boot.bin \
-		kernel 0x10000 user.img 0x30000
+		kernel.bin 0x10000 user.img 0x30000
 

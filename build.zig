@@ -29,6 +29,7 @@ const ld_flags = &[_][]const u8{
 const boot_src = &[_][]const u8{"boot/boot.S"};
 
 const kernel_src = &[_][]const u8{
+    "kernel/startup.S", // must be first
     "kernel/cio.c",
     "kernel/clock.c",
     "kernel/isrs.S",
@@ -37,7 +38,6 @@ const kernel_src = &[_][]const u8{
     "kernel/list.c",
     "kernel/procs.c",
     "kernel/sio.c",
-    "kernel/startup.S",
     "kernel/support.c",
     "kernel/syscalls.c",
     "kernel/user.c",
