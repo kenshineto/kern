@@ -14,6 +14,8 @@ const c_flags = &[_][]const u8{
     "-fno-omit-frame-pointer",
     "-ffreestanding",
     "-fno-builtin",
+    // symbols
+    "-ggdb",
 };
 
 const ld_flags = &[_][]const u8{
@@ -298,7 +300,7 @@ pub fn build(b: *std.Build) !void {
             .ofmt = std.Target.ObjectFormat.elf,
         },
     });
-    const optimize = std.builtin.OptimizeMode.ReleaseSmall;
+    const optimize = std.builtin.OptimizeMode.ReleaseFast;
 
     // boot
     build_kern_binary(b, .{
