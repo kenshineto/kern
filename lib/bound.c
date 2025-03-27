@@ -24,11 +24,12 @@
 **
 ** @return The constrained value
 */
-uint32_t bound( uint32_t min, uint32_t value, uint32_t max ) {
-	if( value < min ){
+uint32_t bound(uint32_t min, uint32_t value, uint32_t max)
+{
+	if (value < min) {
 		value = min;
 	}
-	if( value > max ){
+	if (value > max) {
 		value = max;
 	}
 	return value;

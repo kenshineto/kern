@@ -30,14 +30,14 @@
 **
 ** Ultimately, just remember that THESE VALUES ARE APPROXIMATE AT BEST.
 */
-#define DELAY_1_SEC         40
-#define DELAY_1_25_SEC      50
-#define DELAY_2_SEC         80
-#define DELAY_2_5_SEC      100
-#define DELAY_3_SEC        120
-#define DELAY_5_SEC        200
-#define DELAY_7_SEC        280
-#define DELAY_10_SEC       400
+#define DELAY_1_SEC 40
+#define DELAY_1_25_SEC 50
+#define DELAY_2_SEC 80
+#define DELAY_2_5_SEC 100
+#define DELAY_3_SEC 120
+#define DELAY_5_SEC 200
+#define DELAY_7_SEC 280
+#define DELAY_10_SEC 400
 
 #ifndef ASM_SRC
 /**
@@ -49,7 +49,7 @@
 **
 ** @param reason  NUL-terminated message to be printed.
 */
-void panic( char *reason );
+void panic(char *reason);
 
 /**
 ** init_interrupts
@@ -58,7 +58,7 @@ void panic( char *reason );
 ** IDT and the PIC. It is up to the user to enable processor interrupts
 ** when they're ready.
 */
-void init_interrupts( void );
+void init_interrupts(void);
 
 /*
 ** install_isr
@@ -71,8 +71,7 @@ void init_interrupts( void );
 **
 ** @return a pointer to the previously-registered ISR
 */
-void (*install_isr( int vector,
-		void ( *handler )(int,int) ) )( int, int );
+void (*install_isr(int vector, void (*handler)(int, int)))(int, int);
 
 /*
 ** Name:    delay
@@ -80,8 +79,8 @@ void (*install_isr( int vector,
 ** See the comment above about the relative accuracy of the 'length'
 ** parameter.
 */
-void delay( int length );
+void delay(int length);
 
-#endif  /* !ASM_SRC */
+#endif /* !ASM_SRC */
 
 #endif

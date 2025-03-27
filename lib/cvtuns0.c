@@ -25,12 +25,13 @@
 **
 ** NOTE:  assumes buf is large enough to hold the resulting string
 */
-char *cvtuns0( char *buf, uint32_t value ) {
+char *cvtuns0(char *buf, uint32_t value)
+{
 	uint32_t quotient;
 
 	quotient = value / 10;
-	if( quotient != 0 ){
-		buf = cvtdec0( buf, quotient );
+	if (quotient != 0) {
+		buf = cvtdec0(buf, quotient);
 	}
 	*buf++ = value % 10 + '0';
 	return buf;

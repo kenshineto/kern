@@ -6,7 +6,7 @@
 ** @brief	System call implementations
 */
 
-#define	KERNEL_SRC
+#define KERNEL_SRC
 
 #include <common.h>
 
@@ -33,28 +33,30 @@
 
 #if TRACING_SYSCALLS
 
-#define SYSCALL_ENTER(x)    do { \
-		cio_printf( "--> %s, pid %08x", __func__, (uint32_t) (x) ); \
-	} while(0)
+#define SYSCALL_ENTER(x)                                         \
+	do {                                                         \
+		cio_printf("--> %s, pid %08x", __func__, (uint32_t)(x)); \
+	} while (0)
 
 #else
 
-#define SYSCALL_ENTER(x)    /* */
+#define SYSCALL_ENTER(x) /* */
 
-#endif  /* TRACING_SYSCALLS */
+#endif /* TRACING_SYSCALLS */
 
 #if TRACING_SYSRETS
 
-#define SYSCALL_EXIT(x) do { \
-		cio_printf( "<-- %s %08x\n", __func__, (uint32_t) (x) ); \
-		return; \
-	} while(0)
+#define SYSCALL_EXIT(x)                                       \
+	do {                                                      \
+		cio_printf("<-- %s %08x\n", __func__, (uint32_t)(x)); \
+		return;                                               \
+	} while (0)
 
 #else
 
 #define SYSCALL_EXIT(x) return
 
-#endif  /* TRACING_SYSRETS */
+#endif /* TRACING_SYSRETS */
 
 /*
 ** PRIVATE DATA TYPES
@@ -71,7 +73,7 @@
 // a macro to simplify syscall entry point specification
 // we don't declare these static because we may want to call
 // some of them from other parts of the kernel
-#define SYSIMPL(x)	void sys_##x( pcb_t * pcb )
+#define SYSIMPL(x) void sys_##x(pcb_t *pcb)
 
 /*
 ** Second-level syscall handlers
@@ -95,26 +97,26 @@
 **
 ** Does not return
 */
-SYSIMPL(exit) {
-
+SYSIMPL(exit)
+{
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// retrieve the exit status of this process
-	pcb->exit_status = (int32_t) ARG(pcb,1);
+	pcb->exit_status = (int32_t)ARG(pcb, 1);
 
 	// now, we need to do the following:
 	// 	reparent any children of this process and wake up init if need be
 	// 	find this process' parent and wake it up if it's waiting
-	
-	pcb_zombify( pcb );
+
+	pcb_zombify(pcb);
 
 	// pick a new winner
 	dispatch();
 
-	SYSCALL_EXIT( 0 );
+	SYSCALL_EXIT(0);
 }
 
 /**
@@ -128,12 +130,12 @@ SYSIMPL(exit) {
 ** terminated, or an error code; on success, returns the child's termination
 ** status via 'status' if that pointer is non-NULL.
 */
-SYSIMPL(waitpid) {
-
+SYSIMPL(waitpid)
+{
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	/*
 	** We need to do two things here:  (1) find out whether or
@@ -151,47 +153,42 @@ SYSIMPL(waitpid) {
 	*/
 
 	// verify that we aren't looking for ourselves!
-	uint_t target = ARG(pcb,1);
+	uint_t target = ARG(pcb, 1);
 
-	if( target == pcb->pid ) {
+	if (target == pcb->pid) {
 		RET(pcb) = E_BAD_PARAM;
-		SYSCALL_EXIT( E_BAD_PARAM );
+		SYSCALL_EXIT(E_BAD_PARAM);
 	}
 
 	// Good.  Now, figure out what we're looking for.
 
 	pcb_t *child = NULL;
 
-	if( target != 0 ) {
-
+	if (target != 0) {
 		// we're looking for a specific child
-		child = pcb_find_pid( target );
+		child = pcb_find_pid(target);
 
-		if( child != NULL ) {
-
+		if (child != NULL) {
 			// found the process; is it one of our children:
-			if( child->parent != pcb ) {
+			if (child->parent != pcb) {
 				// NO, so we can't wait for it
 				RET(pcb) = E_BAD_PARAM;
-				SYSCALL_EXIT( E_BAD_PARAM );
+				SYSCALL_EXIT(E_BAD_PARAM);
 			}
 
 			// yes!  is this one ready to be collected?
-			if( child->state != STATE_ZOMBIE ) {
+			if (child->state != STATE_ZOMBIE) {
 				// no, so we'll have to block for now
 				child = NULL;
 			}
 
 		} else {
-
 			// no such child
 			RET(pcb) = E_BAD_PARAM;
-			SYSCALL_EXIT( E_BAD_PARAM );
-
+			SYSCALL_EXIT(E_BAD_PARAM);
 		}
 
 	} else {
-
 		// looking for any child
 
 		// we need to find a process that is our child
@@ -204,15 +201,13 @@ SYSIMPL(waitpid) {
 		// so we need to do the iteration ourselves
 		register pcb_t *curr = ptable;
 
-		for( int i = 0; i < N_PROCS; ++i, ++curr ) {
-
-			if( curr->parent == pcb ) {
-
+		for (int i = 0; i < N_PROCS; ++i, ++curr) {
+			if (curr->parent == pcb) {
 				// found one!
 				found = true;
 
 				// has it already exited?
-				if( curr->state == STATE_ZOMBIE ) {
+				if (curr->state == STATE_ZOMBIE) {
 					// yes, so we're done here
 					child = curr;
 					break;
@@ -220,12 +215,11 @@ SYSIMPL(waitpid) {
 			}
 		}
 
-		if( !found ) {
+		if (!found) {
 			// got through the loop without finding a child!
 			RET(pcb) = E_NO_CHILDREN;
-			SYSCALL_EXIT( E_NO_CHILDREN );
+			SYSCALL_EXIT(E_NO_CHILDREN);
 		}
-
 	}
 
 	/*
@@ -241,25 +235,24 @@ SYSIMPL(waitpid) {
 	*/
 
 	// did we find one to collect?
-	if( child == NULL ) {
-
+	if (child == NULL) {
 		// no - mark the parent as "Waiting"
 		pcb->state = STATE_WAITING;
-		assert( pcb_queue_insert(waiting,pcb) == SUCCESS );
+		assert(pcb_queue_insert(waiting, pcb) == SUCCESS);
 
 		// select a new current process
 		dispatch();
-		SYSCALL_EXIT( (uint32_t) current );
+		SYSCALL_EXIT((uint32_t)current);
 	}
 
 	// found a Zombie; collect its information and clean it up
 	RET(pcb) = child->pid;
 
 	// get "status" pointer from parent
-	int32_t *stat = (int32_t *) ARG(pcb,2);
+	int32_t *stat = (int32_t *)ARG(pcb, 2);
 
 	// if stat is NULL, the parent doesn't want the status
-	if( stat != NULL ) {
+	if (stat != NULL) {
 		// ********************************************************
 		// ** Potential VM issue here!  This code assigns the exit
 		// ** status into a variable in the parent's address space.
@@ -272,9 +265,9 @@ SYSIMPL(waitpid) {
 	}
 
 	// clean up the child
-	pcb_cleanup( child );
+	pcb_cleanup(child);
 
-	SYSCALL_EXIT( RET(pcb) );
+	SYSCALL_EXIT(RET(pcb));
 }
 
 /**
@@ -287,26 +280,26 @@ SYSIMPL(waitpid) {
 ** Returns the child's PID to the parent, and 0 to the child, on success;
 ** else, returns an error code to the parent.
 */
-SYSIMPL(fork) {
-
+SYSIMPL(fork)
+{
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// Make sure there's room for another process!
 	pcb_t *new;
-	if( pcb_alloc(&new) != SUCCESS || new == NULL ) {
+	if (pcb_alloc(&new) != SUCCESS || new == NULL) {
 		RET(pcb) = E_NO_PROCS;
-		SYSCALL_EXIT( RET(pcb) );
+		SYSCALL_EXIT(RET(pcb));
 	}
 
 	// duplicate the memory image of the parent
-	int status = user_duplicate( new, pcb );
-	if( status != SUCCESS ) {
-		pcb_free( new );
+	int status = user_duplicate(new, pcb);
+	if (status != SUCCESS) {
+		pcb_free(new);
 		RET(pcb) = status;
-		SYSCALL_EXIT( status );
+		SYSCALL_EXIT(status);
 	}
 
 	// Set the child's identity.
@@ -322,9 +315,9 @@ SYSIMPL(fork) {
 	RET(new) = 0;
 
 	// Schedule the child, and let the parent continue.
-	schedule( new );
+	schedule(new);
 
-	SYSCALL_EXIT( new->pid );
+	SYSCALL_EXIT(new->pid);
 }
 
 /**
@@ -341,30 +334,30 @@ SYSIMPL(fork) {
 SYSIMPL(exec)
 {
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	uint_t what = ARG(pcb,1);
-	const char **args = (const char **) ARG(pcb,2);
+	uint_t what = ARG(pcb, 1);
+	const char **args = (const char **)ARG(pcb, 2);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// locate the requested program
-	prog_t *prog = user_locate( what );
-	if( prog == NULL ) {
+	prog_t *prog = user_locate(what);
+	if (prog == NULL) {
 		RET(pcb) = E_NOT_FOUND;
-		SYSCALL_EXIT( E_NOT_FOUND );
+		SYSCALL_EXIT(E_NOT_FOUND);
 	}
 
 	// we have located the program, but before we can load it,
 	// we need to clean up the existing VM hierarchy
-	vm_free( pcb->pdir );
+	vm_free(pcb->pdir);
 	pcb->pdir = NULL;
 
 	// "load" it and set up the VM tables for this process
-	int status = user_load( prog, pcb, args );
-	if( status != SUCCESS ) {
+	int status = user_load(prog, pcb, args);
+	if (status != SUCCESS) {
 		RET(pcb) = status;
-		SYSCALL_EXIT( status );
+		SYSCALL_EXIT(status);
 	}
 
 	/*
@@ -380,7 +373,7 @@ SYSIMPL(exec)
 	** an error status to it.
 	*/
 
-	schedule( pcb );
+	schedule(pcb);
 
 	dispatch();
 }
@@ -394,52 +387,49 @@ SYSIMPL(exec)
 ** Reads up to 'length' bytes from 'chan' into 'buffer'. Returns the
 ** count of bytes actually transferred.
 */
-SYSIMPL(read) {
-
+SYSIMPL(read)
+{
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
-	
+	SYSCALL_ENTER(pcb->pid);
+
 	// grab the arguments
-	uint_t chan = ARG(pcb,1);
-	char *buf = (char *) ARG(pcb,2);
-	uint_t len = ARG(pcb,3);
+	uint_t chan = ARG(pcb, 1);
+	char *buf = (char *)ARG(pcb, 2);
+	uint_t len = ARG(pcb, 3);
 
 	// if the buffer is of length 0, we're done!
-	if( len == 0 ) {
+	if (len == 0) {
 		RET(pcb) = 0;
-		SYSCALL_EXIT( 0 );
+		SYSCALL_EXIT(0);
 	}
 
 	// try to get the next character(s)
 	int n = 0;
 
-	if( chan == CHAN_CIO ) {
-
+	if (chan == CHAN_CIO) {
 		// console input is non-blocking
-		if( cio_input_queue() < 1 ) {
+		if (cio_input_queue() < 1) {
 			RET(pcb) = 0;
-			SYSCALL_EXIT( 0 );
+			SYSCALL_EXIT(0);
 		}
 		// at least one character
-		n = cio_gets( buf, len );
+		n = cio_gets(buf, len);
 		RET(pcb) = n;
-		SYSCALL_EXIT( n );
+		SYSCALL_EXIT(n);
 
-	} else if( chan == CHAN_SIO ) {
-
+	} else if (chan == CHAN_SIO) {
 		// SIO input is blocking, so if there are no characters
 		// available, we'll block this process
-		n = sio_read( buf, len );
+		n = sio_read(buf, len);
 		RET(pcb) = n;
-		SYSCALL_EXIT( n );
-
+		SYSCALL_EXIT(n);
 	}
 
 	// bad channel code
 	RET(pcb) = E_BAD_PARAM;
-	SYSCALL_EXIT( E_BAD_PARAM );
+	SYSCALL_EXIT(E_BAD_PARAM);
 }
 
 /**
@@ -451,17 +441,17 @@ SYSIMPL(read) {
 ** Writes 'length' bytes from 'buffer' to 'chan'. Returns the
 ** count of bytes actually transferred.
 */
-SYSIMPL(write) {
-
+SYSIMPL(write)
+{
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// grab the parameters
-	uint_t chan = ARG(pcb,1);
-	char *buf = (char *) ARG(pcb,2);
-	uint_t length = ARG(pcb,3);
+	uint_t chan = ARG(pcb, 1);
+	char *buf = (char *)ARG(pcb, 2);
+	uint_t length = ARG(pcb, 3);
 
 	// this is almost insanely simple, but it does separate the
 	// low-level device access fromm the higher-level syscall implementation
@@ -470,27 +460,21 @@ SYSIMPL(write) {
 	int rval = length;
 
 	// simplest case
-	if( length >= 0 ) {
+	if (length >= 0) {
+		if (chan == CHAN_CIO) {
+			cio_write(buf, length);
 
-		if( chan == CHAN_CIO ) {
-
-			cio_write( buf, length );
-
-		} else if( chan == CHAN_SIO ) {
-
-			sio_write( buf, length );
+		} else if (chan == CHAN_SIO) {
+			sio_write(buf, length);
 
 		} else {
-
 			rval = E_BAD_CHAN;
-
 		}
-
 	}
 
 	RET(pcb) = rval;
 
-	SYSCALL_EXIT( rval );
+	SYSCALL_EXIT(rval);
 }
 
 /**
@@ -499,12 +483,12 @@ SYSIMPL(write) {
 ** Implements:
 **		uint_t getpid( void );
 */
-SYSIMPL(getpid) {
-
+SYSIMPL(getpid)
+{
 	// sanity check!
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// return the time
 	RET(pcb) = pcb->pid;
@@ -516,13 +500,13 @@ SYSIMPL(getpid) {
 ** Implements:
 **		uint_t getppid( void );
 */
-SYSIMPL(getppid) {
-
+SYSIMPL(getppid)
+{
 	// sanity check!
-	assert( pcb != NULL );
-	assert( pcb->parent != NULL );
+	assert(pcb != NULL);
+	assert(pcb->parent != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// return the time
 	RET(pcb) = pcb->parent->pid;
@@ -534,12 +518,12 @@ SYSIMPL(getppid) {
 ** Implements:
 **		uint32_t gettime( void );
 */
-SYSIMPL(gettime) {
-
+SYSIMPL(gettime)
+{
 	// sanity check!
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// return the time
 	RET(pcb) = system_time;
@@ -551,12 +535,12 @@ SYSIMPL(gettime) {
 ** Implements:
 **		int getprio( void );
 */
-SYSIMPL(getprio) {
-
+SYSIMPL(getprio)
+{
 	// sanity check!
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// return the time
 	RET(pcb) = pcb->priority;
@@ -568,18 +552,18 @@ SYSIMPL(getprio) {
 ** Implements:
 **		int setprio( int new );
 */
-SYSIMPL(setprio) {
-
+SYSIMPL(setprio)
+{
 	// sanity check!
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// remember the old priority
 	int old = pcb->priority;
 
 	// set the priority
-	pcb->priority = ARG(pcb,1);
+	pcb->priority = ARG(pcb, 1);
 
 	// return the old value
 	RET(pcb) = old;
@@ -594,56 +578,55 @@ SYSIMPL(setprio) {
 ** Marks the specified process (or the calling process, if PID is 0)
 ** as "killed". Returns 0 on success, else an error code.
 */
-SYSIMPL(kill) {
-
+SYSIMPL(kill)
+{
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// who is the victim?
-	uint_t pid = ARG(pcb,1);
+	uint_t pid = ARG(pcb, 1);
 
 	// if it's this process, convert this into a call to exit()
-	if( pid == pcb->pid ) {
+	if (pid == pcb->pid) {
 		pcb->exit_status = EXIT_KILLED;
-		pcb_zombify( pcb );
+		pcb_zombify(pcb);
 		dispatch();
-		SYSCALL_EXIT( EXIT_KILLED );
+		SYSCALL_EXIT(EXIT_KILLED);
 	}
 
 	// must be a valid "ordinary user" PID
 	// QUESTION: what if it's the idle process?
-	if( pid < FIRST_USER_PID ) {
+	if (pid < FIRST_USER_PID) {
 		RET(pcb) = E_FAILURE;
-		SYSCALL_EXIT( E_FAILURE );
+		SYSCALL_EXIT(E_FAILURE);
 	}
 
 	// OK, this is an acceptable victim; see if it exists
-	pcb_t *victim = pcb_find_pid( pid );
-	if( victim == NULL ) {
+	pcb_t *victim = pcb_find_pid(pid);
+	if (victim == NULL) {
 		// nope!
 		RET(pcb) = E_NOT_FOUND;
-		SYSCALL_EXIT( E_NOT_FOUND );
+		SYSCALL_EXIT(E_NOT_FOUND);
 	}
 
 	// must have a state that is possible
-	assert( victim->state >= FIRST_VIABLE && victim->state < N_STATES );
+	assert(victim->state >= FIRST_VIABLE && victim->state < N_STATES);
 
 	// how we perform the kill depends on the victim's state
 	int32_t status = SUCCESS;
 
-	switch( victim->state ) {
-
-	case STATE_KILLED:    // FALL THROUGH
+	switch (victim->state) {
+	case STATE_KILLED: // FALL THROUGH
 	case STATE_ZOMBIE:
 		// you can't kill it if it's already dead
 		RET(pcb) = SUCCESS;
 		break;
 
-	case STATE_READY:     // FALL THROUGH
-	case STATE_SLEEPING:  // FALL THROUGH
-	case STATE_BLOCKED:   // FALL THROUGH
+	case STATE_READY: // FALL THROUGH
+	case STATE_SLEEPING: // FALL THROUGH
+	case STATE_BLOCKED: // FALL THROUGH
 		// here, the process is on a queue somewhere; mark
 		// it as "killed", and let the scheduler deal with it
 		victim->state = STATE_KILLED;
@@ -653,7 +636,7 @@ SYSIMPL(kill) {
 	case STATE_RUNNING:
 		// we have met the enemy, and it is us!
 		pcb->exit_status = EXIT_KILLED;
-		pcb_zombify( pcb );
+		pcb_zombify(pcb);
 		status = EXIT_KILLED;
 		// we need a new current process
 		dispatch();
@@ -663,8 +646,8 @@ SYSIMPL(kill) {
 		// similar to the 'running' state, but we don't need
 		// to dispatch a new process
 		victim->exit_status = EXIT_KILLED;
-		status = pcb_queue_remove_this( waiting, victim );
-		pcb_zombify( victim );
+		status = pcb_queue_remove_this(waiting, victim);
+		pcb_zombify(victim);
 		RET(pcb) = status;
 		break;
 
@@ -672,14 +655,13 @@ SYSIMPL(kill) {
 		// this is a really bad potential problem - we have an
 		// unexpected or bogus process state, but we didn't
 		// catch that earlier.
-		sprint( b256, "*** kill(): victim %d, odd state %d\n",
-				victim->pid, victim->state );
-		PANIC( 0, b256 );
+		sprint(b256, "*** kill(): victim %d, odd state %d\n", victim->pid,
+			   victim->state);
+		PANIC(0, b256);
 	}
 
-	SYSCALL_EXIT( status );
+	SYSCALL_EXIT(status);
 }
-
 
 /**
 ** sys_sleep - put the calling process to sleep for some length of time
@@ -690,35 +672,33 @@ SYSIMPL(kill) {
 ** Puts the calling process to sleep for 'ms' milliseconds (or just yields
 ** the CPU if 'ms' is 0).  ** Returns the time the process spent sleeping.
 */
-SYSIMPL(sleep) {
-
+SYSIMPL(sleep)
+{
 	// sanity check
-	assert( pcb != NULL );
+	assert(pcb != NULL);
 
-	SYSCALL_ENTER( pcb->pid );
+	SYSCALL_ENTER(pcb->pid);
 
 	// get the desired duration
-	uint_t length = ARG( pcb, 1 );
+	uint_t length = ARG(pcb, 1);
 
-	if( length == 0 ) {
-
+	if (length == 0) {
 		// just yield the CPU
 		// sleep duration is 0
 		RET(pcb) = 0;
 
 		// back on the ready queue
-		schedule( pcb );
+		schedule(pcb);
 
 	} else {
-
 		// sleep for a while
 		pcb->wakeup = system_time + length;
 
-		if( pcb_queue_insert(sleeping,pcb) != SUCCESS ) {
+		if (pcb_queue_insert(sleeping, pcb) != SUCCESS) {
 			// something strange is happening
-			WARNING( "sleep pcb insert failed" );
+			WARNING("sleep pcb insert failed");
 			// if this is the current process, report an error
-			if( current == pcb ) {
+			if (current == pcb) {
 				RET(pcb) = -1;
 			}
 			// return without dispatching a new process
@@ -727,7 +707,7 @@ SYSIMPL(sleep) {
 	}
 
 	// only dispatch if the current process called us
-	if( pcb == current ) {
+	if (pcb == current) {
 		current = NULL;
 		dispatch();
 	}
@@ -746,20 +726,14 @@ SYSIMPL(sleep) {
 ** position in the initialization list is irrelevant.
 */
 
-static void (* const syscalls[N_SYSCALLS])( pcb_t * ) = {
-	[ SYS_exit ]    = sys_exit,
-	[ SYS_waitpid ] = sys_waitpid,
-	[ SYS_fork ]    = sys_fork,
-	[ SYS_exec ]    = sys_exec,
-	[ SYS_read ]    = sys_read,
-	[ SYS_write ]   = sys_write,
-	[ SYS_getpid ]  = sys_getpid,
-	[ SYS_getppid ] = sys_getppid,
-	[ SYS_gettime ] = sys_gettime,
-	[ SYS_getprio ] = sys_getprio,
-	[ SYS_setprio ] = sys_setprio,
-	[ SYS_kill ]    = sys_kill,
-	[ SYS_sleep ]   = sys_sleep
+static void (*const syscalls[N_SYSCALLS])(pcb_t *) = {
+	[SYS_exit] = sys_exit,		 [SYS_waitpid] = sys_waitpid,
+	[SYS_fork] = sys_fork,		 [SYS_exec] = sys_exec,
+	[SYS_read] = sys_read,		 [SYS_write] = sys_write,
+	[SYS_getpid] = sys_getpid,	 [SYS_getppid] = sys_getppid,
+	[SYS_gettime] = sys_gettime, [SYS_getprio] = sys_getprio,
+	[SYS_setprio] = sys_setprio, [SYS_kill] = sys_kill,
+	[SYS_sleep] = sys_sleep
 };
 
 /**
@@ -770,40 +744,40 @@ static void (* const syscalls[N_SYSCALLS])( pcb_t * ) = {
 ** @param vector   Vector number for this interrupt
 ** @param code     Error code (0 for this interrupt)
 */
-static void sys_isr( int vector, int code ) {
-
+static void sys_isr(int vector, int code)
+{
 	// keep the compiler happy
-	(void) vector;
-	(void) code;
+	(void)vector;
+	(void)code;
 
 	// sanity check!
-	assert( current != NULL );
-	assert( current->context != NULL );
+	assert(current != NULL);
+	assert(current->context != NULL);
 
 	// retrieve the syscall code
-	int num = REG( current, eax );
+	int num = REG(current, eax);
 
 #if TRACING_SYSCALLS
-	cio_printf( "** --> SYS pid %u code %u\n", current->pid, num );
+	cio_printf("** --> SYS pid %u code %u\n", current->pid, num);
 #endif
 
 	// validate it
-	if( num < 0 || num >= N_SYSCALLS ) {
+	if (num < 0 || num >= N_SYSCALLS) {
 		// bad syscall number
 		// could kill it, but we'll just force it to exit
 		num = SYS_exit;
-		ARG(current,1) = EXIT_BAD_SYSCALL;
+		ARG(current, 1) = EXIT_BAD_SYSCALL;
 	}
 
 	// call the handler
-	syscalls[num]( current );
+	syscalls[num](current);
 
 #if TRACING_SYSCALLS
-	cio_printf( "** <-- SYS pid %u ret %u\n", current->pid, RET(current) );
+	cio_printf("** <-- SYS pid %u ret %u\n", current->pid, RET(current));
 #endif
 
 	// tell the PIC we're done
-	outb( PIC1_CMD, PIC_EOI );
+	outb(PIC1_CMD, PIC_EOI);
 }
 
 /*
@@ -818,12 +792,12 @@ static void sys_isr( int vector, int code ) {
 ** Dependencies:
 **    Must be called after cio_init()
 */
-void sys_init( void ) {
-
+void sys_init(void)
+{
 #if TRACING_INIT
-	cio_puts( " Sys" );
+	cio_puts(" Sys");
 #endif
 
 	// install the second-stage ISR
-	install_isr( VEC_SYSCALL, sys_isr );
+	install_isr(VEC_SYSCALL, sys_isr);
 }

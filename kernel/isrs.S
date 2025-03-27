@@ -16,7 +16,7 @@
 
 #define ASM_SRC
 
-	.arch	i386
+#	.arch	i386
 
 #include <bootstrap.h>
 

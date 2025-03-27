@@ -25,10 +25,11 @@
 **
 ** NOTE:  assumes buf is large enough to hold the resulting string
 */
-int cvtuns( char *buf, uint32_t value ) {
-	char    *bp = buf;
+int cvtuns(char *buf, uint32_t value)
+{
+	char *bp = buf;
 
-	bp = cvtuns0( bp, value );
+	bp = cvtuns0(bp, value);
 	*bp = '\0';
 
 	return bp - buf;

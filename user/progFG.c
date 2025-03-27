@@ -11,45 +11,49 @@
 **		   s is the sleep time in seconds
 */
 
-USERMAIN( main ) {
-	char ch = '3';	// default character to print
-	int nap = 10;	// default sleep time
-	int count = 30;	// iteration count
+USERMAIN(main)
+{
+	char ch = '3'; // default character to print
+	int nap = 10; // default sleep time
+	int count = 30; // iteration count
 	char buf[128];
 
 	// process the command-line arguments
-	switch( argc ) {
-	case 4:	nap = str2int( argv[3], 10 );
-			// FALL THROUGH
-	case 3:	count = str2int( argv[2], 10 );
-			// FALL THROUGH
-	case 2:	ch = argv[1][0];
-			break;
+	switch (argc) {
+	case 4:
+		nap = str2int(argv[3], 10);
+		// FALL THROUGH
+	case 3:
+		count = str2int(argv[2], 10);
+		// FALL THROUGH
+	case 2:
+		ch = argv[1][0];
+		break;
 	default:
-			sprint( buf, "main3: argc %d, args: ", argc );
-			cwrites( buf );
-			for( int i = 0; i <= argc; ++i ) {
-				sprint( buf, " %s", argv[argc] ? argv[argc] : "(null)" );
-				cwrites( buf );
-			}
-			cwrites( "\n" );
+		sprint(buf, "main3: argc %d, args: ", argc);
+		cwrites(buf);
+		for (int i = 0; i <= argc; ++i) {
+			sprint(buf, " %s", argv[argc] ? argv[argc] : "(null)");
+			cwrites(buf);
+		}
+		cwrites("\n");
 	}
 
 	// announce our presence
-	int n = swritech( ch );
-	if( n != 1 ) {
-		sprint( buf, "=== %c, write #1 returned %d\n", ch, n );
-		cwrites( buf );
+	int n = swritech(ch);
+	if (n != 1) {
+		sprint(buf, "=== %c, write #1 returned %d\n", ch, n);
+		cwrites(buf);
 	}
 
-	write( CHAN_SIO, &ch, 1 );
+	write(CHAN_SIO, &ch, 1);
 
-	for( int i = 0; i < count ; ++i ) {
-		sleep( SEC_TO_MS(nap) );
-		write( CHAN_SIO, &ch, 1 );
+	for (int i = 0; i < count; ++i) {
+		sleep(SEC_TO_MS(nap));
+		write(CHAN_SIO, &ch, 1);
 	}
 
-	exit( 0 );
+	exit(0);
 
-	return( 42 );  // shut the compiler up!
+	return (42); // shut the compiler up!
 }

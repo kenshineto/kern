@@ -26,6 +26,6 @@
 #include <cio.h>
 #include <debug.h>
 
-#endif  /* KERNEL_SRC */
+#endif /* KERNEL_SRC */
 
 #endif

@@ -24,9 +24,10 @@
 **
 ** NOTE: does NOT NUL-terminate the buffer
 */
-char *pad( char *dst, int extra, int padchar ) {
-	while( extra > 0 ){
-		*dst++ = (char) padchar;
+char *pad(char *dst, int extra, int padchar)
+{
+	while (extra > 0) {
+		*dst++ = (char)padchar;
 		extra -= 1;
 	}
 	return dst;

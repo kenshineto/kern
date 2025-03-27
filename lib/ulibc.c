@@ -50,8 +50,9 @@
 **
 ** @returns The PID of the terminated child, or an error code
 */
-int wait( int32_t *status ) {
-	return( waitpid(0,status) );
+int wait(int32_t *status)
+{
+	return (waitpid(0, status));
 }
 
 /**
@@ -66,14 +67,15 @@ int wait( int32_t *status ) {
 **
 ** @returns PID of the new process, or an error code
 */
-int32_t spawn( uint_t what, char **args ) {
+int32_t spawn(uint_t what, char **args)
+{
 	int32_t pid;
 	char buf[256];
 
 	pid = fork();
-	if( pid != 0 ) {
+	if (pid != 0) {
 		// failure, or we are the parent
-		return( pid );
+		return (pid);
 	}
 
 	// we are the child
@@ -81,15 +83,15 @@ int32_t spawn( uint_t what, char **args ) {
 
 	// child inherits parent's priority level
 
-	exec( what, args );
+	exec(what, args);
 
 	// uh-oh....
 
-	sprint( buf, "Child %d exec() #%u failed\n", pid, what );
-	cwrites( buf );
+	sprint(buf, "Child %d exec() #%u failed\n", pid, what);
+	cwrites(buf);
 
-	exit( EXIT_FAILURE );
-	return( 0 );   // shut the compiler up
+	exit(EXIT_FAILURE);
+	return (0); // shut the compiler up
 }
 
 /**
@@ -99,8 +101,9 @@ int32_t spawn( uint_t what, char **args ) {
 **
 ** @returns The return value from calling write()
 */
-int cwritech( char ch ) {
-	return( write(CHAN_CIO,&ch,1) );
+int cwritech(char ch)
+{
+	return (write(CHAN_CIO, &ch, 1));
 }
 
 /**
@@ -109,9 +112,10 @@ int cwritech( char ch ) {
 ** @param str The string to write
 **
 */
-int cwrites( const char *str ) {
+int cwrites(const char *str)
+{
 	int len = strlen(str);
-	return( write(CHAN_CIO,str,len) );
+	return (write(CHAN_CIO, str, len));
 }
 
 /**
@@ -122,8 +126,9 @@ int cwrites( const char *str ) {
 **
 ** @returns The return value from calling write()
 */
-int cwrite( const char *buf, uint32_t size ) {
-	return( write(CHAN_CIO,buf,size) );
+int cwrite(const char *buf, uint32_t size)
+{
+	return (write(CHAN_CIO, buf, size));
 }
 
 /**
@@ -133,8 +138,9 @@ int cwrite( const char *buf, uint32_t size ) {
 **
 ** @returns The return value from calling write()
 */
-int swritech( char ch ) {
-	return( write(CHAN_SIO,&ch,1) );
+int swritech(char ch)
+{
+	return (write(CHAN_SIO, &ch, 1));
 }
 
 /**
@@ -144,9 +150,10 @@ int swritech( char ch ) {
 **
 ** @returns The return value from calling write()
 */
-int swrites( const char *str ) {
+int swrites(const char *str)
+{
 	int len = strlen(str);
-	return( write(CHAN_SIO,str,len) );
+	return (write(CHAN_SIO, str, len));
 }
 
 /**
@@ -157,6 +164,7 @@ int swrites( const char *str ) {
 **
 ** @returns The return value from calling write()
 */
-int swrite( const char *buf, uint32_t size ) {
-	return( write(CHAN_SIO,buf,size) );
+int swrite(const char *buf, uint32_t size)
+{
+	return (write(CHAN_SIO, buf, size));
 }

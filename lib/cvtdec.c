@@ -26,18 +26,19 @@
 **
 ** NOTE:  assumes buf is large enough to hold the resulting string
 */
-int cvtdec( char *buf, int32_t value ) {
+int cvtdec(char *buf, int32_t value)
+{
 	char *bp = buf;
 
-	if( value < 0 ) {
+	if (value < 0) {
 		*bp++ = '-';
 		value = -value;
 	}
 
-	bp = cvtdec0( bp, value );
-	*bp  = '\0';
+	bp = cvtdec0(bp, value);
+	*bp = '\0';
 
-	return( bp - buf );
+	return (bp - buf);
 }
 
 #endif

@@ -21,11 +21,11 @@
 // Upper bound on the number of simultaneous user-level
 // processes in the system (completely arbitrary)
 
-#define N_PROCS        25
+#define N_PROCS 25
 
 // Clock frequency (Hz)
 
-#define CLOCK_FREQ     1000
-#define TICKS_PER_MS   1
+#define CLOCK_FREQ 1000
+#define TICKS_PER_MS 1
 
 #endif

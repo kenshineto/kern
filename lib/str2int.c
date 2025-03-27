@@ -21,31 +21,32 @@
 **
 ** @return The converted integer
 */
-int str2int( register const char *str, register int base ) {
+int str2int(register const char *str, register int base)
+{
 	register int num = 0;
 	register char bchar = '9';
 	int sign = 1;
 
 	// check for leading '-'
-	if( *str == '-' ) {
+	if (*str == '-') {
 		sign = -1;
 		++str;
 	}
 
-	if( base != 10 ) {
+	if (base != 10) {
 		bchar = '0' + base - 1;
 	}
 
 	// iterate through the characters
-	while( *str ) {
-		if( *str < '0' || *str > bchar )
+	while (*str) {
+		if (*str < '0' || *str > bchar)
 			break;
 		num = num * base + *str - '0';
 		++str;
 	}
 
 	// return the converted value
-	return( num * sign );
+	return (num * sign);
 }
 
 #endif

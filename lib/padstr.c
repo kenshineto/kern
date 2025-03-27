@@ -28,31 +28,32 @@
 **
 ** NOTE: does NOT NUL-terminate the buffer
 */
-char *padstr( char *dst, char *str, int len, int width,
-				int leftadjust, int padchar ) {
+char *padstr(char *dst, char *str, int len, int width, int leftadjust,
+			 int padchar)
+{
 	int extra;
 
 	// determine the length of the string if we need to
-	if( len < 0 ){
-		len = strlen( str );
+	if (len < 0) {
+		len = strlen(str);
 	}
 
 	// how much filler must we add?
 	extra = width - len;
 
 	// add filler on the left if we're not left-justifying
-	if( extra > 0 && !leftadjust ){
-		dst = pad( dst, extra, padchar );
+	if (extra > 0 && !leftadjust) {
+		dst = pad(dst, extra, padchar);
 	}
 
 	// copy the string itself
-	for( int i = 0; i < len; ++i ) {
+	for (int i = 0; i < len; ++i) {
 		*dst++ = str[i];
 	}
 
 	// add filler on the right if we are left-justifying
-	if( extra > 0 && leftadjust ){
-		dst = pad( dst, extra, padchar );
+	if (extra > 0 && leftadjust) {
+		dst = pad(dst, extra, padchar);
 	}
 
 	return dst;

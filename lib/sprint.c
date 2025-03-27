@@ -28,9 +28,10 @@
 ** (parameters are pushed onto the stack in reverse order as
 ** 32-bit values).
 */
-void sprint( char *dst, char *fmt, ... ) {
+void sprint(char *dst, char *fmt, ...)
+{
 	int32_t *ap;
-	char buf[ 12 ];
+	char buf[12];
 	char ch;
 	char *str;
 	int leftadjust;
@@ -49,16 +50,16 @@ void sprint( char *dst, char *fmt, ... ) {
 	** to point to the next "thing", and interpret it according
 	** to the format string.
 	*/
-	
+
 	// get the pointer to the first "value" parameter
 	ap = (int *)(&fmt) + 1;
 
 	// iterate through the format string
-	while( (ch = *fmt++) != '\0' ){
+	while ((ch = *fmt++) != '\0') {
 		/*
 		** Is it the start of a format code?
 		*/
-		if( ch == '%' ){
+		if (ch == '%') {
 			/*
 			** Yes, get the padding and width options (if there).
 			** Alignment must come at the beginning, then fill,
@@ -68,15 +69,15 @@ void sprint( char *dst, char *fmt, ... ) {
 			padchar = ' ';
 			width = 0;
 			ch = *fmt++;
-			if( ch == '-' ){
+			if (ch == '-') {
 				leftadjust = 1;
 				ch = *fmt++;
 			}
-			if( ch == '0' ){
+			if (ch == '0') {
 				padchar = '0';
 				ch = *fmt++;
 			}
-			while( ch >= '0' && ch <= '9' ){
+			while (ch >= '0' && ch <= '9') {
 				width *= 10;
 				width += ch - '0';
 				ch = *fmt++;
@@ -85,40 +86,38 @@ void sprint( char *dst, char *fmt, ... ) {
 			/*
 			** What data type do we have?
 			*/
-			switch( ch ) {
-
-			case 'c':  // characters are passed as 32-bit values
+			switch (ch) {
+			case 'c': // characters are passed as 32-bit values
 				ch = *ap++;
-				buf[ 0 ] = ch;
-				buf[ 1 ] = '\0';
-				dst = padstr( dst, buf, 1, width, leftadjust, padchar );
+				buf[0] = ch;
+				buf[1] = '\0';
+				dst = padstr(dst, buf, 1, width, leftadjust, padchar);
 				break;
 
 			case 'd':
-				len = cvtdec( buf, *ap++ );
-				dst = padstr( dst, buf, len, width, leftadjust, padchar );
+				len = cvtdec(buf, *ap++);
+				dst = padstr(dst, buf, len, width, leftadjust, padchar);
 				break;
 
 			case 's':
-				str = (char *) (*ap++);
-				dst = padstr( dst, str, -1, width, leftadjust, padchar );
+				str = (char *)(*ap++);
+				dst = padstr(dst, str, -1, width, leftadjust, padchar);
 				break;
 
 			case 'x':
-				len = cvthex( buf, *ap++ );
-				dst = padstr( dst, buf, len, width, leftadjust, padchar );
+				len = cvthex(buf, *ap++);
+				dst = padstr(dst, buf, len, width, leftadjust, padchar);
 				break;
 
 			case 'o':
-				len = cvtoct( buf, *ap++ );
-				dst = padstr( dst, buf, len, width, leftadjust, padchar );
+				len = cvtoct(buf, *ap++);
+				dst = padstr(dst, buf, len, width, leftadjust, padchar);
 				break;
 
 			case 'u':
-				len = cvtuns( buf, *ap++ );
-				dst = padstr( dst, buf, len, width, leftadjust, padchar );
+				len = cvtuns(buf, *ap++);
+				dst = padstr(dst, buf, len, width, leftadjust, padchar);
 				break;
-
 			}
 		} else {
 			// no, it's just an ordinary character

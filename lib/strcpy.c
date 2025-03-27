@@ -23,13 +23,14 @@
 **
 ** NOTE:  assumes dst is large enough to hold the copied string
 */
-char *strcpy( register char *dst, register const char *src ) {
+char *strcpy(register char *dst, register const char *src)
+{
 	register char *tmp = dst;
 
-	while( (*dst++ = *src++) )
+	while ((*dst++ = *src++))
 		;
 
-	return( tmp );
+	return (tmp);
 }
 
 #endif

@@ -17,6 +17,10 @@
 ** (4KB, and aligned at 4KB boundaries); they are held in the free list
 ** in LIFO order, as all pages are created equal.
 **
+** By default, the addresses used are virtual addresses rather than
+** physical addresses. Define the symbol USE_PADDRS when compiling to
+** change this.
+**
 ** Each allocator ("page" and "slice") allocates the first block from
 ** the appropriate free list.  On deallocation, the block is added back
 ** to the free list.
@@ -40,6 +44,8 @@
 ** Compilation options:
 **
 **    ALLOC_FAIL_PANIC    if an internal slice allocation fails, panic
+**    USE_PADDRS          build the free list using physical, not
+**                        virtual, addresses
 */
 
 #define KERNEL_SRC
@@ -56,24 +62,29 @@
 #include <x86/bios.h>
 #include <bootstrap.h>
 #include <cio.h>
+#include <vm.h>
 
 /*
 ** PRIVATE DEFINITIONS
 */
 
+// combination tracing tests
+#define ANY_KMEM (TRACING_KMEM | TRACING_KMEM_INIT | TRACING_KMEM_FREELIST)
+#define KMEM_OR_INIT (TRACING_KMEM | TRACING_KMEM_INIT)
+
 // parameters related to word and block sizes
 
-#define WORD_SIZE           sizeof(int)
-#define LOG2_OF_WORD_SIZE   2
+#define WORD_SIZE sizeof(int)
+#define LOG2_OF_WORD_SIZE 2
 
-#define LOG2_OF_PAGE_SIZE   12
+#define LOG2_OF_PAGE_SIZE 12
 
-#define LOG2_OF_SLICE_SIZE  10
+#define LOG2_OF_SLICE_SIZE 10
 
 // converters:  pages to bytes, bytes to pages
 
-#define P2B(x)   ((x) << LOG2_OF_PAGE_SIZE)
-#define B2P(x)   ((x) >> LOG2_OF_PAGE_SIZE)
+#define P2B(x) ((x) << LOG2_OF_PAGE_SIZE)
+#define B2P(x) ((x) >> LOG2_OF_PAGE_SIZE)
 
 /*
 ** Name:    adjacent
@@ -83,8 +94,8 @@
 ** Description: Determines whether the second block immediately
 **      follows the first one.
 */
-#define adjacent(first,second)  \
-	( (void *) (first) + P2B((first)->pages) == (void *) (second) )
+#define adjacent(first, second) \
+	((void *)(first) + P2B((first)->pages) == (void *)(second))
 
 /*
 ** PRIVATE DATA TYPES
@@ -104,44 +115,44 @@ typedef union b64_u {
 } b64_t;
 
 // the halves of a 64-bit address
-#define LOW		part[0]
-#define HIGH	part[1]
+#define LOW part[0]
+#define HIGH part[1]
 
 // memory region descriptor
 typedef struct memregion_s {
-	b64_t	 base;		// base address
-	b64_t	 length;	// region length
-	uint32_t type;		// type of region
-	uint32_t acpi;		// ACPI 3.0 info
-} __attribute__((__packed__)) region_t;
+	b64_t base; // base address
+	b64_t length; // region length
+	uint32_t type; // type of region
+	uint32_t acpi; // ACPI 3.0 info
+} ATTR_PACKED region_t;
 
 /*
 ** Region types
 */
 
-#define REGION_USABLE		1
-#define REGION_RESERVED		2
-#define REGION_ACPI_RECL	3
-#define REGION_ACPI_NVS		4
-#define REGION_BAD			5
+#define REGION_USABLE 1
+#define REGION_RESERVED 2
+#define REGION_ACPI_RECL 3
+#define REGION_ACPI_NVS 4
+#define REGION_BAD 5
 
 /*
 ** ACPI 3.0 bit fields
 */
 
-#define REGION_IGNORE		0x01
-#define REGION_NONVOL		0x02
+#define REGION_IGNORE 0x01
+#define REGION_NONVOL 0x02
 
 /*
 ** 32-bit and 64-bit address values as 64-bit literals
 */
 
-#define ADDR_BIT_32		0x0000000100000000LL
-#define ADDR_LOW_HALF	0x00000000ffffffffLL
-#define ADDR_HIGH_HALR	0xffffffff00000000LL
+#define ADDR_BIT_32 0x0000000100000000LL
+#define ADDR_LOW_HALF 0x00000000ffffffffLL
+#define ADDR_HIGH_HALR 0xffffffff00000000LL
 
-#define ADDR_32_MAX		ADDR_LOW_HALF
-#define ADDR_64_FIRST	ADDR_BIT_32
+#define ADDR_32_MAX ADDR_LOW_HALF
+#define ADDR_64_FIRST ADDR_BIT_32
 
 /*
 ** PRIVATE GLOBAL VARIABLES
@@ -182,22 +193,22 @@ static int km_initialized;
 ** page-sized fragments which will each be added to the free_pages
 ** list; each of these will also be modified.
 **
-** @param[in] base   Base address of the block
+** @param[in] base   Base physical address of the block
 ** @param[in] length Block length, in bytes
 */
-static void add_block( uint32_t base, uint32_t length ) {
-
+static void add_block(uint32_t base, uint32_t length)
+{
 	// don't add it if it isn't at least 4K
-	if( length < SZ_PAGE ) {
+	if (length < SZ_PAGE) {
 		return;
 	}
 
-#if TRACING_KMEM | TRACING_KMEM_INIT
-	cio_printf( "  add(%08x,%08x): ", base, length );
+#if ANY_KMEM
+	cio_printf("  add(%08x,%08x): ", base, length);
 #endif
 
 	// verify that the base address is a 4K boundary
-	if( (base & MOD4K_BITS) != 0 ) {
+	if ((base & MOD4K_BITS) != 0) {
 		// nope - how many bytes will we lose from the beginning
 		uint_t loss = base & MOD4K_BITS;
 		// adjust the starting address: (n + 4K - 1) / 4K
@@ -207,37 +218,38 @@ static void add_block( uint32_t base, uint32_t length ) {
 	}
 
 	// only want to add multiples of 4K; check the lower bits
-	if( (length & MOD4K_BITS) != 0 ) {
+	if ((length & MOD4K_BITS) != 0) {
 		// round it down to 4K
 		length &= MOD4K_MASK;
 	}
 
-	// split the block into pages and add them to the free list
+	// determine the starting and ending addresses for the block
+#ifndef USE_PADDRS
+	// starting and ending addresses as virtual addresses
+	base = P2V(base);
+#endif
+	// endpoint of the block
+	uint32_t blend = base + length;
 
-	void *block = (void *) base;
-	void *blend = (void *) (base + length);
+	// page count for this block
 	int npages = 0;
 
-#if TRACING_KMEM | TRACING_KMEM_INIT
-	cio_printf( "-> base %08x len %08x: ", base, length );
+#if ANY_KMEM
+	cio_printf("-> base %08x len %08x: ", base, length);
 #endif
 
-	while( block < blend ) {
-
-		// just add to the front of the list
-		list_add( &free_pages, block );
+	// iterate through the block page by page
+	while (base < blend) {
+		list_add(&free_pages, (void *)base);
 		++npages;
-
-		// move to the next block
 		base += SZ_PAGE;
-		block = (void *) base;
 	}
 
 	// add the count to our running total
 	n_pages += npages;
 
-#if TRACING_KMEM | TRACING_KMEM_INIT
-	cio_printf( " -> %d pages\n", npages );
+#if ANY_KMEM
+	cio_printf(" -> %d pages\n", npages);
 #endif
 }
 
@@ -251,13 +263,14 @@ static void add_block( uint32_t base, uint32_t length ) {
 **	Must be called before any other init routine that uses
 **	dynamic storage is called.
 */
-void km_init( void ) {
+void km_init(void)
+{
 	int32_t entries;
 	region_t *region;
 
 #if TRACING_INIT
 	// announce that we're starting initialization
-	cio_puts( " Kmem" );
+	cio_puts(" Kmem");
 #endif
 
 	// initially, nothing in the free lists
@@ -266,39 +279,29 @@ void km_init( void ) {
 	n_pages = n_slices = 0;
 	km_initialized = 0;
 
-	/*
-	** We ignore anything below our KM_LOW_CUTOFF address. In theory,
-	** we should be able to re-use much of that space; in practice,
-	** this is safer.
-	*/
-
 	// get the list length
-	entries = *((int32_t *) MMAP_ADDR);
+	entries = *((int32_t *)MMAP_ADDR);
 
-#if TRACING_KMEM | TRACING_KMEM_INIT
-	cio_printf( "\nKmem: %d regions\n", entries );
+#if KMEM_OR_INIT
+	cio_printf("\nKmem: %d regions\n", entries);
 #endif
 
 	// if there are no entries, we have nothing to do!
-	if( entries < 1 ) {  // note: entries == -1 could occur!
+	if (entries < 1) { // note: entries == -1 could occur!
 		return;
 	}
 
 	// iterate through the entries, adding things to the freelist
 
-	region = ((region_t *) (MMAP_ADDR + 4));
+	region = ((region_t *)(MMAP_ADDR + 4));
 
-	for( int i = 0; i < entries; ++i, ++region ) {
-
-#if TRACING_KMEM | TRACING_KMEM_INIT
+	for (int i = 0; i < entries; ++i, ++region) {
+#if KMEM_OR_INIT
 		// report this region
-		cio_printf( "%3d: ", i );
-		cio_printf( " B %08x%08x",
-				region->base.HIGH, region->base.LOW );
-		cio_printf( " L %08x%08x",
-				region->length.HIGH, region->length.LOW );
-		cio_printf( " T %08x A %08x",
-				region->type, region->acpi );
+		cio_printf("%3d: ", i);
+		cio_printf(" B %08x%08x", region->base.HIGH, region->base.LOW);
+		cio_printf(" L %08x%08x", region->length.HIGH, region->length.LOW);
+		cio_printf(" T %08x A %08x", region->type, region->acpi);
 #endif
 
 		/*
@@ -318,33 +321,36 @@ void km_init( void ) {
 
 		// first, check the ACPI one-bit flags
 
-		if( ((region->acpi) & REGION_IGNORE) == 0 ) {
-#if TRACING_KMEM | TRACING_KMEM_INIT
-			cio_puts( " IGN\n" );
+		if (((region->acpi) & REGION_IGNORE) == 0) {
+#if KMEM_OR_INIT
+			cio_puts(" IGN\n");
 #endif
 			continue;
 		}
 
-		if( ((region->acpi) & REGION_NONVOL) != 0 ) {
-#if TRACING_KMEM | TRACING_KMEM_INIT
-			cio_puts( " NVOL\n" );
+		if (((region->acpi) & REGION_NONVOL) != 0) {
+#if KMEM_OR_INIT
+			cio_puts(" NVOL\n");
 #endif
-			continue;  // we'll ignore this, too
+			continue; // we'll ignore this, too
 		}
 
 		// next, the region type
 
-		if( (region->type) != REGION_USABLE ) {
-#if TRACING_KMEM | TRACING_KMEM_INIT
-			cio_puts( " RCLM\n" );
+		if ((region->type) != REGION_USABLE) {
+#if KMEM_OR_INIT
+			cio_puts(" RCLM\n");
 #endif
-			continue;  // we won't attempt to reclaim ACPI memory (yet)
+			continue; // we won't attempt to reclaim ACPI memory (yet)
 		}
 
 		/*
 		** We have a "normal" memory region. We need to verify
-		** that it's within our constraints. We won't add anything
-		** to the free list if it is:
+		** that it's within our constraints.
+		**
+		** We ignore anything below our KM_LOW_CUTOFF address. (In theory,
+		** we should be able to re-use much of that space; in practice,
+		** this is safer.) We won't add anything to the free list if it is:
 		**
 		**    * below our KM_LOW_CUTOFF value
 		**    * above out KM_HIGH_CUTOFF value.
@@ -355,18 +361,17 @@ void km_init( void ) {
 		*/
 
 		// grab the two 64-bit values to simplify things
-		uint64_t base   = region->base.all;
+		uint64_t base = region->base.all;
 		uint64_t length = region->length.all;
-		uint64_t endpt  = base + length;
+		uint64_t endpt = base + length;
 
 		// ignore it if it's above our high cutoff point
-		if( base >= KM_HIGH_CUTOFF || endpt >= KM_HIGH_CUTOFF ) {
-
+		if (base >= KM_HIGH_CUTOFF || endpt >= KM_HIGH_CUTOFF) {
 			// is the whole thing too high, or just part?
-			if( base >= KM_HIGH_CUTOFF ) {
+			if (base >= KM_HIGH_CUTOFF) {
 				// it's all too high!
-#if TRACING_KMEM | TRACING_KMEM_INIT
-				cio_puts( " HIGH\n" );
+#if KMEM_OR_INIT
+				cio_puts(" HIGH\n");
 #endif
 				continue;
 			}
@@ -376,13 +381,12 @@ void km_init( void ) {
 		}
 
 		// see if it's below our low cutoff point
-		if( base < KM_LOW_CUTOFF || endpt < KM_LOW_CUTOFF ) {
-
+		if (base < KM_LOW_CUTOFF || endpt < KM_LOW_CUTOFF) {
 			// is the whole thing too low, or just part?
-			if( endpt < KM_LOW_CUTOFF ) {
+			if (endpt < KM_LOW_CUTOFF) {
 				// it's all below the cutoff!
-#if TRACING_KMEM | TRACING_KMEM_INIT
-				cio_puts( " LOW\n" );
+#if KMEM_OR_INIT
+				cio_puts(" LOW\n");
 #endif
 				continue;
 			}
@@ -400,21 +404,21 @@ void km_init( void ) {
 		// we should recalculate the length
 		length = endpt - base;
 
-#if TRACING_KMEM | TRACING_KMEM_INIT
-		cio_puts( " OK\n" );
+#if KMEM_OR_INIT
+		cio_puts(" OK\n");
 #endif
 
-		uint32_t b32 = base   & ADDR_LOW_HALF;
+		uint32_t b32 = base & ADDR_LOW_HALF;
 		uint32_t l32 = length & ADDR_LOW_HALF;
 
-		add_block( b32, l32 );
+		add_block(b32, l32);
 	}
 
 	// record the initialization
 	km_initialized = 1;
 
-#if TRACING_KMEM | TRACING_KMEM_INIT
-	delay( DELAY_3_SEC );
+#if KMEM_OR_INIT
+	delay(DELAY_3_SEC);
 #endif
 }
 
@@ -429,39 +433,38 @@ void km_init( void ) {
 ** @param addrs  Also dump page addresses
 ** @param both   Also dump slice addresses
 */
-void km_dump( bool_t addrs, bool_t both ) {
-
+void km_dump(bool_t addrs, bool_t both)
+{
 	// report the sizes
-	cio_printf( "&free_pages %08x, &free_slices %08x, %u pages, %u slices\n",
-			(uint32_t) &free_pages, (uint32_t) &free_slices,
-			n_pages, n_slices );
+	cio_printf("&free_pages %08x, &free_slices %08x, %u pages, %u slices\n",
+			   (uint32_t)&free_pages, (uint32_t)&free_slices, n_pages,
+			   n_slices);
 
 	// was that all?
-	if( !addrs ) {
+	if (!addrs) {
 		return;
 	}
 
 	// dump the addresses of the pages in the free list
 	uint32_t n = 0;
 	list_t *block = free_pages.next;
-	while( block != NULL ) {
-		if( n && !(n & MOD4_BITS) ) {
+	while (block != NULL) {
+		if (n && !(n & MOD4_BITS)) {
 			// four per line
-			cio_putchar( '\n' );
+			cio_putchar('\n');
 		}
-		cio_printf( " page @ 0x%08x", (uint32_t) block );
+		cio_printf(" page @ 0x%08x", (uint32_t)block);
 		block = block->next;
 		++n;
 	}
 
 	// sanity check - verify that the counts match
-	if( n != n_pages ) {
-		sprint( b256, "km_dump: n_pages %u, counted %u!!!\n",
-				n_pages, n );
-		WARNING( b256);
+	if (n != n_pages) {
+		sprint(b256, "km_dump: n_pages %u, counted %u!!!\n", n_pages, n);
+		WARNING(b256);
 	}
 
-	if( !both ) {
+	if (!both) {
 		return;
 	}
 
@@ -470,21 +473,20 @@ void km_dump( bool_t addrs, bool_t both ) {
 	// also dump the addresses of slices in the slice free list
 	n = 0;
 	block = free_slices.next;
-	while( block != NULL ) {
-		if( n && !(n & MOD4_BITS) ) {
+	while (block != NULL) {
+		if (n && !(n & MOD4_BITS)) {
 			// four per line
-			cio_putchar( '\n' );
+			cio_putchar('\n');
 		}
-		cio_printf( "  slc @ 0x%08x", (uint32_t) block );
+		cio_printf("  slc @ 0x%08x", (uint32_t)block);
 		block = block->next;
 		++n;
 	}
 
 	// sanity check - verify that the counts match
-	if( n != n_slices ) {
-		sprint( b256, "km_dump: n_slices %u, counted %u!!!\n",
-				n_slices, n );
-		WARNING( b256);
+	if (n != n_slices) {
+		sprint(b256, "km_dump: n_slices %u, counted %u!!!\n", n_slices, n);
+		WARNING(b256);
 	}
 }
 
@@ -500,35 +502,39 @@ void km_dump( bool_t addrs, bool_t both ) {
 ** @return a pointer to the beginning of the allocated page,
 **		   or NULL if no memory is available
 */
-void *km_page_alloc( void ) {
-
+void *km_page_alloc(void)
+{
 	// if km_init() wasn't called first, stop us in our tracks
-	assert( km_initialized );
+	assert(km_initialized);
 
 #if TRACING_KMEM_FREELIST
-	cio_puts( "KM: pg_alloc()" );
+	cio_puts("KM: pg_alloc()");
 #endif
 
 	// pointer to the first block
-	void *page = list_remove( &free_pages );
+	void *page = list_remove(&free_pages);
 
 	// was a page available?
-	if( page == NULL ){
+	if (page == NULL) {
 		// nope!
 #if TRACING_KMEM_FREELIST
-		cio_puts( " FAIL\n" );
+		cio_puts(" FAIL\n");
 #endif
-		return( NULL );
+#if ALLOC_FAIL_PANIC
+		PANIC(0, "page alloc failed");
+#else
+		return NULL;
+#endif
 	}
 
 	// fix the count of available pages
 	--n_pages;
 
 #if TRACING_KMEM_FREELIST
-	cio_printf( " -> %08x\n", (uint32_t) page );
+	cio_printf(" -> %08x\n", (uint32_t)page);
 #endif
 
-	return( page );
+	return (page);
 }
 
 /**
@@ -538,21 +544,21 @@ void *km_page_alloc( void ) {
 **
 ** @param[in] page   Pointer to the page to be returned to the free list
 */
-void km_page_free( void *page ){
-
+void km_page_free(void *page)
+{
 	// verify that km_init() was called first
-	assert( km_initialized );
+	assert(km_initialized);
+
+#if TRACING_KMEM_FREELIST
+	cio_printf("KM: pg_free(%08x)\n", (uint32_t)page);
+#endif
 
 	/*
 	** Don't do anything if the address is NULL.
 	*/
-	if( page == NULL ){
+	if (page == NULL) {
 		return;
 	}
-
-#if TRACING_KMEM_FREELIST
-	cio_printf( "KM: pg_free(%08x)", (uint32_t) page );
-#endif
 
 	/*
 	** CRITICAL ASSUMPTION
@@ -575,7 +581,7 @@ void km_page_free( void *page ){
 	*/
 
 	// link this into the free list
-	list_add( &free_pages, page );
+	list_add(&free_pages, page);
 
 	// one more in the pool
 	++n_pages;
@@ -599,15 +605,19 @@ void km_page_free( void *page ){
 **
 ** @param page  Pointer to the page to be carved up
 */
-static void carve_slices( void *page ) {
-
+static void carve_slices(void *page)
+{
 	// sanity check
-	assert1( page != NULL );
+	assert1(page != NULL);
+
+#if TRACING_KMEM_FREELIST
+	cio_printf("KM: carve_slices(%08x)\n", (uint32_t)page);
+#endif
 
 	// create the four slices from it
-	uint8_t *ptr = (uint8_t *) page;
-	for( int i = 0; i < 4; ++i ) {
-		km_slice_free( (void *) ptr );
+	uint8_t *ptr = (uint8_t *)page;
+	for (int i = 0; i < 4; ++i) {
+		km_slice_free((void *)ptr);
 		ptr += SZ_SLICE;
 		++n_slices;
 	}
@@ -622,38 +632,38 @@ static void carve_slices( void *page ) {
 **
 ** @return a pointer to the allocated slice
 */
-void *km_slice_alloc( void ) {
-
+void *km_slice_alloc(void)
+{
 	// verify that km_init() was called first
-	assert( km_initialized );
+	assert(km_initialized);
 
 #if TRACING_KMEM_FREELIST
-	cio_printf( "KM: sl_alloc()\n" );
+	cio_printf("KM: sl_alloc()\n");
 #endif
 
 	// if we are out of slices, create a few more
-	if( free_slices.next == NULL ) {
+	if (free_slices.next == NULL) {
 		void *new = km_page_alloc();
-		if( new == NULL ) {
+		if (new == NULL) {
 			// can't get any more space
 #if ALLOC_FAIL_PANIC
-			PANIC( 0, "slice new alloc failed" );
+			PANIC(0, "slice new alloc failed");
 #else
 			return NULL;
 #endif
 		}
-		carve_slices( new );
+		carve_slices(new);
 	}
 
 	// take the first one from the free list
-	void *slice = list_remove( &free_slices );
-	assert( slice != NULL );
+	void *slice = list_remove(&free_slices);
+	assert(slice != NULL);
 	--n_slices;
 
 	// make it nice and shiny for the caller
-	memclr( (void *) slice, SZ_SLICE );
+	memclr((void *)slice, SZ_SLICE);
 
-	return( slice );
+	return (slice);
 }
 
 /**
@@ -666,16 +676,16 @@ void *km_slice_alloc( void ) {
 **
 ** @param[in] block  Pointer to the slice (1/4 page) to be freed
 */
-void km_slice_free( void *block ) {
-
+void km_slice_free(void *block)
+{
 	// verify that km_init() was called first
-	assert( km_initialized );
+	assert(km_initialized);
 
 #if TRACING_KMEM_FREELIST
-	cio_printf( "KM: sl_free(%08x)\n", (uint32_t) block );
+	cio_printf("KM: sl_free(%08x)\n", (uint32_t)block);
 #endif
 
 	// just add it to the front of the free list
-	list_add( &free_slices, block );
+	list_add(&free_slices, block);
 	--n_slices;
 }

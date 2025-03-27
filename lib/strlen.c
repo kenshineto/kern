@@ -20,13 +20,14 @@
 **
 ** @return The length of the string, or 0
 */
-uint32_t strlen( register const char *str ) {
+uint32_t strlen(register const char *str)
+{
 	register uint32_t len = 0;
 
-	while( *str++ ) {
+	while (*str++) {
 		++len;
 	}
 
-	return( len );
+	return (len);
 }
 #endif

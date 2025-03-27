@@ -15,7 +15,7 @@
 #define KERNEL_SRC
 #define ASM_SRC
 
-	.arch	i386
+#	.arch	i386
 
 #include <common.h>
 #include <bootstrap.h>
@@ -75,11 +75,11 @@ _start:
 */
 	.globl	__bss_start, _end
 
-	movl	$V2P(__bss_start), %edi
+	movl	$V2PNC(__bss_start), %edi
 clearbss:
 	movl	$0, (%edi)
 	addl	$4, %edi
-	cmpl	$V2P(_end), %edi
+	cmpl	$V2PNC(_end), %edi
 	jb	clearbss
 #endif	/* CLEAR_BSS */
 
@@ -96,7 +96,7 @@ clearbss:
 
 	# set the page directory
 	.globl	firstpdir
-	movl	$(V2P(firstpdir)+0x1000), %eax
+	movl	$(V2PNC(firstpdir)), %eax
 	movl	%eax, %cr3
 
 	# turn on paging

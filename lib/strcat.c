@@ -23,16 +23,17 @@
 **
 ** NOTE:  assumes dst is large enough to hold the resulting string
 */
-char *strcat( register char *dst, register const char *src ) {
+char *strcat(register char *dst, register const char *src)
+{
 	register char *tmp = dst;
 
-	while( *dst )  // find the NUL
+	while (*dst) // find the NUL
 		++dst;
 
-	while( (*dst++ = *src++) )  // append the src string
+	while ((*dst++ = *src++)) // append the src string
 		;
 
-	return( tmp );
+	return (tmp);
 }
 
 #endif

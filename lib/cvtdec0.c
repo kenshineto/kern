@@ -26,16 +26,17 @@
 **
 ** NOTE:  assumes buf is large enough to hold the resulting string
 */
-char *cvtdec0( char *buf, int value ) {
+char *cvtdec0(char *buf, int value)
+{
 	int quotient;
 
 	quotient = value / 10;
-	if( quotient < 0 ) {
+	if (quotient < 0) {
 		quotient = 214748364;
 		value = 8;
 	}
-	if( quotient != 0 ) {
-		buf = cvtdec0( buf, quotient );
+	if (quotient != 0) {
+		buf = cvtdec0(buf, quotient);
 	}
 	*buf++ = value % 10 + '0';
 	return buf;

@@ -1,5 +1,6 @@
+### Copyright (c) 2025 Freya Murphy <freya@freyacat.org>
 
-.PHONY: build clean qemu
+.PHONY: build fmt clean qemu
 .SILENT:
 
 UNAME := $(shell uname)
@@ -30,6 +31,9 @@ clean:
 
 build:
 	zig build
+
+fmt:
+	clang-format -i $(shell find -type f -name "*.[ch]")
 
 bin/boot.bin: build
 	cd bin && \

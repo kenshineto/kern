@@ -1,3 +1,5 @@
+//! Copyright (c) 2025 Freya Murphy <freya@freyacat.org>
+
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -45,6 +47,7 @@ const kernel_src = &[_][]const u8{
 };
 
 const lib_src = &[_][]const u8{
+    "lib/blkmov.c",
     "lib/bound.c",
     "lib/cvtdec0.c",
     "lib/cvtdec.c",
@@ -54,6 +57,7 @@ const lib_src = &[_][]const u8{
     "lib/cvtuns.c",
     "lib/memclr.c",
     "lib/memcpy.c",
+    "lib/memmove.c",
     "lib/memset.c",
     "lib/pad.c",
     "lib/padstr.c",

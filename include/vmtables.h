@@ -38,6 +38,6 @@ extern pte_t id_map[];
 extern mapping_t kmap[];
 extern const uint32_t n_kmap;
 
-#endif  /* !ASM_SRC */
+#endif /* !ASM_SRC */
 
 #endif

@@ -20,11 +20,11 @@
 
 // delay loop counts
 
-#define DELAY_LONG		100000000
-#define DELAY_MED		4500000
-#define DELAY_SHORT		2500000
+#define DELAY_LONG 100000000
+#define DELAY_MED 4500000
+#define DELAY_SHORT 2500000
 
-#define DELAY_STD		DELAY_SHORT
+#define DELAY_STD DELAY_SHORT
 
 #ifndef ASM_SRC
 
@@ -36,9 +36,11 @@
 
 // a delay loop - kind of ugly, but it works
 
-#define DELAY(n)	do { \
-		for(int _dlc = 0; _dlc < (DELAY_##n); ++_dlc) continue; \
-	} while(0)
+#define DELAY(n)                                       \
+	do {                                               \
+		for (int _dlc = 0; _dlc < (DELAY_##n); ++_dlc) \
+			continue;                                  \
+	} while (0)
 
 /*
 ** We need the list of program IDs so that we can request 
@@ -58,7 +60,7 @@
 ** (following it with a semicolon).
 */
 
-#define USERMAIN(f)	int f( int argc, char *argv[] )
+#define USERMAIN(f) int f(int argc, char *argv[])
 
 /*
 ** User process controls.

@@ -13,28 +13,32 @@
 **		   s is the initial delay time (defaults to 10)
 */
 
-USERMAIN( main ) {
-	char ch = 'r';	// default character to print
-	int delay = 10;	// initial delay count
-	int seq = 99;	// my sequence number
+USERMAIN(main)
+{
+	char ch = 'r'; // default character to print
+	int delay = 10; // initial delay count
+	int seq = 99; // my sequence number
 	char buf[128];
 
 	// process the command-line arguments
-	switch( argc ) {
-	case 4:	delay = str2int( argv[3], 10 );
-			// FALL THROUGH
-	case 3:	seq = str2int( argv[2], 10 );
-			// FALL THROUGH
-	case 2:	ch = argv[1][0];
-			break;
+	switch (argc) {
+	case 4:
+		delay = str2int(argv[3], 10);
+		// FALL THROUGH
+	case 3:
+		seq = str2int(argv[2], 10);
+		// FALL THROUGH
+	case 2:
+		ch = argv[1][0];
+		break;
 	default:
-			sprint( buf, "userR: argc %d, args: ", argc );
-			cwrites( buf );
-			for( int i = 0; i <= argc; ++i ) {
-				sprint( buf, " %s", argv[argc] ? argv[argc] : "(null)" );
-				cwrites( buf );
-			}
-			cwrites( "\n" );
+		sprint(buf, "userR: argc %d, args: ", argc);
+		cwrites(buf);
+		for (int i = 0; i <= argc; ++i) {
+			sprint(buf, " %s", argv[argc] ? argv[argc] : "(null)");
+			cwrites(buf);
+		}
+		cwrites("\n");
 	}
 
 	/*
@@ -55,26 +59,26 @@ USERMAIN( main ) {
 	int32_t pid;
 	int32_t ppid;
 
- restart:
+restart:
 
 	// announce our presence
 	pid = getpid();
 	ppid = getppid();
 
-	sprint( buf, " %c[%d,%d,%d]", ch, seq, pid, ppid );
-	swrites( buf );
+	sprint(buf, " %c[%d,%d,%d]", ch, seq, pid, ppid);
+	swrites(buf);
 
-	sleep( SEC_TO_MS(delay) );
+	sleep(SEC_TO_MS(delay));
 
 	// create the next child in sequence
-	if( seq < 5 ) {
+	if (seq < 5) {
 		++seq;
 		int32_t n = fork();
-		switch( n ) {
+		switch (n) {
 		case -1:
 			// failure?
-			sprint( buf, "** R[%d] fork code %d\n", pid, n );
-			cwrites( buf );
+			sprint(buf, "** R[%d] fork code %d\n", pid, n);
+			cwrites(buf);
 			break;
 		case 0:
 			// child
@@ -82,18 +86,17 @@ USERMAIN( main ) {
 		default:
 			// parent
 			--seq;
-			sleep( SEC_TO_MS(delay) );
+			sleep(SEC_TO_MS(delay));
 		}
 	}
 
 	// final report - PPID may change, but PID and seq shouldn't
 	pid = getpid();
 	ppid = getppid();
-	sprint( buf, " %c[%d,%d,%d]", ch, seq, pid, ppid );
-	swrites( buf );
+	sprint(buf, " %c[%d,%d,%d]", ch, seq, pid, ppid);
+	swrites(buf);
 
-	exit( 0 );
+	exit(0);
 
-	return( 42 );  // shut the compiler up!
-
+	return (42); // shut the compiler up!
 }

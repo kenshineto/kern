@@ -22,12 +22,30 @@
 ** user processes changes.
 */
 enum users_e {
-	Init, Idle, Shell, ProgABC, ProgDE, ProgFG, ProgH, ProgI,
-	ProgJ, ProgKL, ProgMN, ProgP, ProgQ, ProgR, ProgS, ProgTUV,
-	ProgW, ProgX, ProgY, ProgZ
+	Init,
+	Idle,
+	Shell,
+	ProgABC,
+	ProgDE,
+	ProgFG,
+	ProgH,
+	ProgI,
+	ProgJ,
+	ProgKL,
+	ProgMN,
+	ProgP,
+	ProgQ,
+	ProgR,
+	ProgS,
+	ProgTUV,
+	ProgW,
+	ProgX,
+	ProgY,
+	ProgZ
 	// sentinel
-	, N_USERS
+	,
+	N_USERS
 };
-#endif  /* !ASM_SRC */
+#endif /* !ASM_SRC */
 
 #endif

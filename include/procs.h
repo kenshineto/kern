@@ -30,22 +30,28 @@
 */
 enum state_e {
 	// pre-viable
-	STATE_UNUSED = 0, STATE_NEW,
+	STATE_UNUSED = 0,
+	STATE_NEW,
 	// runnable
-	STATE_READY, STATE_RUNNING,
+	STATE_READY,
+	STATE_RUNNING,
 	// runnable, but waiting for some event
-	STATE_SLEEPING, STATE_BLOCKED, STATE_WAITING,
+	STATE_SLEEPING,
+	STATE_BLOCKED,
+	STATE_WAITING,
 	// no longer runnable
-	STATE_KILLED, STATE_ZOMBIE
+	STATE_KILLED,
+	STATE_ZOMBIE
 	// sentinel value
-	, N_STATES
+	,
+	N_STATES
 };
 
 // these may be handy for checking general conditions of processes
 // they depend on the order of the state names in the enum!
-#define	FIRST_VIABLE   STATE_READY
-#define FIRST_BLOCKED  STATE_SLEEPING
-#define LAST_VIABLE    STATE_WAITING
+#define FIRST_VIABLE STATE_READY
+#define FIRST_BLOCKED STATE_SLEEPING
+#define LAST_VIABLE STATE_WAITING
 
 /*
 ** Process priorities are defined in <defs.h>
@@ -54,17 +60,13 @@ enum state_e {
 /*
 ** Quantum lengths - values are number of clock ticks
 */
-enum quantum_e {
-	QUANTUM_SHORT = 1,
-	QUANTUM_STANDARD = 3,
-	QUANTUM_LONG = 5
-};
+enum quantum_e { QUANTUM_SHORT = 1, QUANTUM_STANDARD = 3, QUANTUM_LONG = 5 };
 
 /*
 ** PID-related definitions
 */
-#define PID_INIT          1
-#define FIRST_USER_PID    2
+#define PID_INIT 1
+#define FIRST_USER_PID 2
 
 /*
 ** Process context structure
@@ -78,7 +80,7 @@ enum quantum_e {
 */
 
 typedef struct context_s {
-	uint32_t ss;		// pushed by isr_save
+	uint32_t ss; // pushed by isr_save
 	uint32_t gs;
 	uint32_t fs;
 	uint32_t es;
@@ -92,34 +94,34 @@ typedef struct context_s {
 	uint32_t ecx;
 	uint32_t eax;
 	uint32_t vector;
-	uint32_t code;		// pushed by isr_save or the hardware
-	uint32_t eip;		// pushed by the hardware
+	uint32_t code; // pushed by isr_save or the hardware
+	uint32_t eip; // pushed by the hardware
 	uint32_t cs;
 	uint32_t eflags;
 } context_t;
 
-#define SZ_CONTEXT	sizeof(context_t)
+#define SZ_CONTEXT sizeof(context_t)
 
 /*
 ** program section information for user processes
 */
 
 typedef struct section_s {
-	uint_t length;	// length, in some units
-	uint_t addr;	// location, in some units
+	uint_t length; // length, in some units
+	uint_t addr; // location, in some units
 } section_t;
 
 // note: these correspond to the PT_LOAD sections found in
 // an ELF file, not necessarily to text/data/bss
-#define	SECT_L1           0
-#define	SECT_L2           1
-#define	SECT_L3           2
-#define	SECT_STACK        3
+#define SECT_L1 0
+#define SECT_L2 1
+#define SECT_L3 2
+#define SECT_STACK 3
 
 // total number of section table entries in our PCB
-#define	N_SECTS           4
+#define N_SECTS 4
 // number of those that can be loaded from an ELF module
-#define N_LOADABLE        3
+#define N_LOADABLE 3
 
 /*
 ** The process control block
@@ -132,32 +134,31 @@ typedef struct section_s {
 */
 
 typedef struct pcb_s {
-
 	// four-byte fields
 	// start with these four bytes, for easy access in assembly
-	context_t *context;         // pointer to context save area on stack
+	context_t *context; // pointer to context save area on stack
 
 	// VM information
-	pde_t *pdir;                // page directory for this process
-	section_t sects[N_SECTS];   // per-section memory information
+	pde_t *pdir; // page directory for this process
+	section_t sects[N_SECTS]; // per-section memory information
 
 	// queue linkage
-	struct pcb_s *next;         // next PCB in queue
+	struct pcb_s *next; // next PCB in queue
 
 	// process state information
-	struct pcb_s *parent;       // pointer to PCB of our parent process
-	uint32_t wakeup;            // wakeup time, for sleeping processes
-	int32_t exit_status;        // termination status, for parent's use
+	struct pcb_s *parent; // pointer to PCB of our parent process
+	uint32_t wakeup; // wakeup time, for sleeping processes
+	int32_t exit_status; // termination status, for parent's use
 
 	// these things may not need to be four bytes
-	uint_t pid;                 // PID of this process
-	enum state_e state;         // process' current state
-	enum priority_e priority;   // process priority level
-	uint_t ticks;               // remaining ticks in this time slice
+	uint_t pid; // PID of this process
+	enum state_e state; // process' current state
+	enum priority_e priority; // process priority level
+	uint_t ticks; // remaining ticks in this time slice
 
 } pcb_t;
 
-#define	SZ_PCB	sizeof(pcb_t)
+#define SZ_PCB sizeof(pcb_t)
 
 /*
 ** PCB queue structure (opaque to the rest of the kernel)
@@ -168,12 +169,16 @@ typedef struct pcb_queue_s *pcb_queue_t;
 ** Queue ordering methods
 */
 enum pcb_queue_order_e {
-	O_FIFO, O_PRIO, O_PID, O_WAKEUP
+	O_FIFO,
+	O_PRIO,
+	O_PID,
+	O_WAKEUP
 	// sentinel
-	, N_ORDERINGS
+	,
+	N_ORDERINGS
 };
-#define	O_FIRST_STYLE	O_FIFO
-#define	O_LAST_STYLE	O_WAKEUP
+#define O_FIRST_STYLE O_FIFO
+#define O_LAST_STYLE O_WAKEUP
 
 /*
 ** Globals
@@ -217,7 +222,7 @@ extern const char *ord_str[N_ORDERINGS];
 **
 ** Initialization for the Process module.
 */
-void pcb_init( void );
+void pcb_init(void);
 
 /**
 ** Name:    pcb_alloc
@@ -228,7 +233,7 @@ void pcb_init( void );
 **
 ** @return status of the allocation attempt
 */
-int pcb_alloc( pcb_t **pcb );
+int pcb_alloc(pcb_t **pcb);
 
 /**
 ** Name:    pcb_free
@@ -237,7 +242,7 @@ int pcb_alloc( pcb_t **pcb );
 **
 ** @param pcb   Pointer to the PCB to be deallocated.
 */
-void pcb_free( pcb_t *pcb );
+void pcb_free(pcb_t *pcb);
 
 /**
 ** Name:    pcb_zombify
@@ -248,7 +253,7 @@ void pcb_free( pcb_t *pcb );
 **
 ** @param pcb   Pointer to the newly-undead PCB
 */
-void pcb_zombify( register pcb_t *victim );
+void pcb_zombify(register pcb_t *victim);
 
 /**
 ** Name:    pcb_cleanup
@@ -257,7 +262,7 @@ void pcb_zombify( register pcb_t *victim );
 **
 ** @param pcb   The PCB to reclaim
 */
-void pcb_cleanup( pcb_t *pcb );
+void pcb_cleanup(pcb_t *pcb);
 
 /**
 ** Name:    pcb_find_pid
@@ -268,7 +273,7 @@ void pcb_cleanup( pcb_t *pcb );
 **
 ** @return Pointer to the PCB, or NULL
 */
-pcb_t *pcb_find_pid( uint_t pid );
+pcb_t *pcb_find_pid(uint_t pid);
 
 /**
 ** Name:    pcb_find_ppid
@@ -279,7 +284,7 @@ pcb_t *pcb_find_pid( uint_t pid );
 **
 ** @return Pointer to the PCB, or NULL
 */
-pcb_t *pcb_find_ppid( uint_t pid );
+pcb_t *pcb_find_ppid(uint_t pid);
 
 /**
 ** Name:	pcb_queue_reset
@@ -291,7 +296,7 @@ pcb_t *pcb_find_ppid( uint_t pid );
 **
 ** @return status of the init request
 */
-int pcb_queue_reset( pcb_queue_t queue, enum pcb_queue_order_e style );
+int pcb_queue_reset(pcb_queue_t queue, enum pcb_queue_order_e style);
 
 /**
 ** Name:    pcb_queue_empty
@@ -303,7 +308,7 @@ int pcb_queue_reset( pcb_queue_t queue, enum pcb_queue_order_e style );
 **
 ** @return true if the queue is empty, else false
 */
-bool_t pcb_queue_empty( pcb_queue_t queue );
+bool_t pcb_queue_empty(pcb_queue_t queue);
 
 /**
 ** Name:    pcb_queue_length
@@ -314,7 +319,7 @@ bool_t pcb_queue_empty( pcb_queue_t queue );
 **
 ** @return the count (0 if the queue is empty)
 */
-uint_t pcb_queue_length( const pcb_queue_t queue );
+uint_t pcb_queue_length(const pcb_queue_t queue);
 
 /**
 ** Name:	pcb_queue_insert
@@ -326,7 +331,7 @@ uint_t pcb_queue_length( const pcb_queue_t queue );
 **
 ** @return status of the insertion request
 */
-int pcb_queue_insert( pcb_queue_t queue, pcb_t *pcb );
+int pcb_queue_insert(pcb_queue_t queue, pcb_t *pcb);
 
 /**
 ** Name:	pcb_queue_peek
@@ -338,7 +343,7 @@ int pcb_queue_insert( pcb_queue_t queue, pcb_t *pcb );
 **
 ** @return the PCB pointer, or NULL if the queue is empty
 */
-pcb_t *pcb_queue_peek( const pcb_queue_t queue );
+pcb_t *pcb_queue_peek(const pcb_queue_t queue);
 
 /**
 ** Name:	pcb_queue_remove
@@ -350,7 +355,7 @@ pcb_t *pcb_queue_peek( const pcb_queue_t queue );
 **
 ** @return status of the removal request
 */
-int pcb_queue_remove( pcb_queue_t queue, pcb_t **pcb );
+int pcb_queue_remove(pcb_queue_t queue, pcb_t **pcb);
 
 /**
 ** Name:	pcb_queue_remove_this
@@ -362,7 +367,7 @@ int pcb_queue_remove( pcb_queue_t queue, pcb_t **pcb );
 **
 ** @return status of the removal request
 */
-int pcb_queue_remove_this( pcb_queue_t queue, pcb_t *pcb );
+int pcb_queue_remove_this(pcb_queue_t queue, pcb_t *pcb);
 
 /*
 ** Scheduler routines
@@ -375,14 +380,14 @@ int pcb_queue_remove_this( pcb_queue_t queue, pcb_t *pcb );
 **
 ** @param pcb   Pointer to the PCB of the process to be scheduled
 */
-void schedule( pcb_t *pcb );
+void schedule(pcb_t *pcb);
 
 /**
 ** dispatch()
 **
 ** Select the next process to receive the CPU
 */
-void dispatch( void );
+void dispatch(void);
 
 /*
 ** Debugging/tracing routines
@@ -396,7 +401,7 @@ void dispatch( void );
 ** @param msg[in]   An optional message to print before the dump
 ** @param c[in]     The context to dump out
 */
-void ctx_dump( const char *msg, register context_t *c );
+void ctx_dump(const char *msg, register context_t *c);
 
 /**
 ** Name:	ctx_dump_all
@@ -405,7 +410,7 @@ void ctx_dump( const char *msg, register context_t *c );
 **
 ** @param msg[in]  Optional message to print
 */
-void ctx_dump_all( const char *msg );
+void ctx_dump_all(const char *msg);
 
 /**
 ** Name:	pcb_dump
@@ -416,7 +421,7 @@ void ctx_dump_all( const char *msg );
 ** @param p[in]    The PCB to dump
 ** @param all[in]  Dump all the contents?
 */
-void pcb_dump( const char *msg, register pcb_t *p, bool_t all );
+void pcb_dump(const char *msg, register pcb_t *p, bool_t all);
 
 /**
 ** Name:	pcb_queue_dump
@@ -427,7 +432,7 @@ void pcb_dump( const char *msg, register pcb_t *p, bool_t all );
 ** @param queue[in]     The queue to dump
 ** @param contents[in]  Also dump (some) contents?
 */
-void pcb_queue_dump( const char *msg, pcb_queue_t queue, bool_t contents );
+void pcb_queue_dump(const char *msg, pcb_queue_t queue, bool_t contents);
 
 /**
 ** Name:	ptable_dump
@@ -437,7 +442,7 @@ void pcb_queue_dump( const char *msg, pcb_queue_t queue, bool_t contents );
 ** @param msg[in]  Optional message to print
 ** @param all[in]  Dump all or only part of the relevant data
 */
-void ptable_dump( const char *msg, bool_t all );
+void ptable_dump(const char *msg, bool_t all);
 
 /**
 ** Name:	ptable_dump_counts
@@ -445,8 +450,8 @@ void ptable_dump( const char *msg, bool_t all );
 ** Prints basic information about the process table (number of
 ** entries, number with each process state, etc.).
 */
-void ptable_dump_counts( void );
+void ptable_dump_counts(void);
 
-#endif  /* !ASM_SRC */
+#endif /* !ASM_SRC */
 
 #endif

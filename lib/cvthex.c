@@ -27,13 +27,14 @@
 **
 ** NOTE:  assumes buf is large enough to hold the resulting string
 */
-int cvthex( char *buf, uint32_t value ) {
+int cvthex(char *buf, uint32_t value)
+{
 	const char hexdigits[] = "0123456789ABCDEF";
 	int chars_stored = 0;
 
-	for( int i = 0; i < 8; i += 1 ) {
+	for (int i = 0; i < 8; i += 1) {
 		uint32_t val = value & 0xf0000000;
-		if( chars_stored || val != 0 || i == 7 ) {
+		if (chars_stored || val != 0 || i == 7) {
 			++chars_stored;
 			val = (val >> 28) & 0xf;
 			*buf++ = hexdigits[val];
@@ -43,7 +44,7 @@ int cvthex( char *buf, uint32_t value ) {
 
 	*buf = '\0';
 
-	return( chars_stored );
+	return (chars_stored);
 }
 
 #endif

@@ -22,7 +22,8 @@
 ** @param len    Buffer size (in bytes)
 ** @param value  Initialization value
 */
-void memset( void *buf, register uint32_t len, register uint32_t value ) {
+void memset(void *buf, register uint32_t len, register uint32_t value)
+{
 	register uint8_t *bp = buf;
 
 	/*
@@ -30,7 +31,7 @@ void memset( void *buf, register uint32_t len, register uint32_t value ) {
 	** words at a time (instead of bytes).
 	*/
 
-	while( len-- ) {
+	while (len--) {
 		*bp++ = value;
 	}
 }

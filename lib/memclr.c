@@ -21,7 +21,8 @@
 ** @param buf    The buffer to initialize
 ** @param len    Buffer size (in bytes)
 */
-void memclr( void *buf, register uint32_t len ) {
+void memclr(void *buf, register uint32_t len)
+{
 	register uint8_t *dest = buf;
 
 	/*
@@ -29,8 +30,8 @@ void memclr( void *buf, register uint32_t len ) {
 	** words at a time (instead of bytes).
 	*/
 
-	while( len-- ) {
-			*dest++ = 0;
+	while (len--) {
+		*dest++ = 0;
 	}
 }
 

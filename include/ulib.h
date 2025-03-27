@@ -51,7 +51,7 @@
 **
 ** Does not return.
 */
-void exit( int32_t status );
+void exit(int32_t status);
 
 /**
 ** waitpid - wait for a child process to terminate
@@ -71,7 +71,7 @@ void exit( int32_t status );
 ** terminated but hasn't yet been cleaned up, cleans up that process and
 ** returns its information; otherwise, blocks until a child terminates.
 */
-int waitpid( uint_t pid, int32_t *status );
+int waitpid(uint_t pid, int32_t *status);
 
 /**
 ** fork - create a duplicate of the calling process
@@ -81,7 +81,7 @@ int waitpid( uint_t pid, int32_t *status );
 ** @return   parent - the pid of the new child, or an error code
 **           child  - 0
 */
-int fork( void );
+int fork(void);
 
 /**
 ** exec - replace the memory image of the calling process
@@ -94,7 +94,7 @@ int fork( void );
 ** Does not return if it succeeds; if it returns, something has
 ** gone wrong.
 */
-void exec( uint_t what, char **args );
+void exec(uint_t what, char **args);
 
 /**
 ** read - read into a buffer from a stream
@@ -107,7 +107,7 @@ void exec( uint_t what, char **args );
 **
 ** @return   The count of bytes transferred, or an error code
 */
-int read( uint_t chan, void *buffer, uint_t length );
+int read(uint_t chan, void *buffer, uint_t length);
 
 /**
 ** write - write from a buffer to a stream
@@ -120,7 +120,7 @@ int read( uint_t chan, void *buffer, uint_t length );
 **
 ** @return   The count of bytes transferred, or an error code
 */
-int write( uint_t chan, const void *buffer, uint_t length );
+int write(uint_t chan, const void *buffer, uint_t length);
 
 /**
 ** getpid - get the PID of the calling process
@@ -129,7 +129,7 @@ int write( uint_t chan, const void *buffer, uint_t length );
 **
 ** @return   the PID of this process
 */
-uint_t getpid( void );
+uint_t getpid(void);
 
 /**
 ** getppid - get the PID of the calling process' parent
@@ -138,7 +138,7 @@ uint_t getpid( void );
 **
 ** @return   the PID of this process' parent
 */
-uint_t getppid( void );
+uint_t getppid(void);
 
 /**
 ** gettime - get the current system time
@@ -147,7 +147,7 @@ uint_t getppid( void );
 **
 ** @return   the system time
 */
-uint32_t gettime( void );
+uint32_t gettime(void);
 
 /**
 ** getprio - get the scheduling priority of the calling process
@@ -156,7 +156,7 @@ uint32_t gettime( void );
 **
 ** @return   the process' priority
 */
-int getprio( void );
+int getprio(void);
 
 /**
 ** setprio - set the scheduling priority of the calling process
@@ -167,7 +167,7 @@ int getprio( void );
 **
 ** @return   the old priority value
 */
-int setprio( int new );
+int setprio(int new);
 
 /**
 ** kill - terminate a process with extreme prejudice
@@ -178,7 +178,7 @@ int setprio( int new );
 **
 ** @return   0 on success, else an error code
 */
-int32_t kill( uint_t pid );
+int32_t kill(uint_t pid);
 
 /**
 ** sleep - put the current process to sleep for some length of time
@@ -189,7 +189,7 @@ int32_t kill( uint_t pid );
 **
 ** @return the time the process spent sleeping (in ms)
 */
-int sleep( uint32_t ms );
+int sleep(uint32_t ms);
 
 /**
 ** bogus - a nonexistent system call, to test our syscall ISR
@@ -198,7 +198,7 @@ int sleep( uint32_t ms );
 **
 ** Does not return.
 */
-void bogus( void );
+void bogus(void);
 
 /*
 *************************************************
@@ -223,7 +223,7 @@ void bogus( void );
 **
 ** @return  The PID of the terminated child, or an error code
 */
-int wait( int32_t *status );
+int wait(int32_t *status);
 
 /**
 ** spawn - create a new process running a different program
@@ -237,7 +237,7 @@ int wait( int32_t *status );
 **
 ** @return      The PID of the child, or an error code
 */
-int spawn( uint_t what, char **args );
+int spawn(uint_t what, char **args);
 
 /**
 ** cwritech(ch) - write a single character to the console
@@ -246,7 +246,7 @@ int spawn( uint_t what, char **args );
 **
 ** @return  The return value from calling write()
 */
-int cwritech( char ch );
+int cwritech(char ch);
 
 /**
 ** cwrites(str) - write a NUL-terminated string to the console
@@ -254,7 +254,7 @@ int cwritech( char ch );
 ** @param str The string to write
 **
 */
-int cwrites( const char *str );
+int cwrites(const char *str);
 
 /**
 ** cwrite(buf,leng) - write a sized buffer to the console
@@ -264,7 +264,7 @@ int cwrites( const char *str );
 **
 ** @return  The return value from calling write()
 */
-int cwrite( const char *buf, uint32_t leng );
+int cwrite(const char *buf, uint32_t leng);
 
 /**
 ** swritech(ch) - write a single character to the SIO
@@ -273,7 +273,7 @@ int cwrite( const char *buf, uint32_t leng );
 **
 ** @return  The return value from calling write()
 */
-int swritech( char ch );
+int swritech(char ch);
 
 /**
 ** swrites(str) - write a NUL-terminated string to the SIO
@@ -282,7 +282,7 @@ int swritech( char ch );
 **
 ** @return  The return value from calling write()
 */
-int swrites( const char *str );
+int swrites(const char *str);
 
 /**
 ** swrite(buf,leng) - write a sized buffer to the SIO
@@ -292,7 +292,7 @@ int swrites( const char *str );
 **
 ** @return  The return value from calling write()
 */
-int swrite( const char *buf, uint32_t leng );
+int swrite(const char *buf, uint32_t leng);
 
 /*
 *************************************************
@@ -308,7 +308,7 @@ int swrite( const char *buf, uint32_t leng );
 ** calls exit(%eax) - serves as the "return to" code for
 ** main() functions, in case they don't call exit() themselves
 */
-void fake_exit( void );
+void fake_exit(void);
 
 #endif /* !ASM_SRC */
 
