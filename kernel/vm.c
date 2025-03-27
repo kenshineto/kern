@@ -353,7 +353,8 @@ pde_t *vm_mkkvm(void)
 	}
 #if TRACING_VM
 	cio_puts("\nvm_mkkvm() final PD:\n");
-	ptdump(pdir, true, 0, N_PDE);
+	ptdump(pdir, true, 0, 16);
+	ptdump(pdir, true, 0x200, 16);
 #endif
 
 	return pdir;
@@ -595,31 +596,36 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 				   (uint32_t)addr, pa, (uint32_t)last, (uint32_t)pte, *pte);
 #endif
 
+		// create the new entry
+		pde_t entry = pa | perm | PTE_P;
+
 		// if this entry has already been mapped, we're in trouble
 		if (IS_PRESENT(*pte)) {
+			if (*pte != entry) {
 #if TRACING_VM
-			cio_puts(" ALREADY MAPPED?");
-			cio_printf("  PDIX 0x%x PTIX 0x%x\n", PDIX(addr), PTIX(addr));
+				cio_puts(" ALREADY MAPPED?");
+				cio_printf("  PDIX 0x%x PTIX 0x%x\n", PDIX(addr), PTIX(addr));
 
-			// dump the directory
-			ptdump(pdir, true, 0, N_PDE);
+				// dump the directory
+				ptdump(pdir, true, 0, N_PDE);
 
-			// find the relevant PDE entry
-			uint32_t ix = PDIX(va);
-			pde_t entry = pdir[ix];
-			if (!IS_LARGE(entry)) {
-				// round the PMT index down
-				uint32_t ix2 = PTIX(va) & MOD4_MASK;
-				// dump the PMT for the relevant directory entry
-				ptdump((void *)P2V(PDE_ADDR(entry)), false, ix2, 8);
-			}
+				// find the relevant PDE entry
+				uint32_t ix = PDIX(va);
+				pde_t entry = pdir[ix];
+				if (!IS_LARGE(entry)) {
+					// round the PMT index down
+					uint32_t ix2 = PTIX(va) & MOD4_MASK;
+					// dump the PMT for the relevant directory entry
+					ptdump((void *)P2V(PDE_ADDR(entry)), false, ix2, 8);
+				}
 #endif
 
-			PANIC(0, "mapping an already-mapped address");
+				PANIC(0, "mapping an already-mapped address");
+			}
 		}
 
 		// ok, set the PTE as requested
-		*pte = pa | perm | PTE_P;
+		*pte = entry;
 
 		// nope - move to the next page
 		addr += SZ_PAGE;

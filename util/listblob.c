@@ -5,18 +5,17 @@
 **
 ** Examine a binary blob of ELF files.
 */
-
 #define _DEFAULT_SOURCE
-#include <ctype.h>
-#include <elf.h>
-#include <fcntl.h>
-#include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <elf.h>
+#include <ctype.h>
 
 /*
 ** Blob file organization
@@ -40,11 +39,11 @@
 **		size         Size of this ELF file, in bytes
 **		flags        Flags related to this file
 */
+
 // blob header: 8 bytes
 typedef struct header_s {
 	char magic[4];
 	uint32_t num;
-
 } header_t;
 
 // The program table entry is 32 bytes long. To accomplish this, the
@@ -73,8 +72,8 @@ typedef struct prog_s {
 typedef struct node_s {
 	prog_t *data;
 	struct node_s *next;
-
 } node_t;
+
 node_t *progs, *last_prog; // list pointers
 uint32_t n_progs; // number of files being copied
 uint32_t offset; // current file area offset
@@ -129,11 +128,12 @@ void process(uint32_t num, prog_t *prog)
 		char *slash = strrchr(prog->name, '/');
 		if (slash == NULL) {
 			slash = prog->name;
-
 		} else {
 			++slash;
 		}
+
 		slash[0] = toupper(slash[0]);
+
 		if (defs) {
 			// just printing #define statements
 			printf("#define %-15s %2d\n", prog->name, num);
@@ -144,7 +144,6 @@ void process(uint32_t num, prog_t *prog)
 				// first one, so print the file header
 				puts(header);
 				putchar('\t');
-
 			} else {
 				// second or later entry; limit to 8 per line
 				fputs(((num & 0x7) == 0) ? ",\n\t" : ", ", stdout);
@@ -160,56 +159,65 @@ void process(uint32_t num, prog_t *prog)
 			   prog->size, prog->flags);
 	}
 }
+
 void usage(char *name)
 {
 	fprintf(stderr, "usage: %s [-d | -e] blob_name\n", name);
 }
+
 int main(int argc, char *argv[])
 {
 	if (argc < 2 || argc > 3) {
 		usage(argv[0]);
 		exit(1);
 	}
+
 	int nameix = 1;
 
 	// could use getopt() for this, but this is easy enough
 	if (argc == 3) {
 		if (strcmp(argv[1], "-d") == 0) {
 			defs = true;
-
 		} else if (strcmp(argv[1], "-e") == 0) {
 			enums = true;
-
 		} else {
 			usage(argv[0]);
 			exit(1);
 		}
 		nameix = 2;
 	}
+
 	char *name = argv[nameix];
+
 	int fd = open(name, O_RDONLY);
 	if (fd < 0) {
 		perror(name);
 		exit(1);
 	}
+
 	header_t hdr;
+
 	int n = read(fd, &hdr, sizeof(header_t));
 	if (n != sizeof(header_t)) {
 		fprintf(stderr, "%s: header read returned only %d bytes\n", name, n);
 		close(fd);
 		exit(1);
 	}
+
 	if (strcmp(hdr.magic, "BLB") != 0) {
 		fprintf(stderr, "%s: bad magic number\n", name);
 		close(fd);
 		exit(1);
 	}
+
 	if (hdr.num < 1) {
 		fprintf(stderr, "%s: no programs in blob?\n", name);
 		close(fd);
 		exit(1);
 	}
+
 	prog_t progs[hdr.num];
+
 	n = read(fd, progs, hdr.num * sizeof(prog_t));
 	if (n != (int)(hdr.num * sizeof(prog_t))) {
 		fprintf(stderr, "%s: prog table only %d bytes, expected %lu\n", name, n,
@@ -217,13 +225,16 @@ int main(int argc, char *argv[])
 		close(fd);
 		exit(1);
 	}
+
 	for (uint32_t i = 0; i < hdr.num; ++i) {
 		process(i, &progs[i]);
 	}
+
 	if (enums) {
 		// print the file trailer
 		puts(trailer);
 	}
+
 	close(fd);
 	return 0;
 }

@@ -371,7 +371,7 @@ const pte_t id_map[N_PTE] = {
 const mapping_t kmap[] = {
 	// va                pa_start     pa_end       perms
 	{ KERN_BASE, 0, EXT_BASE, PDE_RW },
-	{ KERN_VLINK, KERN_PLINK, V2P(_data), 0 },
+	{ KERN_VLINK, KERN_PLINK, V2P(_data), PDE_RW },
 	{ (uint32_t)_data, V2P(_data), KERN_BASE, PDE_RW },
 	{ DEV_BASE, DEV_BASE, 0, PDE_RW }
 };
