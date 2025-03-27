@@ -42,7 +42,7 @@ bin/boot.bin: build
 
 bin/user.img: build
 	cd bin && \
-		./mkblob init shell
+		./mkblob init idle prog* shell
 
 bin/disk.img: build bin/boot.bin bin/user.img
 	cd bin && \
