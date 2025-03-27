@@ -2,14 +2,18 @@
 .PHONY: build clean qemu
 .SILENT:
 
+UNAME := $(shell uname)
+
 QEMU = qemu-system-i386
 QEMUOPTS = -drive file=bin/disk.img,index=0,media=disk,format=raw \
 		   -no-reboot -d cpu_reset \
 		   -serial mon:stdio \
 		   -m 4G \
-		   -display sdl \
-		   -enable-kvm \
 		   -name kern
+
+ifeq ($(UNAME), Linux)
+QEMUOPTS += -enable-kvm -display sdl
+endif
 
 qemu: bin/disk.img
 	$(QEMU) $(QEMUOPTS)
