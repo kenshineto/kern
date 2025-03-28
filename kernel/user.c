@@ -431,6 +431,11 @@ static int read_phdrs(elfhdr_t *hdr, pcb_t *pcb)
 */
 static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
 {
+#if TRACING_USER
+	cio_printf("stksetup: pcb %08x, entry %08, args %08x\n", (uint32_t)pcb,
+			   entry, (uint32_t)args);
+#endif
+
 	/*
 	** First, we need to count the space we'll need for the argument
 	** vector and strings.
@@ -653,7 +658,7 @@ void user_init(void)
 
 	// This is gross, but we need to get this information somehow.
 	// Access the "user blob" data in the second bootstrap sector
-	uint16_t *blobdata = (uint16_t *)USER_BLOB_DATA;
+	uint16_t *blobdata = (uint16_t *)P2V(USER_BLOB_DATA);
 	user_offset = *blobdata++;
 	user_segment = *blobdata++;
 	user_sectors = *blobdata++;
@@ -698,6 +703,10 @@ void user_init(void)
 */
 prog_t *user_locate(uint_t what)
 {
+#if TRACING_USER
+	cio_printf("ulocate: %u\n", what);
+#endif
+
 	// no programs if there is no blob!
 	if (user_header == NULL) {
 		return NULL;
@@ -733,6 +742,10 @@ prog_t *user_locate(uint_t what)
 */
 int user_duplicate(pcb_t *new, pcb_t *old)
 {
+#if TRACING_USER
+	cio_printf("udup: old %08x new %08x\n", (uint32_t)old, (uint32_t)new);
+#endif
+
 	// We need to do a recursive duplication of the process address
 	// space of the current process. First, we create a new user
 	// page directory. Next, we'll duplicate the USER_PDE page
@@ -806,6 +819,11 @@ int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
 	assert1(pcb != NULL);
 	assert1(args != NULL);
 
+#if TRACING_USER
+	cio_printf("uload: prog '%s' pcb %08x args %08x\n",
+			   ptab->name[0] ? ptab->name : "?", (uint32_t)pcb, (uint32_t)args);
+#endif
+
 	// locate the ELF binary
 	elfhdr_t *hdr = (elfhdr_t *)((uint32_t)user_header + ptab->offset);
 
@@ -864,6 +882,10 @@ int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
 */
 void user_cleanup(pcb_t *pcb)
 {
+#if TRACING_USER
+	cio_printf("uclean: %08x\n", (uint32_t)pcb);
+#endif
+
 	if (pcb == NULL) {
 		// should this be an error?
 		return;
