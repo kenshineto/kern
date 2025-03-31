@@ -118,10 +118,11 @@ int user_duplicate(pcb_t *new, pcb_t *old);
 ** @param prog   A pointer to the program table entry to be loaded
 ** @param pcb    The PCB for the program being loaded
 ** @param args   The argument vector for the program
+** @param sys    Is the argument vector from kernel code?
 **
 ** @return the status of the load attempt
 */
-int user_load(prog_t *prog, pcb_t *pcb, const char **args);
+int user_load(prog_t *prog, pcb_t *pcb, const char **args, bool_t sys);
 
 /**
 ** Name:	user_cleanup

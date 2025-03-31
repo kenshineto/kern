@@ -30,6 +30,11 @@
 
 // declarations for modulus checking of (e.g.) sizes and addresses
 
+#define LOW_9_BITS 0x00000fff
+#define LOW_22_BITS 0x003fffff
+#define HIGH_20_BITS 0xfffff000
+#define HIGH_10_BITS 0xffc00000
+
 #define MOD4_BITS 0x00000003
 #define MOD4_MASK 0xfffffffc
 #define MOD4_INC 0x00000004

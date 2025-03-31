@@ -64,16 +64,20 @@
 */
 
 // user virtual addresses
+#define USER_BASE 0x00000000
+#define USER_MAX 0x003fffff
 #define USER_TEXT 0x00001000
 #define USER_STACK 0x003fe000
+#define USER_STACK_P1 USER_STACK
+#define USER_STACK_P2 0x003ff000
 #define USER_STK_END 0x00400000
 
 // how to find the addresses of the stack pages in the VM hierarchy
 // user address space is the first 4MB of virtual memory
 #define USER_PDE 0
-// the stack occupies the last two pages of the address space
-#define USER_STK_PTE1 1022
-#define USER_STK_PTE2 1023
+// the stack occupies this range of pages in the user address space
+#define USER_STK_FIRST_PTE 1022
+#define USER_STK_LAST_PTE 1023
 
 // some important memory addresses
 #define KERN_BASE 0x80000000 // start of "kernel" memory
@@ -173,7 +177,7 @@
 #define IS_USER(entry) (((entry) & PDE_US) != 0)
 
 // low-order nine bits of PDEs and PTEs hold "permission" flag bits
-#define PERMS_MASK MOD4K_MASK
+#define PERMS_MASK MOD4K_BITS
 
 // 4KB frame numbers are 20 bits wide
 #define FRAME_4K_SHIFT 12
@@ -200,9 +204,13 @@
 // everything has nine bits of permission flags
 #define PERMS(p) (((uint32_t)(p)) & PERMS_MASK)
 
-// extract the table indices from a 32-bit address
+// extract the table indices from a 32-bit VA
 #define PDIX(v) ((((uint32_t)(v)) >> PDIX_SHIFT) & PIX2I_MASK)
 #define PTIX(v) ((((uint32_t)(v)) >> PTIX_SHIFT) & PIX2I_MASK)
+
+// extract the byte offset from a 32-bit VA
+#define OFFSET_4K(v) (((uint32_t)(v)) & MOD4K_BITS)
+#define OFFSET_4M(v) (((uint32_t)(v)) & MOD4M_BITS)
 
 /*
 ** Types
@@ -215,31 +223,34 @@
 
 // PDE for 4KB pages
 typedef struct pdek_s {
-	uint_t p : 1; // present
-	uint_t rw : 1; // writable
-	uint_t us : 1; // user/supervisor
-	uint_t pwt : 1; // cache write-through
-	uint_t pcd : 1; // cache disable
-	uint_t a : 1; // accessed
-	uint_t avl1 : 1; // ignored (available)
-	uint_t ps : 1; // page size (must be 0)
-	uint_t avl2 : 4; // ignored (available)
-	uint_t fa : 20; // frame address
+	uint_t p : 1; // 0:  present
+	uint_t rw : 1; // 1:  writable
+	uint_t us : 1; // 2:  user/supervisor
+	uint_t pwt : 1; // 3:  cache write-through
+	uint_t pcd : 1; // 4:  cache disable
+	uint_t a : 1; // 5:  accessed
+	uint_t avl1 : 1; // 6:  ignored (available)
+	uint_t ps : 1; // 7:  page size (must be 0)
+	uint_t avl2 : 4; // 11-8:  ignored (available)
+	uint_t fa : 20; // 31-12:  frame address
 } pdek_f_t;
 
 // PDE for 4MB pages
 typedef struct pdem_s {
-	uint_t p : 1; // present
-	uint_t rw : 1; // writable
-	uint_t us : 1; // user/supervisor
-	uint_t pwt : 1; // cache write-through
-	uint_t pcd : 1; // cache disable
-	uint_t a : 1; // accessed
-	uint_t d : 1; // dirty
-	uint_t ps : 1; // page size (must be 1)
-	uint_t g : 1; // global
-	uint_t avl : 3; // ignored (available)
-	uint_t fa : 20; // frame address
+	uint_t p : 1; // 0:  present
+	uint_t rw : 1; // 1:  writable
+	uint_t us : 1; // 2:  user/supervisor
+	uint_t pwt : 1; // 3:  cache write-through
+	uint_t pcd : 1; // 4:  cache disable
+	uint_t a : 1; // 5:  accessed
+	uint_t d : 1; // 6:  dirty
+	uint_t ps : 1; // 7:  page size (must be 1)
+	uint_t g : 1; // 8:  global
+	uint_t avl : 3; // 11-9:  ignored (available)
+	uint_t pat : 1; // 12:  page attribute table in use
+	uint_t fa2 : 4; // 16-13:  bits 35-32 of frame address (36-bit addrs)
+	uint_t rsv : 5; // 21-17:  reserved - must be zero
+	uint_t fa : 10; // 31-22:  bits 31-22 of frame address
 } pdem_f_t;
 
 // page table entries
@@ -249,17 +260,17 @@ typedef struct pdem_s {
 
 // broken out into fields
 typedef struct pte_s {
-	uint_t p : 1; // present
-	uint_t rw : 1; // writable
-	uint_t us : 1; // user/supervisor
-	uint_t pwt : 1; // cache write-through
-	uint_t pcd : 1; // cache disable
-	uint_t a : 1; // accessed
-	uint_t d : 1; // dirty
-	uint_t pat : 1; // page attribute table in use
-	uint_t g : 1; // global
-	uint_t avl : 3; // ignored (available)
-	uint_t fa : 20; // frame address
+	uint_t p : 1; // 0:  present
+	uint_t rw : 1; // 1:  writable
+	uint_t us : 1; // 2:  user/supervisor
+	uint_t pwt : 1; // 3:  cache write-through
+	uint_t pcd : 1; // 4:  cache disable
+	uint_t a : 1; // 5:  accessed
+	uint_t d : 1; // 6:  dirty
+	uint_t pat : 1; // 7:  page attribute table in use
+	uint_t g : 1; // 8:  global
+	uint_t avl : 3; // 11-9:  ignored (available)
+	uint_t fa : 20; // 31-12:  frame address
 } ptef_t;
 
 // page fault error code bits
@@ -291,6 +302,17 @@ typedef struct mapping_t {
 	uint32_t perm; // access control
 } mapping_t;
 
+// Modes for dumping out page hierarchies
+enum vmmode_e {
+	Simple = 0, // just count 'present' entries at each level
+	OneLevel, // top-level only: count entries, decode 'present'
+	TwoLevel, // count entries & decode at each level
+	Full // ??? in case we need more?
+	// sentinel
+	,
+	N_VMMODES
+};
+
 /*
 ** Globals
 */
@@ -313,6 +335,19 @@ extern pde_t *kpdir;
 void vm_init(void);
 
 /**
+** Name:    vm_uva2kva
+**
+** Convert a user VA into a kernel address. Works for all addresses -
+** if the address is a page address, the low-order nine bits will be
+** zeroes; otherwise, they is the offset into the page, which is
+** unchanged within the address spaces.
+**
+** @param pdir  Pointer to the page directory to examine
+** @param va    Virtual address to check
+*/
+void *vm_uva2kva(pde_t *pdir, void *va);
+
+/**
 ** Name:    vm_pagedup
 **
 ** Duplicate a page of memory
@@ -322,6 +357,17 @@ void vm_init(void);
 ** @return a pointer to the new, duplicate page, or NULL
 */
 void *vm_pagedup(void *old);
+
+/**
+** Name:    vm_pdedup
+**
+** Duplicate a page directory entry
+**
+** @param entry The entry to be duplicated
+**
+** @return the new entry, or -1 on error.
+*/
+pde_t vm_pdedup(pde_t entry);
 
 /**
 ** Name:    vm_ptdup
@@ -438,6 +484,17 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm);
 ** @return status of the duplication attempt
 */
 int vm_uvmdup(pde_t *new, pde_t *old);
+
+/**
+** Name:    vm_print
+**
+** Print out a paging hierarchy.
+**
+** @param pt    Page table to display
+** @param dir   Is it a page directory (vs. a page table)?
+** @param mode  How to display the entries
+*/
+void vm_print(void *pt, bool_t dir, enum vmmode_e mode);
 
 #endif /* !ASM_SRC */
 

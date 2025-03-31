@@ -26,6 +26,7 @@ SECTIONS
 	}
 
 	/* Could put STABs here */
+	/*
 	.stab : {
 		PROVIDE(__STAB_BEGIN__ = .);
 		*(.stab);
@@ -36,6 +37,7 @@ SECTIONS
 		*(.stabstr);
 		PROVIDE(__STABSTR_END__ = .);
 	}
+	*/
 
 	/* Align the data segment at the next page boundary */
 	. = ALIGN(0x1000);
@@ -65,7 +67,8 @@ SECTIONS
 	PROVIDE(_end = .);
 
 	/DISCARD/ : {
-		/* *(.stab .stab_info .stabstr) */
-		*(.eh_frame .note.GNU-stack .note.gnu.property .comment)
+		*(.stab .stab_info .stabstr)
+		*(.eh_frame .eh_frame_hdr)
+		*(.note.GNU-stack .note.gnu.property .comment)
 	}
 }

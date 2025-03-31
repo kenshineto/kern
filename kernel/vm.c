@@ -58,45 +58,155 @@ static void vm_isr(int vector, int code)
 }
 
 /**
-** Name:    uva2kva
+** Name:	ptcount
 **
-** Convert a user VA into a kernel address. Works for all addresses -
-** if the address is a page address, the PERMS(va) value will be 0;
-** otherwise, it is the offset into the page.
+** Count the number of each type of entry in a page table.
+** Returns a 32-bit result containing two 16-bit counts:
 **
-** @param pdir  Pointer to the page directory to examine
-** @param va    Virtual address to check
+**            Upper half          Lower half
+**  PDIR:  # of 4MB entries    # of 'present' entries
+**  PMT:               zero    # of 'present' entries
+**
+** The number of "not present" can be calculated from these.
+**
+** @param pt   Pointer to the page table
+** @param dir  Is it a page directory (vs. a page table)?
 */
 ATTR_UNUSED
-static void *uva2kva(pde_t *pdir, void *va)
+static uint32_t ptcount(pte_t *ptr, bool_t dir)
 {
-	// find the PMT entry for this address
-	pte_t *pte = vm_getpte(pdir, va, false);
-	if (pte == NULL) {
-		return NULL;
+	uint16_t n_np = 0, n_p = 0, n_lg = 0;
+
+	for (int i = 0; i < N_PTE; ++i) {
+		pde_t entry = *ptr++;
+		if (!IS_PRESENT(entry)) {
+			++n_np;
+			continue;
+		}
+		if (dir && IS_LARGE(entry)) {
+			++n_lg;
+		} else {
+			++n_p;
+		}
 	}
 
-	// get the entry
-	pte_t entry = *pte;
+	// n_lg will be 0 for PMTs
+	return (n_lg << 16) | n_p;
+}
 
-	// is this a valid address for the user?
-	if (IS_PRESENT(entry)) {
-		return NULL;
+// decode a PDE
+static void pde_prt(uint32_t level, uint32_t i, uint32_t entry)
+{
+	// indent
+	for (int n = 0; n <= level; ++n)
+		cio_puts("  ");
+	// line header
+	cio_printf("[%08x] %08x", i, entry);
+	// perms
+	if (IS_LARGE(entry)) { // PS is 1
+		if ((entry & PDE_PAT) != 0)
+			cio_puts(" PAT");
+		if ((entry & PDE_G) != 0)
+			cio_puts(" G");
+		cio_puts(" PS");
+		if ((entry & PDE_D) != 0)
+			cio_puts(" D");
 	}
+	if ((entry & PDE_A) != 0)
+		cio_puts(" A");
+	if ((entry & PDE_PCD) != 0)
+		cio_puts(" CD");
+	if ((entry & PDE_PWT) != 0)
+		cio_puts(" WT");
+	if ((entry & PDE_US) != 0)
+		cio_puts(" U");
+	if ((entry & PDE_RW) != 0)
+		cio_puts(" W");
+	cio_puts((entry & PDE_P) != 0 ? " P" : "!P");
 
-	// is this a system-only page?
-	if (IS_SYSTEM(entry)) {
-		return NULL;
-	}
+	cio_printf(" --> %s %08x", IS_LARGE(entry) ? "Pg" : "PT", PDE_ADDR(entry));
+}
 
-	// get the physical address
-	uint32_t frame = PTE_ADDR(*pte) | PERMS(va);
+// decode a PTE
+static void pte_prt(uint32_t level, uint32_t i, uint32_t entry)
+{
+	// indent
+	for (int n = 0; n <= level; ++n)
+		cio_puts("  ");
+	// line header
+	cio_printf("[%08x] %08x", i, entry);
+	// perms
+	if ((entry & PDE_G) != 0)
+		cio_puts(" G");
+	if ((entry & PDE_PAT) != 0)
+		cio_puts(" PAT");
+	if ((entry & PDE_D) != 0)
+		cio_puts(" D");
+	if ((entry & PDE_A) != 0)
+		cio_puts(" A");
+	if ((entry & PDE_PCD) != 0)
+		cio_puts(" CD");
+	if ((entry & PDE_PWT) != 0)
+		cio_puts(" WT");
+	if ((entry & PDE_US) != 0)
+		cio_puts(" U");
+	if ((entry & PDE_RW) != 0)
+		cio_puts(" W");
+	cio_puts((entry & PDE_P) != 0 ? " P" : "!P");
 
-	return (void *)P2V(frame);
+	cio_printf(" --> Pg %08x", PTE_ADDR(entry));
 }
 
 /**
-** Name:	ptdump
+** Name:	pdump
+**
+** Recursive helper for table hierarchy dump.
+**
+** @param level  Current hierarchy level
+** @param pt     Page table to display
+** @param dir    Is it a page directory (vs. a page table)?
+** @param mode   How to display the entries
+*/
+ATTR_UNUSED
+static void pdump(uint_t level, void *pt, bool_t dir, enum vmmode_e mode)
+{
+	pte_t *ptr = (pte_t *)pt;
+
+	cio_printf("? at 0x%08x:", dir ? "PDir" : "PTbl", (uint32_t)pt);
+	uint32_t nums = ptcount(ptr, dir);
+	if (dir) {
+		cio_printf(" %u 4MB", (nums >> 16));
+	}
+	cio_printf(" %u P %u !P\n", nums & 0xffff,
+			   N_PTE - ((nums >> 16) + (nums & 0xffff)));
+
+	for (uint32_t i = 0; i < (uint32_t)N_PTE; ++i) {
+		pte_t entry = *ptr;
+		if (dir) {
+			// this is a PDIR entry; could be either a 4MB
+			// page, or a PMT pointer
+			if (mode > Simple) {
+				pde_prt(level, i, entry);
+				cio_putchar('\n');
+				if (!IS_LARGE(entry)) {
+					pdump(level + 1, (void *)*ptr, false, mode);
+				}
+			}
+		} else {
+			// just a PMT entry
+			if (mode > Simple) {
+				pte_prt(level, i, entry);
+				cio_putchar('\n');
+			}
+		}
+
+		// move to the next entry
+		++ptr;
+	}
+}
+
+/**
+** Name:	pmt_dump
 **
 ** Dump the non-zero entries of a page table or directory
 **
@@ -105,7 +215,8 @@ static void *uva2kva(pde_t *pdir, void *va)
 ** @param start  First entry to process
 ** @param num    Number of entries to process
 */
-static void ptdump(pte_t *pt, bool_t dir, uint32_t start, uint32_t num)
+ATTR_UNUSED
+static void pmt_dump(pte_t *pt, bool_t dir, uint32_t start, uint32_t num)
 {
 	cio_printf("\n\nP%c dump", dir ? 'D' : 'T');
 	cio_printf(" of %08x", (uint32_t)pt);
@@ -169,7 +280,23 @@ void vm_init(void)
 	assert(kpdir != NULL);
 
 #if TRACING_VM
-	cio_printf("vm_init: kpdir is %08x\n", kpdir);
+	cio_printf("vm_init: kpdir %08x, adding user pages\n", kpdir);
+#endif
+
+	// add the entries for the user address space
+	for (uint32_t addr = 0; addr < NUM_4MB; addr += SZ_PAGE) {
+		int stat = vm_map(kpdir, (void *)addr, addr, SZ_PAGE, PTE_RW);
+		if (stat != SUCCESS) {
+			cio_printf("vm_init, map %08x->%08x failed, status %d\n", addr,
+					   addr, stat);
+			PANIC(0, "vm_init user range map failed");
+		}
+#if TRACING_VM
+		cio_putchar('.');
+#endif
+	}
+#if TRACING_VM
+	cio_puts(" done\n");
 #endif
 
 	// switch to it
@@ -181,6 +308,44 @@ void vm_init(void)
 
 	// install the page fault handler
 	install_isr(VEC_PAGE_FAULT, vm_isr);
+}
+
+/**
+** Name:    vm_uva2kva
+**
+** Convert a user VA into a kernel address. Works for all addresses -
+** if the address is a page address, the low-order nine bits will be
+** zeroes; otherwise, they is the offset into the page, which is
+** unchanged within the address spaces.
+**
+** @param pdir  Pointer to the page directory to examine
+** @param va    Virtual address to check
+*/
+void *vm_uva2kva(pde_t *pdir, void *va)
+{
+	// find the PMT entry for this address
+	pte_t *pte = vm_getpte(pdir, va, false);
+	if (pte == NULL) {
+		return NULL;
+	}
+
+	// get the entry
+	pte_t entry = *pte;
+
+	// is this a valid address for the user?
+	if (IS_PRESENT(entry)) {
+		return NULL;
+	}
+
+	// is this a system-only page?
+	if (IS_SYSTEM(entry)) {
+		return NULL;
+	}
+
+	// get the physical address
+	uint32_t frame = PTE_ADDR(*pte) | PERMS(va);
+
+	return (void *)P2V(frame);
 }
 
 /**
@@ -206,46 +371,45 @@ void *vm_pagedup(void *old)
 **
 ** Duplicate a page directory entry
 **
-** @param dst   Pointer to where the duplicate should go
-** @param curr  Pointer to the entry to be duplicated
+** @param entry The entry to be duplicated
 **
-** @return true on success, else false
+** @return the new entry, or -1 on error
 */
-bool_t vm_pdedup(pde_t *dst, pde_t *curr)
+pde_t vm_pdedup(pde_t entry)
 {
-	assert1(curr != NULL);
-	assert1(dst != NULL);
-
 #if TRACING_VM
-	cio_printf("vm_pdedup dst %08x curr %08x\n", (uint32_t)dst, (uint32_t)curr);
+	cio_printf("vm_pdedup curr %08x\n", (uint32_t)entry);
 #endif
-	pde_t entry = *curr;
 
 	// simplest case
 	if (!IS_PRESENT(entry)) {
-		*dst = 0;
-		return true;
+		return 0;
 	}
 
-	// OK, we have an entry; allocate a page table for it
-	pte_t *newtbl = (pte_t *)km_page_alloc();
-	if (newtbl == NULL) {
-		return false;
+	// is this a large page?
+	if (IS_LARGE(entry)) {
+		// just copy it
+		return entry;
 	}
 
-	// we could clear the new table, but we'll be assigning to
-	// each entry anyway, so we'll save the execution time
+	// OK, we have a 4KB entry; allocate a page table for it
+	pte_t *tblva = (pte_t *)km_page_alloc();
+	if (tblva == NULL) {
+		return (uint32_t)-1;
+	}
 
-	// address of the page table for this directory entry
-	pte_t *old = (pte_t *)PDE_ADDR(entry);
+	// make sure the entries are all initially 'not present'
+	memclr(tblva, SZ_PAGE);
 
-	// pointer to the first PTE in the new table
-	pte_t *new = newtbl;
+	// VA of the page table for this directory entry
+	pte_t *old = (pte_t *)P2V(PDE_ADDR(entry));
+
+	// pointer to the first PTE in the new table (already a VA)
+	pte_t *new = tblva;
 
 	for (int i = 0; i < N_PTE; ++i) {
-		if (!IS_PRESENT(*old)) {
-			*new = 0;
-		} else {
+		// only need to copy 'present' entries
+		if (IS_PRESENT(*old)) {
 			*new = *old;
 		}
 		++old;
@@ -253,10 +417,8 @@ bool_t vm_pdedup(pde_t *dst, pde_t *curr)
 	}
 
 	// replace the page table address
-	// upper 22 bits from 'newtbl', lower 12 from '*curr'
-	*dst = (pde_t)(PTE_ADDR(newtbl) | PERMS(entry));
-
-	return true;
+	// (PA of page table, lower 12 bits from '*curr')
+	return (pde_t)(V2P(PTE_ADDR(tblva)) | PERMS(entry));
 }
 
 /**
@@ -282,8 +444,7 @@ pte_t *vm_getpte(pde_t *pdir, const void *va, bool_t alloc)
 	assert1(pdir != NULL);
 
 	// get the PDIR entry for this virtual address
-	uint32_t ix = PDIX(va);
-	pde_t *pde_ptr = &pdir[ix];
+	pde_t *pde_ptr = &pdir[PDIX(va)];
 
 	// is it already set up?
 	if (IS_PRESENT(*pde_ptr)) {
@@ -319,10 +480,8 @@ pte_t *vm_getpte(pde_t *pdir, const void *va, bool_t alloc)
 		*pde_ptr = V2P(ptbl) | PDE_P | PDE_RW;
 	}
 
-	// finally, return a pointer to the entry in the
-	// page table for this VA
-	ix = PTIX(va);
-	return &ptbl[ix];
+	// finally, return a pointer to the entry in the page table for this VA
+	return &ptbl[PTIX(va)];
 }
 
 // Set up kernel part of a page table.
@@ -337,7 +496,7 @@ pde_t *vm_mkkvm(void)
 	}
 #if 0 && TRACING_VM
 	cio_puts( "\nEntering vm_mkkvm\n" );
-	ptdump( pdir, true, 0, N_PDE );
+	pmt_dump( pdir, true, 0, N_PDE );
 #endif
 
 	// clear it out to disable all the entries
@@ -361,8 +520,8 @@ pde_t *vm_mkkvm(void)
 	}
 #if 0 && TRACING_VM
 	cio_puts( "\nvm_mkkvm() final PD:\n" );
-	ptdump( pdir, true, 0, 16 );
-	ptdump( pdir, true, 0x200, 16 );
+	pmt_dump( pdir, true, 0, 16 );
+	pmt_dump( pdir, true, 0x200, 16 );
 #endif
 
 	return pdir;
@@ -382,19 +541,26 @@ pde_t *vm_mkuvm(void)
 		return NULL;
 	}
 
-	// iterate through the kernel page directory
-	pde_t *curr = kpdir;
-	pde_t *dst = new;
-	for (int i = 0; i < N_PDE; ++i) {
+	// iterate through the 'system' portions of the kernel
+	// page directory
+	int i = PDIX(KERN_BASE);
+	pde_t *curr = &kpdir[i];
+	pde_t *dst = &new[i];
+	while (i < N_PDE) {
 		if (*curr != 0) {
 			// found an active one - duplicate it
-			if (!vm_pdedup(dst, curr)) {
+			pde_t entry = vm_pdedup(*curr);
+			if (entry == (uint32_t)-1) {
 				return NULL;
 			}
+			*dst = entry;
+		} else {
+			*dst = 0;
 		}
 
 		++curr;
 		++dst;
+		++i;
 	}
 
 	return new;
@@ -481,7 +647,7 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 		// figure out where this page will go in the hierarchy
 		pte_t *pte = vm_getpte(pdir, va, true);
 		if (pte == NULL) {
-			// TODO if i > 0, this isn't the first frame - is
+			// if i > 0, this isn't the first frame - is
 			// there anything to do about other frames?
 			// POSSIBLE MEMORY LEAK?
 			return E_NO_MEMORY;
@@ -490,7 +656,7 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 		// allocate the frame
 		void *page = km_page_alloc();
 		if (page == NULL) {
-			// TODO same question here
+			// same question here
 			return E_NO_MEMORY;
 		}
 
@@ -498,7 +664,7 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 		memclr(page, SZ_PAGE);
 
 		// create the PTE for this frame
-		uint32_t entry = (uint32_t)(PTE_ADDR(page) | entrybase);
+		uint32_t entry = (uint32_t)(PTE_ADDR(V2P(page)) | entrybase);
 		*pte = entry;
 
 		// copy data if we need to
@@ -506,7 +672,7 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 			// how much to copy
 			uint32_t num = bytes > SZ_PAGE ? SZ_PAGE : bytes;
 			// do it!
-			memcpy((void *)page, (void *)data, num);
+			memmove((void *)page, (void *)data, num);
 			// adjust all the pointers
 			data += num; // where to continue
 			bytes -= num; // what's left to copy
@@ -644,7 +810,7 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 						   PDIX(addr), PTIX(addr));
 
 				// dump the directory
-				ptdump(pdir, true, PDIX(addr), 4);
+				pmt_dump(pdir, true, PDIX(addr), 4);
 
 				// find the relevant PDE entry
 				uint32_t ix = PDIX(va);
@@ -653,7 +819,7 @@ int vm_map(pde_t *pdir, void *va, uint32_t pa, uint32_t size, int perm)
 					// round the PMT index down
 					uint32_t ix2 = PTIX(va) & MOD4_MASK;
 					// dump the PMT for the relevant directory entry
-					ptdump((void *)P2V(PDE_ADDR(entry)), false, ix2, 4);
+					pmt_dump((void *)P2V(PDE_ADDR(entry)), false, ix2, 4);
 				}
 #endif
 				PANIC(0, "mapping an already-mapped address");
@@ -734,4 +900,27 @@ int vm_uvmdup(pde_t *new, pde_t *old)
 	}
 
 	return SUCCESS;
+}
+
+/**
+** Name:	vm_print
+**
+** Print out a paging hierarchy.
+**
+** @param pt    Page table to display
+** @param dir   Is it a page directory (vs. a page table)?
+** @param mode  How to display the entries
+*/
+void vm_print(void *pt, bool_t dir, enum vmmode_e mode)
+{
+	cio_puts("\nVM hierarchy");
+	if (pt == NULL) {
+		cio_puts(" (NULL pointer)\n");
+		return;
+	}
+
+	cio_printf("Starting at 0x%08x (%s):\n", (uint32_t)pt,
+			   dir ? "PDIR" : "PMT");
+
+	pdump(0, pt, dir, mode);
 }

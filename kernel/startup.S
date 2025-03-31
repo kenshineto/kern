@@ -33,18 +33,18 @@
 /*
 ** A symbol for locating the beginning of the code.
 */
-	.globl	begtext
-
 	.text
-begtext:
+
+	.globl	begtext
+	.globl	_start
+_start = V2PNC(begtext)
 
 /*
 ** The entry point. When we get here, we have just entered protected
 ** mode, so all the segment registers are incorrect except for CS.
 */
-	.globl	_start
+begtext:
 
-_start:
 	cli			/* seems to be reset on entry to p. mode */
 	movb	$NMI_ENABLE, %al  /* re-enable NMIs (bootstrap */
 	outb	$CMOS_ADDR	  /*   turned them off) */
@@ -110,10 +110,18 @@ clearbss:
 	# set the initial frame pointer
 	xorl	%ebp, %ebp
 
+	# now, jump and switch into using high addresses
+	# we use an indirect jump here because the assembler
+	# would ordinarily generate a PC-relative target
+	# address for the jump, which would not have the
+	# desired effect
+	movl	$onward, %eax
+	jmp	*%eax
+
+onward:
+
 /*
-** Call the system initialization routine, and switch to
-** executing at high addresses. We use an indirect jump
-** here to avoid getting a PC-relative 'jmp' instruction.
+** Call the system initialization routine.
 **
 ** Alternate idea: push the address of isr_restore
 ** and just do an indirect jump?

@@ -36,9 +36,6 @@
 #define CHAN_CIO 0
 #define CHAN_SIO 1
 
-// maximum allowable number of command-line arguments
-#define MAX_ARGS 10
-
 // sizes of various things
 #define NUM_1KB 0x00000400 // 2^10
 #define NUM_4KB 0x00001000 // 2^12
@@ -46,7 +43,7 @@
 #define NUM_4MB 0x00400000 // 2^22
 #define NUM_1GB 0x40000000 // 2^30
 #define NUM_2GB 0x80000000 // 2^31
-#define NUM_3GB 0xc0000000
+#define NUM_3GB 0xc0000000 // 1GB + 2GB
 
 #ifndef ASM_SRC
 

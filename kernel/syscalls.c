@@ -354,7 +354,7 @@ SYSIMPL(exec)
 	pcb->pdir = NULL;
 
 	// "load" it and set up the VM tables for this process
-	int status = user_load(prog, pcb, args);
+	int status = user_load(prog, pcb, args, false);
 	if (status != SUCCESS) {
 		RET(pcb) = status;
 		SYSCALL_EXIT(status);

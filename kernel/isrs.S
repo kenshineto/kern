@@ -19,6 +19,8 @@
 #	.arch	i386
 
 #include <bootstrap.h>
+#include <offsets.h>
+#include <vm.h>
 
 /*
 ** Configuration options - define in Makefile
@@ -100,8 +102,8 @@ isr_save:
 **
 ** Set up parameters for the ISR call.
 */
-	movl	52(%esp),%eax	// get vector number and error code
-	movl	56(%esp),%ebx
+	movl	CTX_vector(%esp),%eax	// get vector number and error code
+	movl	CTX_code(%esp),%ebx
 
 /*
 ***********************
@@ -120,11 +122,12 @@ isr_save:
 
 	// save the context pointer
 	movl	current, %edx
-	movl	%esp, (%edx)
+	movl	%esp, PCB_context(%edx)
 
 	// also save the page directory pointer
 	movl	%cr3, %ecx
-	movl	%ecx, 4(%edx)
+	addl	$KERN_BASE, %ecx	// convert to a virtual address
+	movl	%ecx, PCB_pdir(%edx)
 
 	// switch to the system stack
 	//
@@ -166,8 +169,9 @@ isr_restore:
 ***********************
 */
 	movl	current, %ebx	// return to the user stack
-	movl	(%ebx), %esp	// ESP --> context save area
-	movl	4(%ebx), %ecx	// page directory pointer
+	movl	PCB_context(%ebx), %esp	// ESP --> context save area
+	movl	PCB_pdir(%ebx), %ecx	// page directory pointer
+	subl	$KERN_BASE, %ecx	// convert to a physical address
 	movl	%ecx, %cr3
 
 	// now we're operating with the user process'

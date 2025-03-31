@@ -20,7 +20,7 @@ typedef struct proc_s {
 	uint_t pid; // its PID (when spawned)
 	uint8_t e_prio; // process priority
 	char select[3]; // identifying character, NUL, extra
-	char *args[MAX_ARGS]; // argument vector strings
+	char *args[N_ARGS]; // argument vector strings
 } proc_t;
 
 /*

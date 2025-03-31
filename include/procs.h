@@ -205,13 +205,13 @@ extern uint_t next_pid;
 extern pcb_t *init_pcb;
 
 // table of state name strings
-extern const char *state_str[N_STATES];
+extern const char state_str[N_STATES][4];
 
 // table of priority name strings
-extern const char *prio_str[N_PRIOS];
+extern const char prio_str[N_PRIOS][5];
 
 // table of queue ordering name strings
-extern const char *ord_str[N_ORDERINGS];
+extern const char ord_str[N_ORDERINGS][5];
 
 /*
 ** Prototypes

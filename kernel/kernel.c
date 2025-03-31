@@ -194,11 +194,11 @@ static void stats(int code)
 
 	case 'q': // dump the queues
 		// code to dump out any/all queues
-		pcb_queue_dump("R", ready);
-		pcb_queue_dump("W", waiting);
-		pcb_queue_dump("S", sleeping);
-		pcb_queue_dump("Z", zombie);
-		pcb_queue_dump("I", sioread);
+		pcb_queue_dump("R", ready, true);
+		pcb_queue_dump("W", waiting, true);
+		pcb_queue_dump("S", sleeping, true);
+		pcb_queue_dump("Z", zombie, true);
+		pcb_queue_dump("I", sioread, true);
 		break;
 
 	case 'r': // print system configuration information
@@ -309,7 +309,7 @@ int main(void)
 	// report our configuration options
 	kreport(true);
 
-	delay(DELAY_3_SEC);
+	delay(DELAY_2_SEC);
 
 	/*
 	** Other tasks typically performed here:
@@ -341,10 +341,11 @@ int main(void)
 	const char *args[2] = { "init", NULL };
 
 	// load it
-	assert(user_load(prog, init_pcb, args) == SUCCESS);
+	assert(user_load(prog, init_pcb, args, true) == SUCCESS);
 
 	// send it on its merry way
 	schedule(init_pcb);
+	dispatch();
 
 #ifdef TRACE_CX
 	// if we're using a scrolling region, wait a bit more and then set it up
@@ -366,9 +367,6 @@ int main(void)
 		"================================================================================");
 #endif
 
-	// switch to the "real" kernel page directory
-	vm_set_kvm();
-
 	/*
 	** END OF TERM-SPECIFIC CODE
 	**
@@ -379,6 +377,22 @@ int main(void)
 	cio_puts("-------------------------------\n");
 
 	sio_enable(SIO_RX);
+
+	// produce a "system state" report
+	cio_puts("System status: Queues ");
+	pcb_queue_dump("R", ready, true);
+	pcb_queue_dump("W", waiting, true);
+	pcb_queue_dump("S", sleeping, true);
+	pcb_queue_dump("Z", zombie, true);
+	pcb_queue_dump("I", sioread, true);
+	ptable_dump_counts();
+	pcb_dump("Current: ", current, true);
+
+	delay(DELAY_3_SEC);
+
+	vm_print(current->pdir, true, TwoLevel);
+
+	delay(DELAY_3_SEC);
 
 	return 0;
 }

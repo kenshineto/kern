@@ -74,7 +74,7 @@ uint_t next_pid;
 pcb_t *init_pcb;
 
 // table of state name strings
-const char *state_str[N_STATES] = {
+const char state_str[N_STATES][4] = {
 	[STATE_UNUSED] = "Unu", // "Unused"
 	[STATE_NEW] = "New",
 	[STATE_READY] = "Rdy", // "Ready"
@@ -87,16 +87,16 @@ const char *state_str[N_STATES] = {
 };
 
 // table of priority name strings
-const char *prio_str[N_PRIOS] = { [PRIO_HIGH] = "High",
-								  [PRIO_STD] = "User",
-								  [PRIO_LOW] = "Low ",
-								  [PRIO_DEFERRED] = "Def " };
+const char prio_str[N_PRIOS][5] = { [PRIO_HIGH] = "High",
+									[PRIO_STD] = "User",
+									[PRIO_LOW] = "Low ",
+									[PRIO_DEFERRED] = "Def " };
 
 // table of queue ordering name strings
-const char *ord_str[N_PRIOS] = { [O_FIFO] = "FIFO",
-								 [O_PRIO] = "PRIO",
-								 [O_PID] = "PID ",
-								 [O_WAKEUP] = "WAKE" };
+const char ord_str[N_PRIOS][5] = { [O_FIFO] = "FIFO",
+								   [O_PRIO] = "PRIO",
+								   [O_PID] = "PID ",
+								   [O_WAKEUP] = "WAKE" };
 
 /*
 ** PRIVATE FUNCTIONS
@@ -939,7 +939,7 @@ void ctx_dump_all(const char *msg)
 }
 
 /**
-** _pcb_dump(msg,pcb)
+** pcb_dump(msg,pcb,all)
 **
 ** Dumps the contents of this PCB to the console
 **
@@ -964,7 +964,15 @@ void pcb_dump(const char *msg, register pcb_t *pcb, bool_t all)
 	}
 
 	cio_printf(" %d", pcb->pid);
+
 	cio_printf(" %s", pcb->state >= N_STATES ? "???" : state_str[pcb->state]);
+#if 0
+	if( pcb->state >= N_STATES ) {
+		cio_puts( " ????" );
+	} else {
+		cio_printf( " %s", state_str[pcb->state] );
+	}
+#endif
 
 	if (!all) {
 		// just printing IDs and states on one line
@@ -974,6 +982,13 @@ void pcb_dump(const char *msg, register pcb_t *pcb, bool_t all)
 	// now, the rest of the contents
 	cio_printf(" %s",
 			   pcb->priority >= N_PRIOS ? "???" : prio_str[pcb->priority]);
+#if 0
+	if( pcb->priority >= N_PRIOS ) {
+		cio_puts( " ???" );
+	} else {
+		cio_printf( " %s", prio_str[pcb->priority] );
+	}
+#endif
 
 	cio_printf(" ticks %u xit %d wake %08x\n", pcb->ticks, pcb->exit_status,
 			   pcb->wakeup);
@@ -1111,6 +1126,14 @@ void ptable_dump_counts(void)
 	for (n = 0; n < N_STATES; ++n) {
 		cio_printf(" %u %s", nstate[n],
 				   state_str[n] != NULL ? state_str[n] : "???");
+#if 0
+		cio_printf( " %u ", nstate[n] );
+		if( state_str[n][0] != '\0' ) {
+			cio_puts( state_str[n] );
+		} else {
+			cio_puts( "???" );
+		}
+#endif
 	}
 	cio_putchar('\n');
 }

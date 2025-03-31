@@ -426,44 +426,27 @@ static int read_phdrs(elfhdr_t *hdr, pcb_t *pcb)
 ** @param pcb    Pointer to the PCB for the process
 ** @param entry  Entry point for the new process
 ** @param args   Argument vector to be put in place
+** @param sys    Is the argument vector from kernel code?
 **
-** @return A pointer to the context_t on the stack, or NULL
+** @return A (user VA) pointer to the context_t on the stack, or NULL
 */
-static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
+static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args,
+							  bool_t sys)
 {
 #if TRACING_USER
-	cio_printf("stksetup: pcb %08x, entry %08, args %08x\n", (uint32_t)pcb,
+	cio_printf("stksetup: pcb %08x, entry %08x, args %08x\n", (uint32_t)pcb,
 			   entry, (uint32_t)args);
 #endif
 
 	/*
-	** First, we need to count the space we'll need for the argument
+	** First, we need to calculate the space we'll need for the argument
 	** vector and strings.
-	*/
-
-	int argbytes = 0;
-	int argc = 0;
-
-	while (args[argc] != NULL) {
-		int n = strlen(args[argc]) + 1;
-		// can't go over one page in size
-		if ((argbytes + n) > SZ_PAGE) {
-			// oops - ignore this and any others
-			break;
-		}
-		argbytes += n;
-		++argc;
-	}
-
-	// Round up the byte count to the next multiple of four.
-	argbytes = (argbytes + 3) & MOD4_MASK;
-
-	/*
-	** Allocate the arrays.  We are safe using dynamic arrays here
-	** because we're using the OS stack, not the user stack.
 	**
-	** We want the argstrings and argv arrays to contain all zeroes.
-	** The C standard states, in section 6.7.8, that
+	** Keeping track of kernel vs. user VAs is tricky, so we'll use
+	** a prefix on variable names: kv_* is a kernel virtual address;
+	** uv_* is a user virtual address.
+	**
+	** We rely on the C standard, section 6.7.8, to clear these arrays:
 	**
 	**   "21 If there are fewer initializers in a brace-enclosed list
 	**       than there are elements or members of an aggregate, or
@@ -472,31 +455,36 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
 	**       the remainder of the aggregate shall be initialized
 	**       implicitly the same as objects that have static storage
 	**       duration."
-	**
-	** Sadly, because we're using variable-sized arrays, we can't
-	** rely on this, so we have to call memclr() instead. :-(  In
-	** truth, it doesn't really cost us much more time, but it's an
-	** annoyance.
 	*/
 
-	char argstrings[argbytes];
-	char *argv[argc + 1];
+	int argbytes = 0; // total length of arg strings
+	int argc = 0; // number of argv entries
+	const char *kv_strs[N_ARGS] = { 0 }; // converted user arg string pointers
+	int strlengths[N_ARGS] = { 0 }; // length of each string
+	const char *uv_argv[N_ARGS] = { 0 }; // argv pointers
 
-	CLEAR(argstrings);
-	CLEAR(argv);
+	/*
+	** IF the argument list given to us came from  user code, we need
+	** to convert its address and the addresses it contains to kernel
+	** VAs; otherwise, we can use them directly.
+	*/
+	char **kv_args = sys ? args : vm_uva2kva(pcb->pdir, (void *)args);
 
-	// Next, duplicate the argument strings, and create pointers to
-	// each one in our argv.
-	char *tmp = argstrings;
-	for (int i = 0; i < argc; ++i) {
-		int nb = strlen(args[i]) + 1; // bytes (incl. NUL) in this string
-		strcpy(tmp, args[i]); // add to our buffer
-		argv[i] = tmp; // remember where it was
-		tmp += nb; // move on
+	while (kv_args[argc] != NULL) {
+		kv_strs[argc] = sys ? args[argc] :
+							  vm_uva2kva(pcb->pdir, (void *)(kv_args[argc]));
+		strlengths[argc] = strlen(kv_strs[argc]) + 1;
+		// can't go over one page in size
+		if ((argbytes + strlengths[argc]) > SZ_PAGE) {
+			// oops - ignore this and any others
+			break;
+		}
+		argbytes += strlengths[argc];
+		++argc;
 	}
 
-	// trailing NULL pointer
-	argv[argc] = NULL;
+	// Round up the byte count to the next multiple of four.
+	argbytes = (argbytes + 3) & MOD4_MASK;
 
 	/*
 	** The pages for the stack were cleared when they were allocated,
@@ -524,32 +512,44 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
 	** see below for more information.
 	*/
 
-	// Pointer to the last word in stack. We get this from the
-	// VM hierarchy. Get the PDE entry for the user address space.
-	pde_t stack_pde = pcb->pdir[USER_PDE];
-
-	// The PDE entry points to the PT, which is an array of PTE. The last
-	// two entries are for the stack; pull out the last one.
-	pte_t stack_pte = ((pte_t *)(stack_pde & MOD4K_MASK))[USER_STK_PTE2];
-
-	// OK, now we have the PTE. The frame address of the last page is
-	// in this PTE. Find the address immediately after that.
-	uint32_t *ptr = (uint32_t *)((uint32_t)(stack_pte & MOD4K_MASK) + SZ_PAGE);
-
-	// Pointer to where the arg strings should be filled in.
-	char *strings = (char *)((uint32_t)ptr - argbytes);
-
-	// back the pointer up to the nearest word boundary; because we're
-	// moving toward location 0, the nearest word boundary is just the
-	// next smaller address whose low-order two bits are zeroes
-	strings = (char *)((uint32_t)strings & MOD4_MASK);
-
-	// Copy over the argv strings.
-	memcpy((void *)strings, argstrings, argbytes);
+	/*
+	** Find the user stack. The PDE entry for user address space points
+	** to a page table for the first 4MB of the address space, but the
+	** "pointer" there a physical frame address.
+	*/
+	pde_t *kv_userpt = (pde_t *)P2V(PTE_ADDR(pcb->pdir[USER_PDE]));
+	assert(kv_userpt != NULL);
 
 	/*
-	** Next, we need to copy over the argv pointers.  Start by
-	** determining where 'argc' should go.
+	** The final entries in that PMT are for the pages of the user stack.
+	** Grab the address of the frame for the last one.  (Again, we need
+	** to convert it to a virtual address we can use.)
+	*/
+
+	// the PMT entry for that page
+	pte_t pmt_entry = kv_userpt[USER_STK_LAST_PTE];
+	assert(IS_PRESENT(pmt_entry));
+
+	// kernel VA for the first byte following that page
+	uint8_t *kv_ptr = (uint8_t *)P2V(PTE_ADDR(pmt_entry) + SZ_PAGE);
+	assert(kv_ptr != NULL);
+
+	// user VA for the first byte following that page
+	uint32_t *uv_ptr = (uint32_t *)(USER_STACK_P2 + SZ_PAGE);
+
+	// Pointers to where the arg strings should be filled in.
+	uint32_t kv_strings = ((uint32_t)kv_ptr) - argbytes;
+	uint32_t uv_strings = ((uint32_t)uv_ptr) - argbytes;
+
+	// back the pointers up to the nearest word boundary; because we're
+	// moving toward location 0, the nearest word boundary is just the
+	// next smaller address whose low-order two bits are zeroes
+	kv_strings &= MOD4_MASK;
+	uv_strings &= MOD4_MASK;
+
+	/*
+	** Next, we need to copy over the data. Start by determining where
+	** where 'argc' should go.
 	**
 	** Stack alignment is controlled by the SysV ABI i386 supplement,
 	** version 1.2 (June 23, 2016), which states in section 2.2.2:
@@ -563,7 +563,7 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
 	**
 	** Isn't technical documentation fun?  Ultimately, this means that
 	** the first parameter to main() should be on the stack at an address
-	** that is a multiple of 16.
+	** that is a multiple of 16. In our case, that is 'argc'.
 	**
 	** The space needed for argc, argv, and the argv array itself is
 	** argc + 3 words (argc+1 for the argv entries, plus one word each
@@ -571,45 +571,66 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
 	*/
 
 	int nwords = argc + 3;
-	uint32_t *acptr = ((uint32_t *)strings) - nwords;
+	uint32_t *kv_acptr = ((uint32_t *)kv_strings) - nwords;
+	uint32_t *uv_acptr = ((uint32_t *)uv_strings) - nwords;
 
-	/*
-	** Next, back up until we're at a multiple-of-16 address. Because we
-	** are moving to a lower address, its upper 28 bits are identical to
-	** the address we currently have, so we can do this with a bitwise
-	** AND to just turn off the lower four bits.
-	*/
+	// back these up to multiple-of-16 addresses for stack alignment
+	kv_acptr = (uint32_t *)(((uint32_t)kv_acptr) & MOD16_MASK);
+	uv_acptr = (uint32_t *)(((uint32_t)uv_acptr) & MOD16_MASK);
 
-	acptr = (uint32_t *)(((uint32_t)acptr) & MOD16_MASK);
+	// the argv location
+	uint32_t *kv_avptr = kv_acptr + 1;
 
-	// copy in 'argc'
-	*acptr = argc;
+	// the user address for the first argv entry
+	uint32_t *uv_avptr = uv_acptr + 2;
 
-	// next, 'argv', which follows 'argc'; 'argv' points to the
-	// word that follows it in the stack
-	uint32_t *avptr = acptr + 2;
-	*(acptr + 1) = (uint32_t)avptr;
+	// Copy over the argv strings.
+	for (int i = 0; i < argc; ++i) {
+		// copy the string using kernel addresses
+		strcpy((char *)kv_strings, kv_args[i]);
 
-	/*
-	** Next, we copy in all argc+1 pointers.
-	*/
+		// remember the user address where this string went
+		uv_argv[i] = (char *)uv_strings;
 
-	// Adjust and copy the string pointers.
-	for (int i = 0; i <= argc; ++i) {
-		if (argv[i] != NULL) {
-			// an actual pointer - adjust it and copy it in
-			*avptr = (uint32_t)strings;
-			// skip to the next entry in the array
-			strings += strlen(argv[i]) + 1;
-		} else {
-			// end of the line!
-			*avptr = NULL;
-		}
-		++avptr;
+		// adjust both string addresses
+		kv_strings += strlengths[i];
+		uv_strings += strlengths[i];
 	}
 
 	/*
-	** Now, we need to set up the initial context for the executing
+	** Next, we copy in argc, argv, and the pointers. The stack will
+	** look something like this:
+	**
+	**         kv_avptr
+	** kv_acptr  |
+	**     |     |
+	**     v     v
+	**    argc  argv  av[0] av[1] etc  NULL       str0   str1    etc.
+	**   [....][....][....][....] ... [0000] ... [......0......0.........]
+	**           |    ^ |    |                    ^      ^
+	**           |    | |    |                    |      |
+	**           ------ |    ---------------------|-------
+	**                  ---------------------------
+	*/
+
+	// copy in 'argc'
+	*kv_acptr = argc;
+
+	// copy in 'argv'
+	*kv_avptr++ = (uint32_t)uv_avptr;
+
+	// now, the argv entries themselves
+	for (int i = 0; i < argc; ++i) {
+		*kv_avptr++ = (uint32_t)uv_argv[i];
+	}
+
+	// and the trailing NULL
+	*kv_avptr = NULL;
+
+	/*
+	** Almost done!
+	**
+	** Now we need to set up the initial context for the executing
 	** process.
 	**
 	** When this process is dispatched, the context restore code will
@@ -618,27 +639,34 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args)
 	** the interrupt "returns" to the entry point of the process.
 	*/
 
-	// Locate the context save area on the stack.
-	context_t *ctx = ((context_t *)avptr) - 1;
+	// Locate the context save area on the stack by backup up one
+	// "context" from where the argc value is saved
+	context_t *kv_ctx = ((context_t *)kv_acptr) - 1;
+	uint32_t uv_ctx = (uint32_t)(((context_t *)uv_acptr) - 1);
 
 	/*
 	** We cleared the entire stack earlier, so all the context
 	** fields currently contain zeroes.  We now need to fill in
 	** all the important fields.
+	**
+	** Note: we don't need to set the ESP value for the process,
+	** as the 'popa' that restores the general registers doesn't
+	** actually restore ESP from the context area - it leaves it
+	** where it winds up.
 	*/
 
-	ctx->eflags = DEFAULT_EFLAGS; // IE enabled, PPL 0
-	ctx->eip = entry; // initial EIP
-	ctx->cs = GDT_CODE; // segment registers
-	ctx->ss = GDT_STACK;
-	ctx->ds = ctx->es = ctx->fs = ctx->gs = GDT_DATA;
+	kv_ctx->eflags = DEFAULT_EFLAGS; // IF enabled, IOPL 0
+	kv_ctx->eip = entry; // initial EIP
+	kv_ctx->cs = GDT_CODE; // segment registers
+	kv_ctx->ss = GDT_STACK;
+	kv_ctx->ds = kv_ctx->es = kv_ctx->fs = kv_ctx->gs = GDT_DATA;
 
 	/*
 	** Return the new context pointer to the caller.  It will be our
 	** caller's responsibility to schedule this process.
 	*/
 
-	return (ctx);
+	return ((context_t *)uv_ctx);
 }
 
 /*
@@ -809,10 +837,11 @@ int user_duplicate(pcb_t *new, pcb_t *old)
 ** @param ptab   A pointer to the program table entry to be loaded
 ** @param pcb    The PCB for the program being loaded
 ** @param args   The argument vector for the program
+** @param sys    Is the argument vector from kernel code?
 **
 ** @return the status of the load attempt
 */
-int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
+int user_load(prog_t *ptab, pcb_t *pcb, const char **args, bool_t sys)
 {
 	// NULL pointers are bad!
 	assert1(ptab != NULL);
@@ -820,7 +849,7 @@ int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
 	assert1(args != NULL);
 
 #if TRACING_USER
-	cio_printf("uload: prog '%s' pcb %08x args %08x\n",
+	cio_printf("Uload: prog '%s' pcb %08x args %08x\n",
 			   ptab->name[0] ? ptab->name : "?", (uint32_t)pcb, (uint32_t)args);
 #endif
 
@@ -832,8 +861,16 @@ int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
 			   (uint32_t)ptab, ptab->name, ptab->offset, ptab->size,
 			   ptab->flags);
 	cio_printf("      args %08x:", (uint32_t)args);
-	for (int i = 0; args[i] != NULL; ++i) {
-		cio_printf(" [%d] %s", i, args[i]);
+	if (sys) {
+		for (int i = 0; args[i] != NULL; ++i) {
+			cio_printf(" [%d] %s", i, args[i]);
+		}
+	} else {
+		char **kv_args = vm_uva2kva(pcb->pdir, args);
+		for (int i = 0; kv_args[i] != NULL; ++i) {
+			cio_printf(" [%d] %s", i,
+					   (char *)vm_uva2kva(pcb->pdir, kv_args[i]));
+		}
 	}
 	cio_printf("\n      pcb %08x (pid %u)\n", (uint32_t)pcb, pcb->pid);
 	dump_fhdr(hdr);
@@ -853,8 +890,8 @@ int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
 	// read all the program headers
 	int stat = read_phdrs(hdr, pcb);
 	if (stat != SUCCESS) {
-		// TODO figure out a better way to deal with this
-		PANIC(0, "user_load: phdr read failed");
+		cio_printf("Uload: read_phdrs('%s') returned %d\n", ptab->name, stat);
+		PANIC(0, "User_load: phdr read failed");
 	}
 
 	// next, set up the runtime stack - just like setting up loadable
@@ -862,12 +899,12 @@ int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
 	stat =
 		vm_add(pcb->pdir, true, false, (void *)USER_STACK, SZ_USTACK, NULL, 0);
 	if (stat != SUCCESS) {
-		// TODO yadda yadda...
-		PANIC(0, "user_load: vm_add failed");
+		cio_printf("Uload: vm_add('%s') stack returned %d\n", ptab->name, stat);
+		PANIC(0, "user_load: vm_add stack failed");
 	}
 
 	// set up the command-line arguments
-	pcb->context = stack_setup(pcb, hdr->e_entry, args);
+	pcb->context = stack_setup(pcb, hdr->e_entry, args, sys);
 
 	return SUCCESS;
 }
@@ -883,7 +920,7 @@ int user_load(prog_t *ptab, pcb_t *pcb, const char **args)
 void user_cleanup(pcb_t *pcb)
 {
 #if TRACING_USER
-	cio_printf("uclean: %08x\n", (uint32_t)pcb);
+	cio_printf("Uclean: %08x\n", (uint32_t)pcb);
 #endif
 
 	if (pcb == NULL) {
