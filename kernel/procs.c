@@ -963,16 +963,8 @@ void pcb_dump(const char *msg, register pcb_t *pcb, bool_t all)
 		return;
 	}
 
-	cio_printf(" %d", pcb->pid);
-
-	cio_printf(" %s", pcb->state >= N_STATES ? "???" : state_str[pcb->state]);
-#if 0
-	if( pcb->state >= N_STATES ) {
-		cio_puts( " ????" );
-	} else {
-		cio_printf( " %s", state_str[pcb->state] );
-	}
-#endif
+	cio_printf(" %d %s", pcb->pid,
+			   pcb->state >= N_STATES ? "???" : state_str[pcb->state]);
 
 	if (!all) {
 		// just printing IDs and states on one line
@@ -982,13 +974,6 @@ void pcb_dump(const char *msg, register pcb_t *pcb, bool_t all)
 	// now, the rest of the contents
 	cio_printf(" %s",
 			   pcb->priority >= N_PRIOS ? "???" : prio_str[pcb->priority]);
-#if 0
-	if( pcb->priority >= N_PRIOS ) {
-		cio_puts( " ???" );
-	} else {
-		cio_printf( " %s", prio_str[pcb->priority] );
-	}
-#endif
 
 	cio_printf(" ticks %u xit %d wake %08x\n", pcb->ticks, pcb->exit_status,
 			   pcb->wakeup);
@@ -1006,8 +991,6 @@ void pcb_dump(const char *msg, register pcb_t *pcb, bool_t all)
 
 /**
 ** pcb_queue_dump(msg,queue,contents)
-**
-** Dump the contents of the specified queue to the console
 **
 ** @param msg[in]       Optional message to print
 ** @param queue[in]     The queue to dump
@@ -1124,16 +1107,10 @@ void ptable_dump_counts(void)
 
 	cio_printf("Ptable: %u ***", unknown);
 	for (n = 0; n < N_STATES; ++n) {
-		cio_printf(" %u %s", nstate[n],
-				   state_str[n] != NULL ? state_str[n] : "???");
-#if 0
-		cio_printf( " %u ", nstate[n] );
-		if( state_str[n][0] != '\0' ) {
-			cio_puts( state_str[n] );
-		} else {
-			cio_puts( "???" );
+		if (nstate[n]) {
+			cio_printf(" %u %s", nstate[n],
+					   state_str[n] != NULL ? state_str[n] : "???");
 		}
-#endif
 	}
 	cio_putchar('\n');
 }

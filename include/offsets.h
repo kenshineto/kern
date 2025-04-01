@@ -3,8 +3,6 @@
 **
 ** GENERATED AUTOMATICALLY - DO NOT EDIT
 **
-** Creation date: Mon Mar 31 11:38:04 2025
-**
 ** This header file contains C Preprocessor macros which expand
 ** into the byte offsets needed to reach fields within structs
 ** used in the baseline system.  Should those struct declarations

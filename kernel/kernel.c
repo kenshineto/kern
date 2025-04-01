@@ -163,7 +163,7 @@ static void kreport(bool_t dtrace)
 	}
 #endif /* TRACE > 0 */
 
-	cio_puts("\n-------------------------------\n");
+	cio_putchar('\n');
 }
 
 #if defined(CONSOLE_STATS)
@@ -304,10 +304,10 @@ int main(void)
 	user_init(); // user code handling
 
 	cio_puts("\nModule initialization complete.\n");
-	cio_puts("-------------------------------\n");
 
 	// report our configuration options
 	kreport(true);
+	cio_puts("-------------------------------\n");
 
 	delay(DELAY_2_SEC);
 
@@ -378,21 +378,23 @@ int main(void)
 
 	sio_enable(SIO_RX);
 
+#if 0
 	// produce a "system state" report
-	cio_puts("System status: Queues ");
-	pcb_queue_dump("R", ready, true);
-	pcb_queue_dump("W", waiting, true);
-	pcb_queue_dump("S", sleeping, true);
-	pcb_queue_dump("Z", zombie, true);
-	pcb_queue_dump("I", sioread, true);
+	cio_puts( "System status: Queues " );
+	pcb_queue_dump( "R", ready, true );
+	pcb_queue_dump( "W", waiting, true );
+	pcb_queue_dump( "S", sleeping, true );
+	pcb_queue_dump( "Z", zombie, true );
+	pcb_queue_dump( "I", sioread, true );
 	ptable_dump_counts();
-	pcb_dump("Current: ", current, true);
+	pcb_dump( "Current: ", current, true );
 
-	delay(DELAY_3_SEC);
+	delay( DELAY_3_SEC );
 
-	vm_print(current->pdir, true, TwoLevel);
+	vm_print( current->pdir, true, TwoLevel );
 
-	delay(DELAY_3_SEC);
+	delay( DELAY_3_SEC );
+#endif
 
 	return 0;
 }

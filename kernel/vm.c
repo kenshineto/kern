@@ -95,13 +95,19 @@ static uint32_t ptcount(pte_t *ptr, bool_t dir)
 }
 
 // decode a PDE
-static void pde_prt(uint32_t level, uint32_t i, uint32_t entry)
+static void pde_prt(uint32_t level, uint32_t i, uint32_t entry, bool_t all)
 {
+	if (!IS_PRESENT(entry) && !all) {
+		return;
+	}
+
 	// indent
 	for (int n = 0; n <= level; ++n)
 		cio_puts("  ");
+
 	// line header
-	cio_printf("[%08x] %08x", i, entry);
+	cio_printf("[%03x] %08x", i, entry);
+
 	// perms
 	if (IS_LARGE(entry)) { // PS is 1
 		if ((entry & PDE_PAT) != 0)
@@ -122,43 +128,49 @@ static void pde_prt(uint32_t level, uint32_t i, uint32_t entry)
 		cio_puts(" U");
 	if ((entry & PDE_RW) != 0)
 		cio_puts(" W");
-	cio_puts((entry & PDE_P) != 0 ? " P" : "!P");
 
-	cio_printf(" --> %s %08x", IS_LARGE(entry) ? "Pg" : "PT", PDE_ADDR(entry));
+	// frame address
+	cio_printf(" P --> %s %08x\n", IS_LARGE(entry) ? "Pg" : "PT",
+			   PDE_ADDR(entry));
 }
 
 // decode a PTE
-static void pte_prt(uint32_t level, uint32_t i, uint32_t entry)
+static void pte_prt(uint32_t level, uint32_t i, uint32_t entry, bool_t all)
 {
+	if (!IS_PRESENT(entry) && !all) {
+		return;
+	}
+
 	// indent
 	for (int n = 0; n <= level; ++n)
 		cio_puts("  ");
-	// line header
-	cio_printf("[%08x] %08x", i, entry);
-	// perms
-	if ((entry & PDE_G) != 0)
-		cio_puts(" G");
-	if ((entry & PDE_PAT) != 0)
-		cio_puts(" PAT");
-	if ((entry & PDE_D) != 0)
-		cio_puts(" D");
-	if ((entry & PDE_A) != 0)
-		cio_puts(" A");
-	if ((entry & PDE_PCD) != 0)
-		cio_puts(" CD");
-	if ((entry & PDE_PWT) != 0)
-		cio_puts(" WT");
-	if ((entry & PDE_US) != 0)
-		cio_puts(" U");
-	if ((entry & PDE_RW) != 0)
-		cio_puts(" W");
-	cio_puts((entry & PDE_P) != 0 ? " P" : "!P");
 
-	cio_printf(" --> Pg %08x", PTE_ADDR(entry));
+	// line header
+	cio_printf("[%03x] %08x", i, entry);
+
+	// perms
+	if ((entry & PTE_G) != 0)
+		cio_puts(" G");
+	if ((entry & PTE_PAT) != 0)
+		cio_puts(" PAT");
+	if ((entry & PTE_D) != 0)
+		cio_puts(" D");
+	if ((entry & PTE_A) != 0)
+		cio_puts(" A");
+	if ((entry & PTE_PCD) != 0)
+		cio_puts(" CD");
+	if ((entry & PTE_PWT) != 0)
+		cio_puts(" WT");
+	if ((entry & PTE_US) != 0)
+		cio_puts(" U");
+	if ((entry & PTE_RW) != 0)
+		cio_puts(" W");
+
+	cio_printf(" P --> Pg %08x\n", PTE_ADDR(entry));
 }
 
 /**
-** Name:	pdump
+** Name:	ptdump
 **
 ** Recursive helper for table hierarchy dump.
 **
@@ -168,40 +180,44 @@ static void pte_prt(uint32_t level, uint32_t i, uint32_t entry)
 ** @param mode   How to display the entries
 */
 ATTR_UNUSED
-static void pdump(uint_t level, void *pt, bool_t dir, enum vmmode_e mode)
+static void ptdump(uint_t level, void *pt, bool_t dir, enum vmmode_e mode)
 {
 	pte_t *ptr = (pte_t *)pt;
 
-	cio_printf("? at 0x%08x:", dir ? "PDir" : "PTbl", (uint32_t)pt);
+	// indent two spaces per level
+	for (int n = 0; n < level; ++n)
+		cio_puts("  ");
+
+	cio_printf("%s at 0x%08x:", dir ? "PDir" : "PTbl", (uint32_t)pt);
 	uint32_t nums = ptcount(ptr, dir);
 	if (dir) {
-		cio_printf(" %u 4MB", (nums >> 16));
+		cio_printf(" 4MB=%u", (nums >> 16));
 	}
-	cio_printf(" %u P %u !P\n", nums & 0xffff,
+	cio_printf(" P=%u !P=%u\n", nums & 0xffff,
 			   N_PTE - ((nums >> 16) + (nums & 0xffff)));
 
 	for (uint32_t i = 0; i < (uint32_t)N_PTE; ++i) {
-		pte_t entry = *ptr;
-		if (dir) {
-			// this is a PDIR entry; could be either a 4MB
-			// page, or a PMT pointer
-			if (mode > Simple) {
-				pde_prt(level, i, entry);
-				cio_putchar('\n');
-				if (!IS_LARGE(entry)) {
-					pdump(level + 1, (void *)*ptr, false, mode);
+		pte_t entry = *ptr++;
+
+		// only process this entry if it's not empty
+		if (entry) {
+			if (dir) {
+				// this is a PDIR entry; could be either a 4MB
+				// page, or a PMT pointer
+				if (mode > Simple) {
+					pde_prt(level, i, entry, false);
+					if (!IS_LARGE(entry) && mode > OneLevel) {
+						ptdump(level + 1, (void *)P2V(PTE_ADDR(entry)), false,
+							   mode);
+					}
+				}
+			} else {
+				// just a PMT entry
+				if (mode > Simple) {
+					pte_prt(level, i, entry, false);
 				}
 			}
-		} else {
-			// just a PMT entry
-			if (mode > Simple) {
-				pte_prt(level, i, entry);
-				cio_putchar('\n');
-			}
 		}
-
-		// move to the next entry
-		++ptr;
 	}
 }
 
@@ -285,7 +301,7 @@ void vm_init(void)
 
 	// add the entries for the user address space
 	for (uint32_t addr = 0; addr < NUM_4MB; addr += SZ_PAGE) {
-		int stat = vm_map(kpdir, (void *)addr, addr, SZ_PAGE, PTE_RW);
+		int stat = vm_map(kpdir, (void *)addr, addr, SZ_PAGE, PTE_US | PTE_RW);
 		if (stat != SUCCESS) {
 			cio_printf("vm_init, map %08x->%08x failed, status %d\n", addr,
 					   addr, stat);
@@ -315,8 +331,8 @@ void vm_init(void)
 **
 ** Convert a user VA into a kernel address. Works for all addresses -
 ** if the address is a page address, the low-order nine bits will be
-** zeroes; otherwise, they is the offset into the page, which is
-** unchanged within the address spaces.
+** zeroes; otherwise, they are the offset into the page, which is
+** unchanged between the address spaces.
 **
 ** @param pdir  Pointer to the page directory to examine
 ** @param va    Virtual address to check
@@ -333,7 +349,7 @@ void *vm_uva2kva(pde_t *pdir, void *va)
 	pte_t entry = *pte;
 
 	// is this a valid address for the user?
-	if (IS_PRESENT(entry)) {
+	if (!IS_PRESENT(entry)) {
 		return NULL;
 	}
 
@@ -477,7 +493,7 @@ pte_t *vm_getpte(pde_t *pdir, const void *va, bool_t alloc)
 		// NOTE: the allocator is serving us virtual page addresses,
 		// so we must convert them to physical addresses for the
 		// table entries
-		*pde_ptr = V2P(ptbl) | PDE_P | PDE_RW;
+		*pde_ptr = V2P(ptbl) | PDE_P | PDE_RW | PDE_US;
 	}
 
 	// finally, return a pointer to the entry in the page table for this VA
@@ -630,7 +646,7 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 	if (wr) {
 		entrybase |= PTE_RW;
 	}
-	if (sys) {
+	if (!sys) {
 		entrybase |= PTE_US;
 	}
 
@@ -664,7 +680,7 @@ int vm_add(pde_t *pdir, bool_t wr, bool_t sys, void *va, uint32_t size,
 		memclr(page, SZ_PAGE);
 
 		// create the PTE for this frame
-		uint32_t entry = (uint32_t)(PTE_ADDR(V2P(page)) | entrybase);
+		uint32_t entry = (uint32_t)(V2P(PTE_ADDR(page)) | entrybase);
 		*pte = entry;
 
 		// copy data if we need to
@@ -711,6 +727,7 @@ void vm_free(pde_t *pdir)
 	pde_t *curr = pdir;
 	int nf = 0;
 	int nt = 0;
+
 	for (int i = 0; i < N_PDE; ++i) {
 		// the entry itself
 		pde_t entry = *curr;
@@ -721,14 +738,15 @@ void vm_free(pde_t *pdir)
 			assert(!IS_LARGE(entry));
 
 			// get the PMT pointer
-			pte_t *pmt = (pte_t *)PTE_ADDR(entry);
+			pte_t *pmt = (pte_t *)P2V(PTE_ADDR(entry));
 
 			// walk the PMT
 			for (int j = 0; j < N_PTE; ++j) {
+				pte_t tmp = *pmt;
 				// does this entry point to a frame?
-				if (IS_PRESENT(*pmt)) {
+				if (IS_PRESENT(tmp)) {
 					// yes - free the frame
-					km_page_free((void *)PTE_ADDR(*pmt));
+					km_page_free((void *)P2V(PTE_ADDR(tmp)));
 					++nf;
 					// mark it so we don't get surprised
 					*pmt = 0;
@@ -737,7 +755,7 @@ void vm_free(pde_t *pdir)
 				++pmt;
 			}
 			// now, free the PMT itself
-			km_page_free((void *)PDE_ADDR(entry));
+			km_page_free((void *)P2V(PDE_ADDR(entry)));
 			++nt;
 			*curr = 0;
 		}
@@ -875,7 +893,8 @@ int vm_uvmdup(pde_t *new, pde_t *old)
 
 			if (!IS_LARGE(entry)) {
 				// it's a 4KB page, so we need to duplicate the PMT
-				pte_t *newpt = (pte_t *)vm_pagedup((void *)PTE_ADDR(entry));
+				pte_t *newpt =
+					(pte_t *)vm_pagedup((void *)P2V(PTE_ADDR(entry)));
 				if (newpt == NULL) {
 					return E_NO_MEMORY;
 				}
@@ -883,7 +902,7 @@ int vm_uvmdup(pde_t *new, pde_t *old)
 				uint32_t perms = PERMS(entry);
 
 				// create the new PDE entry by replacing the frame #
-				entry = ((uint32_t)newpt) | perms;
+				entry = ((uint32_t)V2P(PTE_ADDR(newpt))) | perms;
 			}
 
 		} else {
@@ -919,8 +938,8 @@ void vm_print(void *pt, bool_t dir, enum vmmode_e mode)
 		return;
 	}
 
-	cio_printf("Starting at 0x%08x (%s):\n", (uint32_t)pt,
+	cio_printf(", starting at 0x%08x (%s):\n", (uint32_t)pt,
 			   dir ? "PDIR" : "PMT");
 
-	pdump(0, pt, dir, mode);
+	ptdump(1, pt, dir, mode);
 }

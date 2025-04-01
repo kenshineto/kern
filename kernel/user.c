@@ -510,45 +510,72 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args,
 	** Stack alignment rules for the SysV ABI i386 supplement dictate that
 	** the 'argc' parameter must be at an address that is a multiple of 16;
 	** see below for more information.
+	**
+	** Ultimately, this is what the bottom end of the stack will look like:
+	**
+	**         kvavptr
+	** kvacptr   |
+	**     |     |
+	**     v     v
+	**    argc  argv  av[0] av[1] etc  NULL       str0   str1    etc.
+	**   [....][....][....][....] ... [0000] ... [......0......0.........]
+	**           |    ^ |    |                    ^      ^
+	**           |    | |    |                    |      |
+	**           ------ |    ---------------------|-------
+	**                  ---------------------------
 	*/
 
 	/*
-	** Find the user stack. The PDE entry for user address space points
-	** to a page table for the first 4MB of the address space, but the
-	** "pointer" there a physical frame address.
+	** We need to find the last page of the user stack. Find the page
+	** table for the 4MB user address space. The physical address of its
+	** frame is in the first page directory entry. Extract that from the
+	** entry and convert it into a virtual address for the kernel to use.
 	*/
 	pde_t *kv_userpt = (pde_t *)P2V(PTE_ADDR(pcb->pdir[USER_PDE]));
 	assert(kv_userpt != NULL);
 
 	/*
 	** The final entries in that PMT are for the pages of the user stack.
-	** Grab the address of the frame for the last one.  (Again, we need
-	** to convert it to a virtual address we can use.)
+	** Grab the physical address of the frame for the last one.  (Again,
+	** we need to convert it to a virtual address we can use.)
 	*/
 
 	// the PMT entry for that page
 	pte_t pmt_entry = kv_userpt[USER_STK_LAST_PTE];
 	assert(IS_PRESENT(pmt_entry));
 
-	// kernel VA for the first byte following that page
-	uint8_t *kv_ptr = (uint8_t *)P2V(PTE_ADDR(pmt_entry) + SZ_PAGE);
-	assert(kv_ptr != NULL);
+	// user VA for the first byte of that page
+	uint32_t *uvptr = (uint32_t *)USER_STACK_P2;
 
-	// user VA for the first byte following that page
-	uint32_t *uv_ptr = (uint32_t *)(USER_STACK_P2 + SZ_PAGE);
-
-	// Pointers to where the arg strings should be filled in.
-	uint32_t kv_strings = ((uint32_t)kv_ptr) - argbytes;
-	uint32_t uv_strings = ((uint32_t)uv_ptr) - argbytes;
-
-	// back the pointers up to the nearest word boundary; because we're
-	// moving toward location 0, the nearest word boundary is just the
-	// next smaller address whose low-order two bits are zeroes
-	kv_strings &= MOD4_MASK;
-	uv_strings &= MOD4_MASK;
+	// convert that address to a kernel VA
+	uint32_t *kvptr = (uint32_t *)vm_uva2kva(pcb->pdir, (void *)uvptr);
 
 	/*
-	** Next, we need to copy over the data. Start by determining where
+	** Move these pointers to where the string area will begin. We
+	** will then back up to the next lower multiple-of-four address.
+	*/
+
+	uint32_t uvstrptr = ((uint32_t)uvptr) + SZ_PAGE - argbytes;
+	uvstrptr &= MOD4_MASK;
+
+	uint32_t kvstrptr = ((uint32_t)kvptr) + SZ_PAGE - argbytes;
+	kvstrptr &= MOD4_MASK;
+
+	// Copy over the argv strings, remembering where each string begins
+	for (int i = 0; i < argc; ++i) {
+		// copy the string using kernel addresses
+		strcpy((char *)kvstrptr, kv_args[i]);
+
+		// remember the user address where this string went
+		uv_argv[i] = (char *)uvstrptr;
+
+		// adjust both string addresses
+		kvstrptr += strlengths[i];
+		uvstrptr += strlengths[i];
+	}
+
+	/*
+	** Next, we need to copy over the other data. Start by determining
 	** where 'argc' should go.
 	**
 	** Stack alignment is controlled by the SysV ABI i386 supplement,
@@ -564,68 +591,37 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args,
 	** Isn't technical documentation fun?  Ultimately, this means that
 	** the first parameter to main() should be on the stack at an address
 	** that is a multiple of 16. In our case, that is 'argc'.
-	**
+	*/
+
+	/*
 	** The space needed for argc, argv, and the argv array itself is
 	** argc + 3 words (argc+1 for the argv entries, plus one word each
-	** for argc and argv).  We back up that much from 'strings'.
+	** for argc and argv).  We back up that much from the string area.
 	*/
 
 	int nwords = argc + 3;
-	uint32_t *kv_acptr = ((uint32_t *)kv_strings) - nwords;
-	uint32_t *uv_acptr = ((uint32_t *)uv_strings) - nwords;
+	uint32_t *kvacptr = ((uint32_t *)kvstrptr) - nwords;
+	uint32_t *uvacptr = ((uint32_t *)uvstrptr) - nwords;
 
 	// back these up to multiple-of-16 addresses for stack alignment
-	kv_acptr = (uint32_t *)(((uint32_t)kv_acptr) & MOD16_MASK);
-	uv_acptr = (uint32_t *)(((uint32_t)uv_acptr) & MOD16_MASK);
-
-	// the argv location
-	uint32_t *kv_avptr = kv_acptr + 1;
-
-	// the user address for the first argv entry
-	uint32_t *uv_avptr = uv_acptr + 2;
-
-	// Copy over the argv strings.
-	for (int i = 0; i < argc; ++i) {
-		// copy the string using kernel addresses
-		strcpy((char *)kv_strings, kv_args[i]);
-
-		// remember the user address where this string went
-		uv_argv[i] = (char *)uv_strings;
-
-		// adjust both string addresses
-		kv_strings += strlengths[i];
-		uv_strings += strlengths[i];
-	}
-
-	/*
-	** Next, we copy in argc, argv, and the pointers. The stack will
-	** look something like this:
-	**
-	**         kv_avptr
-	** kv_acptr  |
-	**     |     |
-	**     v     v
-	**    argc  argv  av[0] av[1] etc  NULL       str0   str1    etc.
-	**   [....][....][....][....] ... [0000] ... [......0......0.........]
-	**           |    ^ |    |                    ^      ^
-	**           |    | |    |                    |      |
-	**           ------ |    ---------------------|-------
-	**                  ---------------------------
-	*/
+	kvacptr = (uint32_t *)(((uint32_t)kvacptr) & MOD16_MASK);
+	uvacptr = (uint32_t *)(((uint32_t)uvacptr) & MOD16_MASK);
 
 	// copy in 'argc'
-	*kv_acptr = argc;
+	*kvacptr = argc;
 
-	// copy in 'argv'
-	*kv_avptr++ = (uint32_t)uv_avptr;
+	// 'argv' immediately follows 'argc', and 'argv[0]' immediately
+	// follows 'argv'
+	uint32_t *kvavptr = kvacptr + 2;
+	*(kvavptr - 1) = (uint32_t)kvavptr;
 
 	// now, the argv entries themselves
 	for (int i = 0; i < argc; ++i) {
-		*kv_avptr++ = (uint32_t)uv_argv[i];
+		*kvavptr++ = (uint32_t)uv_argv[i];
 	}
 
 	// and the trailing NULL
-	*kv_avptr = NULL;
+	*kvavptr = NULL;
 
 	/*
 	** Almost done!
@@ -641,8 +637,8 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args,
 
 	// Locate the context save area on the stack by backup up one
 	// "context" from where the argc value is saved
-	context_t *kv_ctx = ((context_t *)kv_acptr) - 1;
-	uint32_t uv_ctx = (uint32_t)(((context_t *)uv_acptr) - 1);
+	context_t *kvctx = ((context_t *)kvacptr) - 1;
+	uint32_t uvctx = (uint32_t)(((context_t *)uvacptr) - 1);
 
 	/*
 	** We cleared the entire stack earlier, so all the context
@@ -655,18 +651,18 @@ static context_t *stack_setup(pcb_t *pcb, uint32_t entry, const char **args,
 	** where it winds up.
 	*/
 
-	kv_ctx->eflags = DEFAULT_EFLAGS; // IF enabled, IOPL 0
-	kv_ctx->eip = entry; // initial EIP
-	kv_ctx->cs = GDT_CODE; // segment registers
-	kv_ctx->ss = GDT_STACK;
-	kv_ctx->ds = kv_ctx->es = kv_ctx->fs = kv_ctx->gs = GDT_DATA;
+	kvctx->eflags = DEFAULT_EFLAGS; // IF enabled, IOPL 0
+	kvctx->eip = entry; // initial EIP
+	kvctx->cs = GDT_CODE; // segment registers
+	kvctx->ss = GDT_STACK;
+	kvctx->ds = kvctx->es = kvctx->fs = kvctx->gs = GDT_DATA;
 
 	/*
-	** Return the new context pointer to the caller.  It will be our
-	** caller's responsibility to schedule this process.
+	** Return the new context pointer to the caller as a user
+	** space virtual address.
 	*/
 
-	return ((context_t *)uv_ctx);
+	return ((context_t *)uvctx);
 }
 
 /*
