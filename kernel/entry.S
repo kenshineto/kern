@@ -8,6 +8,22 @@
 	.extern main
 	.extern GDT
 
+	.section .multiboot
+	.align 8
+
+	# multiboot header
+mb_start:
+	# magic
+	.long 0xe85250d6
+	.long 0
+	.long mb_end - mb_start
+	.long 0x100000000 - (0xe85250d6 + (mb_end - mb_start))
+	# null
+	.short 0
+	.short 0
+	.long 8
+mb_end:
+
 	.section .bss
 
 	# kernel page tables
@@ -49,29 +65,35 @@ kern_stack_end:
 
 	# kernel gdt (long mode)
 GDT:
-	GDT.Null:
-		.quad 0
+	# Null Segment
+	.equ GDT.Null, . - GDT
+	.quad 0
 
-	GDT.Code:
-		.byte 0
-		.byte PRESENT | NOT_SYS | EXEC | RW
-		.byte GRAN_4K | LONG_MODE | 0xF
-		.byte 0
+	# Code segment
+	.equ GDT.Code, . - GDT
+	.long 0xFFFF
+	.byte 0
+	.byte PRESENT | NOT_SYS | EXEC | RW
+	.byte GRAN_4K | LONG_MODE | 0xF
+	.byte 0
 
-	GDT.Data:
-		.long 0xFFFF
-		.byte 0
-		.byte PRESENT | NOT_SYS | RW
-		.byte GRAN_4K | SZ_32 | 0xF
-		.byte 0
+	# Data segment
+	.equ GDT.Data, . - GDT
+	.long 0xFFFF
+	.byte 0
+	.byte PRESENT | NOT_SYS | RW
+	.byte GRAN_4K | SZ_32 | 0xF
+	.byte 0
 
-	GDT.TSS:
-		.long 0x00000068
-		.long 0x00CF8900
+	# TSS segment
+	.equ GDT.TSS, . - GDT
+	.long 0x00000068
+	.long 0x00CF8900
 
-	GDT.Pointer:
-		.short . - GDT - 1
-		.quad GDT - .
+	# GDT Pointer
+	.equ GDT.Pointer, .
+	.word . - GDT - 1
+	.quad GDT
 
 	.section .text
 	.code32
@@ -91,7 +113,7 @@ _start:
 	push 	%eax
 
 	# zero out kernel page table
-	movl	$0x1000, %edi    # kernel is loaded at 0x1000
+	movl	$0x1000, %edi    # pml4 located at 0x1000
 	movl	%edi, %cr3
 	xorl	%eax, %eax
 	movl	$4096, %ecx      # zero 4096 pages
@@ -106,15 +128,15 @@ _start:
 	movl	$kernel_pt_0 + 3, (%edi)        # Set the uint32_t at the desination index to 0x4003.
 	movl	$kernel_pt_0, %edi              # Add 0x1000 to the desination index.
 
-	movl	$0x00000003, %ebx       # Entry value to set
-	movl	$512, %ecx              # Loop count
+	movl	$0x03, %ebx         # Entry value to set
+	movl	$512, %ecx          # Loop count
 
-set_entry:
+_start.SetEntry:
 	# set entires in mapping
 	movl	%ebx, (%edi)            # Set the uint32_t at the desination index to the B-register
 	addl	$0x1000, %ebx           # Add 0x1000 to the B-register
 	addl	$8, %edi                # Add eight to the desination index
-	loop	set_entry
+	loop	_start.SetEntry
 
 	# enable page address extension
 	movl	%cr4, %eax
@@ -122,7 +144,7 @@ set_entry:
 	movl	%eax, %cr4
 
 	# enable long mode
-	movl	$0xC0000080, %eax
+	movl	$0xC0000080, %ecx
 	rdmsr
 	orl		$(1 << 8), %eax
 	wrmsr
@@ -134,7 +156,7 @@ set_entry:
 
 	# load gdt
 	lgdt	GDT.Pointer
-	ljmp	$16, $code64
+	ljmp	$GDT.Code, $code64
 
 	.code64
 code64:
@@ -148,7 +170,6 @@ code64:
 	pop		%rdi            # pop possible multiboot header
 	pop		%rsi
 
-	sti
 	call	main
 	cli
 
