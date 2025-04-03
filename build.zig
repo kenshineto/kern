@@ -25,9 +25,16 @@ const boot_src = &[_][]const u8{"boot/boot.S"};
 const kernel_src = &[_][]const u8{
     "kernel/entry.S", // must be first
     "kernel/kernel.c",
+    "kernel/io/io.c",
+    "kernel/io/panic.c",
+    "kernel/memory/memory.c",
+    "kernel/memory/paging.c",
+    "kernel/memory/physalloc.c",
+    "kernel/memory/virtalloc.c",
 };
 
 const lib_src = &[_][]const u8{
+    "lib/alloc.c",
     "lib/atox.c",
     "lib/bound.c",
     "lib/btoa.c",
@@ -38,8 +45,11 @@ const lib_src = &[_][]const u8{
     "lib/itoc.c",
     "lib/memcmp.c",
     "lib/memcpy.c",
+    "lib/memcpyv.c",
     "lib/memmove.c",
+    "lib/memmovev.c",
     "lib/memset.c",
+    "lib/memsetv.c",
     "lib/printf.c",
     "lib/stpcpy.c",
     "lib/stpncpy.c",

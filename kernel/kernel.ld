@@ -4,6 +4,8 @@ SECTIONS
 {
 	. = 1M;
 
+	kernel_start = .;
+
 	. = ALIGN(0x1000);
 
 	.boot : {
@@ -40,4 +42,6 @@ SECTIONS
 		*(.eh_frame .eh_frame_hdr)
 		*(.note.GNU-stack .note.gnu.property .comment)
 	}
+
+	kernel_end = .;
 }
