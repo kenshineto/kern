@@ -5,7 +5,7 @@
 
 UNAME := $(shell uname)
 
-QEMU = qemu-system-i386
+QEMU = qemu-system-x86_64
 QEMUOPTS = -drive file=bin/disk.img,index=0,media=disk,format=raw \
 		   -no-reboot \
 		   -serial mon:stdio \
@@ -44,8 +44,8 @@ bin/user.img: build
 	cd bin && \
 		./mkblob init idle prog* shell
 
-bin/disk.img: bin/kernel.bin bin/boot.bin bin/user.img
+bin/disk.img: bin/kernel.bin bin/boot.bin
 	cd bin && \
 		./BuildImage -d usb -o disk.img -b boot.bin \
-		kernel.bin 0x10000 user.img 0x30000
+		kernel.bin 0x10000
 

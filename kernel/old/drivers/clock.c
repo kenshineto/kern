@@ -1,11 +1,3 @@
-/**
-** @file	clock.c
-**
-** @author	CSCI-452 class of 20245
-**
-** @brief	Clock module implementation
-*/
-
 #define KERNEL_SRC
 
 #include <common.h>

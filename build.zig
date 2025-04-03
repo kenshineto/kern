@@ -20,59 +20,38 @@ const c_flags = &[_][]const u8{
     "-ggdb",
 };
 
-const ld_flags = &[_][]const u8{
-    "-nmagic",
-    "-nostdlib",
-    "--no-warn-rwx-segments",
-};
-
 const boot_src = &[_][]const u8{"boot/boot.S"};
 
 const kernel_src = &[_][]const u8{
-    "kernel/startup.S", // must be first
-    "kernel/cio.c",
-    "kernel/clock.c",
-    "kernel/isrs.S",
+    "kernel/entry.S", // must be first
     "kernel/kernel.c",
-    "kernel/kmem.c",
-    "kernel/list.c",
-    "kernel/procs.c",
-    "kernel/sio.c",
-    "kernel/support.c",
-    "kernel/syscalls.c",
-    "kernel/user.c",
-    "kernel/vm.c",
-    "kernel/vmtables.c",
-    "lib/klibc.c",
 };
 
 const lib_src = &[_][]const u8{
-    "lib/blkmov.c",
+    "lib/atox.c",
     "lib/bound.c",
-    "lib/cvtdec0.c",
-    "lib/cvtdec.c",
-    "lib/cvthex.c",
-    "lib/cvtoct.c",
-    "lib/cvtuns0.c",
-    "lib/cvtuns.c",
-    "lib/memclr.c",
+    "lib/btoa.c",
+    "lib/ctoi.c",
+    "lib/delay.c",
+    "lib/isdigit.c",
+    "lib/isspace.c",
+    "lib/itoc.c",
+    "lib/memcmp.c",
     "lib/memcpy.c",
     "lib/memmove.c",
     "lib/memset.c",
-    "lib/pad.c",
-    "lib/padstr.c",
-    "lib/sprint.c",
-    "lib/str2int.c",
+    "lib/printf.c",
+    "lib/stpcpy.c",
+    "lib/stpncpy.c",
     "lib/strcat.c",
-    "lib/strcmp.c",
     "lib/strcpy.c",
     "lib/strlen.c",
-};
-
-const ulib_src = &[_][]const u8{
-    "lib/entry.S",
-    "lib/ulibc.c",
-    "lib/ulibs.S",
+    "lib/strncmp.c",
+    "lib/strncpy.c",
+    "lib/strtoux.c",
+    "lib/strtox.c",
+    "lib/uxtoa.c",
+    "lib/xtoa.c",
 };
 
 const Prog = struct {
@@ -95,114 +74,6 @@ const util_progs = &[_]Prog{
     Prog{
         .name = "BuildImage",
         .source = &[_][]const u8{"util/BuildImage.c"},
-    },
-};
-
-const user_progs = &[_]Prog{
-    // idle
-    Prog{
-        .name = "idle",
-        .source = &[_][]const u8{"user/idle.c"},
-    },
-    // init
-    Prog{
-        .name = "init",
-        .source = &[_][]const u8{"user/init.c"},
-    },
-    // progABC
-    Prog{
-        .name = "progABC",
-        .source = &[_][]const u8{"user/progABC.c"},
-    },
-    // progDE
-    Prog{
-        .name = "progDE",
-        .source = &[_][]const u8{"user/progDE.c"},
-    },
-    // progFG
-    Prog{
-        .name = "progFG",
-        .source = &[_][]const u8{"user/progFG.c"},
-    },
-    // progH
-    Prog{
-        .name = "progH",
-        .source = &[_][]const u8{"user/progH.c"},
-    },
-    // progI
-    Prog{
-        .name = "progI",
-        .source = &[_][]const u8{"user/progI.c"},
-    },
-    // progJ
-    Prog{
-        .name = "progJ",
-        .source = &[_][]const u8{"user/progJ.c"},
-    },
-    // progKL
-    Prog{
-        .name = "progKL",
-        .source = &[_][]const u8{"user/progKL.c"},
-    },
-    // progKL
-    Prog{
-        .name = "progKL",
-        .source = &[_][]const u8{"user/progKL.c"},
-    },
-    // progMN
-    Prog{
-        .name = "progMN",
-        .source = &[_][]const u8{"user/progMN.c"},
-    },
-    // progP
-    Prog{
-        .name = "progP",
-        .source = &[_][]const u8{"user/progP.c"},
-    },
-    // progQ
-    Prog{
-        .name = "progQ",
-        .source = &[_][]const u8{"user/progQ.c"},
-    },
-    // progR
-    Prog{
-        .name = "progR",
-        .source = &[_][]const u8{"user/progR.c"},
-    },
-    // progS
-    Prog{
-        .name = "progS",
-        .source = &[_][]const u8{"user/progS.c"},
-    },
-    // progTUV
-    Prog{
-        .name = "progTUV",
-        .source = &[_][]const u8{"user/progTUV.c"},
-    },
-    // progW
-    Prog{
-        .name = "progW",
-        .source = &[_][]const u8{"user/progW.c"},
-    },
-    // progX
-    Prog{
-        .name = "progX",
-        .source = &[_][]const u8{"user/progX.c"},
-    },
-    // progY
-    Prog{
-        .name = "progY",
-        .source = &[_][]const u8{"user/progY.c"},
-    },
-    // progZ
-    Prog{
-        .name = "progZ",
-        .source = &[_][]const u8{"user/progZ.c"},
-    },
-    // shell
-    Prog{
-        .name = "shell",
-        .source = &[_][]const u8{"user/shell.c"},
     },
 };
 
@@ -231,6 +102,7 @@ const BuildKernBinaryOpts = struct {
     linker: ?[]const u8 = null,
     entry: []const u8 = "_start",
     strip: bool = false,
+    include: ?[]const u8 = null,
 };
 
 fn build_kern_binary(b: *std.Build, opts: BuildKernBinaryOpts) void {
@@ -242,8 +114,13 @@ fn build_kern_binary(b: *std.Build, opts: BuildKernBinaryOpts) void {
         .strip = opts.strip,
     });
 
-    // add include path
+    // add include paths
     exe.addIncludePath(b.path("include/"));
+    if (opts.include != null) {
+        exe.addIncludePath(b.path(opts.include.?));
+    }
+
+    // set entry
     exe.entry = .{ .symbol_name = opts.entry };
 
     // add asm and c source files
@@ -297,55 +174,45 @@ fn build_native_binary(b: *std.Build, opts: BuildNativeBinaryOpts) void {
 pub fn build(b: *std.Build) !void {
 
     // context
-    const target = b.standardTargetOptions(.{
-        .default_target = .{
-            .cpu_arch = std.Target.Cpu.Arch.x86,
-            .os_tag = std.Target.Os.Tag.freestanding,
-            .abi = std.Target.Abi.gnu,
-            .ofmt = std.Target.ObjectFormat.elf,
-        },
+    const target32 = std.Build.resolveTargetQuery(b, .{
+        .cpu_arch = std.Target.Cpu.Arch.x86,
+        .os_tag = std.Target.Os.Tag.freestanding,
+        .abi = std.Target.Abi.gnu,
+        .ofmt = std.Target.ObjectFormat.elf,
+    });
+    const target64 = std.Build.resolveTargetQuery(b, .{
+        .cpu_arch = std.Target.Cpu.Arch.x86_64,
+        .os_tag = std.Target.Os.Tag.freestanding,
+        .abi = std.Target.Abi.gnu,
+        .ofmt = std.Target.ObjectFormat.elf,
     });
     const optimize = std.builtin.OptimizeMode.ReleaseFast;
 
     // boot
     build_kern_binary(b, .{
         .name = "boot",
-        .target = target,
+        .target = target32,
         .optimize = optimize,
         .sources = &.{
             boot_src,
         },
         .linker = "boot/boot.ld",
         .entry = "bootentry",
+        .include = "boot/include",
     });
 
     // kernel
     build_kern_binary(b, .{
         .name = "kernel",
-        .target = target,
+        .target = target64,
         .optimize = optimize,
         .sources = &.{
             kernel_src,
             lib_src,
         },
         .linker = "kernel/kernel.ld",
+        .include = "kernel/include",
     });
-
-    // user_progs
-    for (user_progs) |prog| {
-        build_kern_binary(b, .{
-            .name = prog.name,
-            .target = target,
-            .optimize = optimize,
-            .sources = &.{
-                prog.source,
-                lib_src,
-                ulib_src,
-            },
-            .linker = "user/user.ld",
-            .strip = true,
-        });
-    }
 
     // util_progs
     for (util_progs) |prog| {

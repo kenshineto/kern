@@ -1,6 +1,7 @@
 -c
 -std=c99
 -Iinclude
+-Ikernel/include
 -ffreestanding
 -fno-builtin
 -Wall
