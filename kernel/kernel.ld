@@ -4,9 +4,13 @@ SECTIONS
 {
 	. = 1M;
 
-	.text : {
-		*(.text .stub .text.* .gnu.linkonce.t.*)
+	. = ALIGN(0x1000);
+
+	.boot : {
+		*(.multiboot)
 	}
+
+	. = ALIGN(0x1000);
 
 	.rodata : {
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
@@ -16,6 +20,12 @@ SECTIONS
 
 	.data : {
 		*(.data .data.*)
+	}
+
+	. = ALIGN(0x1000);
+
+	.text : {
+		*(.text .stub .text.* .gnu.linkonce.t.*)
 	}
 
 	. = ALIGN(0x1000);
