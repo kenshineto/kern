@@ -30,8 +30,8 @@
 #define ASM_SRC
 
 #include <bootstrap.h>
-#include <x86/bios.h>
-#include <x86/arch.h>
+#include <bios.h>
+#include <arch.h>
 
 /*
 ** Symbol for locating the beginning of the code.
