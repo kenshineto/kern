@@ -1,9 +1,9 @@
 #include <string.h>
 
-char *strcpy(char *restrict dest, const char *restrict src)
+char *stpcpy(char *restrict dest, const char *restrict src)
 {
 	char *d = dest;
 	for (; (*d = *src); d++, src++)
 		;
-	return dest;
+	return d;
 }
