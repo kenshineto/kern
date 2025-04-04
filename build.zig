@@ -24,7 +24,12 @@ const boot_src = &[_][]const u8{"boot/boot.S"};
 
 const kernel_src = &[_][]const u8{
     "kernel/entry.S", // must be first
-    "kernel/kernel.c",
+    "kernel/kernel.c", // main function
+    "kernel/cpu/cpu.c",
+    "kernel/cpu/fpu.c",
+    "kernel/cpu/idt.c",
+    "kernel/cpu/idt.S",
+    "kernel/cpu/pic.c",
     "kernel/io/io.c",
     "kernel/io/panic.c",
     "kernel/memory/memory.c",

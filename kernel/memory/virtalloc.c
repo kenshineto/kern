@@ -103,7 +103,7 @@ void virtaddr_init(void)
 		.is_alloc = false,
 		.is_used = true,
 	};
-	memset(bootstrap_nodes, 0, sizeof(bootstrap_nodes));
+	memsetv(bootstrap_nodes, 0, sizeof(bootstrap_nodes));
 	bootstrap_nodes[0] = init;
 	start_node = &bootstrap_nodes[0];
 }

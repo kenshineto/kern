@@ -573,7 +573,7 @@ void free_pages(void *virt)
 	unmap_pages(kernel_pml4, virt, pages);
 }
 
-int kload_page(void *virt_addr)
+int load_page(void *virt_addr)
 {
 	volatile struct pte *page = get_page(kernel_pml4, virt_addr);
 	if (page == NULL)

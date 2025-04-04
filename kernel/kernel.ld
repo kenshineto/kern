@@ -6,8 +6,6 @@ SECTIONS
 
 	kernel_start = .;
 
-	. = ALIGN(0x1000);
-
 	.boot : {
 		*(.multiboot)
 	}
@@ -16,12 +14,6 @@ SECTIONS
 
 	.rodata : {
 		*(.rodata .rodata.* .gnu.linkonce.r.*)
-	}
-
-	. = ALIGN(0x1000);
-
-	.data : {
-		*(.data .data.*)
 	}
 
 	. = ALIGN(0x1000);
