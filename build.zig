@@ -35,6 +35,7 @@ const kernel_src = &[_][]const u8{
     "kernel/drivers/pci.c",
     "kernel/drivers/tty.c",
     "kernel/drivers/uart.c",
+    "kernel/fs/fs.c",
     "kernel/lib/fputc.c",
     "kernel/lib/panic.c",
     "kernel/mboot/mboot.c",
