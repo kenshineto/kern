@@ -2,6 +2,7 @@
 #include <comus/memory.h>
 #include <comus/mboot.h>
 #include <comus/drivers.h>
+#include <comus/fs.h>
 #include <lib.h>
 #include <stdio.h>
 #include <time.h>
@@ -24,6 +25,9 @@ void main(long magic, volatile void *mboot)
 
 	// initalize devices
 	drivers_init();
+
+	// load file systems
+	fs_init();
 
 	// print current time
 	char date[40];

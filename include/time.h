@@ -12,23 +12,23 @@
 #include <stddef.h>
 
 typedef struct {
-    int sec;    /// Seconds [0,59]
-    int min;    /// Minutes [0,59]
-    int hour;   /// Hour [0,23]
-    int mday;   /// Day of month [1,31]
-    int mon;    /// Month of year [0,11]
-    int year;   /// Years since 1900
-    int wday;   /// Day of week [0,6] (Sunday = 0)
-    int yday;   /// Day of year [0,365]
-    int yn;     /// Year number [0,99]
-    int cen;    /// Century [19,20]
-    int leap;   /// If year is a leap year (True == 1)
+	int sec; /// Seconds [0,59]
+	int min; /// Minutes [0,59]
+	int hour; /// Hour [0,23]
+	int mday; /// Day of month [1,31]
+	int mon; /// Month of year [0,11]
+	int year; /// Years since 1900
+	int wday; /// Day of week [0,6] (Sunday = 0)
+	int yday; /// Day of year [0,365]
+	int yn; /// Year number [0,99]
+	int cen; /// Century [19,20]
+	int leap; /// If year is a leap year (True == 1)
 } time_t;
 
 typedef enum {
-    TZ_UTC = 0,
-    TZ_EST = -5,
-    TZ_EDT = -4,
+	TZ_UTC = 0,
+	TZ_EST = -5,
+	TZ_EDT = -4,
 } timezone_t;
 
 /**

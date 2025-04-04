@@ -18,9 +18,10 @@ static uint32_t x, y;
 static uint8_t fg, bg;
 
 // blank color
-const uint16_t blank = (uint16_t) 0 | 0 << 12 | 15 << 8;
+const uint16_t blank = (uint16_t)0 | 0 << 12 | 15 << 8;
 
-static void term_clear_line(int line) {
+static void term_clear_line(int line)
+{
 	if (line < 0 || line >= height)
 		return;
 	for (uint8_t x = 0; x < width; x++) {
@@ -29,29 +30,33 @@ static void term_clear_line(int line) {
 	}
 }
 
-static void term_clear(void) {
-    for (uint8_t y = 0; y < height; y++)
-        term_clear_line(y);
+static void term_clear(void)
+{
+	for (uint8_t y = 0; y < height; y++)
+		term_clear_line(y);
 }
 
-static void term_scroll(int lines) {
+static void term_scroll(int lines)
+{
 	cli();
 	y -= lines;
-	if (!lines) return;
+	if (!lines)
+		return;
 	if (lines >= height || lines <= -height) {
 		term_clear();
 	} else if (lines > 0) {
 		memmovev(buffer, buffer + lines * width, 2 * (height - lines) * width);
 		term_clear_line(height - lines);
 	} else {
-		memmovev(buffer + lines * width, buffer + lines, (height + lines) * width);
+		memmovev(buffer + lines * width, buffer + lines,
+				 (height + lines) * width);
 	}
 	sti();
 }
 
 void tty_init(void)
 {
-	buffer = mapaddr((void*)VGA_ADDR, width * height * sizeof(uint16_t));
+	buffer = mapaddr((void *)VGA_ADDR, width * height * sizeof(uint16_t));
 	x = 0;
 	y = 0;
 	fg = 15;
@@ -99,7 +104,7 @@ void tty_out(char c)
 	// set cursor position on screen
 	const uint16_t pos = y * width + x;
 	outb(0x3D4, 0x0F);
-	outb(0x3D5, (uint8_t) (pos & 0xFF));
+	outb(0x3D5, (uint8_t)(pos & 0xFF));
 	outb(0x3D4, 0x0E);
-	outb(0x3D5, (uint8_t) ((pos >> 8) & 0xFF));
+	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 }

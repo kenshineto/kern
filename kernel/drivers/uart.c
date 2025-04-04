@@ -3,12 +3,14 @@
 
 #define PORT 0x3F8
 
-int uart_init(void) {
+int uart_init(void)
+{
 	outb(PORT + 1, 0x00); // disable interrupts
 	outb(PORT + 3, 0x80); // enable DLAB (divisor latch access bit)
 	outb(PORT + 0, 0x03); // (lo) Set baud divisor to 3 38400 baud
 	outb(PORT + 1, 0x00); // (hi)
-	outb(PORT + 3, 0x03); // disable DLAB, set 8 bits per word, one stop bit, no parity
+	outb(PORT + 3,
+		 0x03); // disable DLAB, set 8 bits per word, one stop bit, no parity
 	outb(PORT + 2, 0xC7); // enable and clear FIFOs, set to maximum threshold
 	outb(PORT + 4, 0x0B); // ???
 	outb(PORT + 4, 0x1E); // set in loopback mode for test
@@ -25,19 +27,24 @@ int uart_init(void) {
 	return 0;
 }
 
-uint8_t uart_in(void) {
+uint8_t uart_in(void)
+{
 	// wait for data to be available
-	while ((inb(PORT + 5) & 0x01) == 0);
+	while ((inb(PORT + 5) & 0x01) == 0)
+		;
 	return inb(PORT);
 }
 
-void uart_out(uint8_t ch) {
+void uart_out(uint8_t ch)
+{
 	// wait for output to be free
-	while ((inb(PORT + 5) & 0x20) == 0);
+	while ((inb(PORT + 5) & 0x20) == 0)
+		;
 	outb(PORT, ch);
 }
 
-void uart_out_str(const char *str) {
+void uart_out_str(const char *str)
+{
 	while (*str)
 		uart_out(*str++);
 }

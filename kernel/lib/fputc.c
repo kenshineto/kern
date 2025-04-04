@@ -8,4 +8,3 @@ void fputc(FILE *stream, char c)
 	uart_out(c);
 	tty_out(c);
 }
-

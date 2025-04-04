@@ -1,7 +1,7 @@
-#include "stdlib.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
+#include <comus/cpu.h>
 
 #include "idt.h"
 #include "pic.h"
@@ -70,7 +70,7 @@ void idt_init(void)
 	__asm__ volatile("lidt %0" : : "m"(idtr));
 }
 
-static void isr_print_regs(struct isr_regs *regs)
+static void isr_print_regs(regs_t *regs)
 {
 	printf("rax: %#016lx (%lu)\n", regs->rax, regs->rax);
 	printf("rbx: %#016lx (%lu)\n", regs->rbx, regs->rbx);
@@ -89,44 +89,43 @@ static void isr_print_regs(struct isr_regs *regs)
 	printf("r14: %#016lx (%lu)\n", regs->r14, regs->r14);
 	printf("r15: %#016lx (%lu)\n", regs->r15, regs->r15);
 	printf("rip: %#016lx (%lu)\n", regs->rip, regs->rip);
-	printf("rflags: %#016lx (%lu)\n", regs->rflags, regs->rflags);
-	struct rflags *rflags = (struct rflags *)regs->rflags;
+	printf("rflags: %#016lx (%lu)\n", (uint64_t)regs->rflags.raw, (uint64_t)regs->rflags.raw);
 	puts("rflags: ");
-	if (rflags->cf)
+	if (regs->rflags.cf)
 		puts("CF ");
-	if (rflags->pf)
+	if (regs->rflags.pf)
 		puts("PF ");
-	if (rflags->af)
+	if (regs->rflags.af)
 		puts("AF ");
-	if (rflags->zf)
+	if (regs->rflags.zf)
 		puts("ZF ");
-	if (rflags->sf)
+	if (regs->rflags.sf)
 		puts("SF ");
-	if (rflags->tf)
+	if (regs->rflags.tf)
 		puts("TF ");
-	if (rflags->if_)
+	if (regs->rflags.if_)
 		puts("IF ");
-	if (rflags->df)
+	if (regs->rflags.df)
 		puts("DF ");
-	if (rflags->of)
+	if (regs->rflags.of)
 		puts("OF ");
-	if (rflags->iopl)
+	if (regs->rflags.iopl)
 		puts("IOPL ");
-	if (rflags->nt)
+	if (regs->rflags.nt)
 		puts("NT ");
-	if (rflags->md)
+	if (regs->rflags.md)
 		puts("MD ");
-	if (rflags->rf)
+	if (regs->rflags.rf)
 		puts("RF ");
-	if (rflags->vm)
+	if (regs->rflags.vm)
 		puts("VM ");
-	if (rflags->ac)
+	if (regs->rflags.ac)
 		puts("AC ");
-	if (rflags->vif)
+	if (regs->rflags.vif)
 		puts("VIF ");
-	if (rflags->vip)
+	if (regs->rflags.vip)
 		puts("VIP ");
-	if (rflags->id)
+	if (regs->rflags.id)
 		puts("ID ");
 	puts("\n");
 }
@@ -172,7 +171,7 @@ char *EXCEPTIONS[] = {
 };
 
 void idt_exception_handler(uint64_t exception, uint64_t code,
-						   struct isr_regs *state)
+						   regs_t *state)
 {
 	uint64_t cr2;
 
