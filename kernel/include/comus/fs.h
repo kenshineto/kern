@@ -59,6 +59,9 @@ enum file_type {
 	F_SYM = 2,
 };
 
+/// TODO: file name queue or storage area???
+/// hash map?!? (performance !!! :) )
+
 struct file {
 	/// name of the file
 	char name[MAX_FILE_NAME_LEN];
@@ -121,7 +124,7 @@ struct file_system {
 	/// @param parent - the parent (directory) of the file to create
 	/// @param type - the type of file to create
 	/// @returns 0 on success, or an negative fs error code on failure
-	int (*fs_new_file)(struct file_system *fs, struct file **res,
+	int (*fs_new_file)(struct file_system *fs, struct file *res,
 					   struct file *parent, enum file_type type);
 	/// get files in a directory
 	/// @param fs - the file system
@@ -131,7 +134,7 @@ struct file_system {
 	/// @param res - the list of structures to save into
 	/// @returns number of entries read, or an negative fs error code on failure
 	int (*fs_get_dir_ents)(struct file_system *fs, struct file *dir,
-						   size_t start, size_t len, struct file **res);
+						   size_t start, size_t len, struct file res[]);
 	/// read from a file
 	/// @param fs - the file system
 	/// @param file - the file to read from
@@ -183,8 +186,10 @@ struct file_system *fs_get_root_file_system(void);
  *
  * @param fs - the file system to search
  * @param name - the absolute path of the file to look for
+ * @param res - where to store the file structure
+ * @returns 0 on success, or an negative fs error code on failure
  */
-struct file *fs_find_file_abs(struct file_system *fs, char *abs_path);
+int fs_find_file_abs(struct file_system *fs, char *abs_path, struct file *res);
 
 /**
  * Find a file in the given file system, traversing the path, relative to
@@ -193,8 +198,10 @@ struct file *fs_find_file_abs(struct file_system *fs, char *abs_path);
  *
  * @param rel - the relative file to search from
  * @param name - the absolute path of the file to look for
+ * @param res - where to store the file structure
+ * @returns 0 on success, or an negative fs error code on failure
  */
-struct file *fs_find_file_rel(struct file *rel, char *rel_path);
+int fs_find_file_rel(struct file *rel, char *rel_path, struct file *res);
 
 // NOTE: fell free to add more functions if needed :)
 

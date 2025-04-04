@@ -43,18 +43,20 @@ struct file_system *fs_get_root_file_system(void)
 	return NULL;
 }
 
-struct file *fs_find_file_abs(struct file_system *fs, char *abs_path)
+int fs_find_file_abs(struct file_system *fs, char *abs_path, struct file *res)
 {
 	(void)fs;
 	(void)abs_path;
+	(void)res;
 
 	panic("fs_find_file_abs NOT YET IMPLEMENTED");
 }
 
-struct file *fs_find_file_rel(struct file *rel, char *rel_path)
+int fs_find_file_rel(struct file *rel, char *rel_path, struct file *res)
 {
 	(void)rel;
 	(void)rel_path;
+	(void)res;
 
 	panic("fs_find_file_rel NOT YET IMPLEMENTED");
 }
