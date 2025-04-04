@@ -32,6 +32,8 @@ const kernel_src = &[_][]const u8{
     "kernel/cpu/pic.c",
     "kernel/io/io.c",
     "kernel/io/panic.c",
+    "kernel/mboot/mboot.c",
+    "kernel/mboot/mmap.c",
     "kernel/memory/memory.c",
     "kernel/memory/paging.c",
     "kernel/memory/physalloc.c",

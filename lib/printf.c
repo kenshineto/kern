@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -389,7 +390,7 @@ static void do_printf(context_t *ctx, va_list args)
 	char c;
 	while (c = *fmt++, c != '\0') {
 		// save start of fmt for current iteration
-		const char *start = fmt;
+		const char *start = fmt - 1;
 
 		// ignore if not %
 		if (c != '%') {
@@ -422,6 +423,12 @@ static void do_printf(context_t *ctx, va_list args)
 		// read data from args
 		data_t data;
 		switch (spec) {
+		case 'p':
+			opts.len = PRINTF_LEN_SIZE_T;
+			opts.width_set = true;
+			opts.radix = 16;
+			opts.hash = true;
+			opts.zero = true;
 		case 'd':
 		case 'i':
 		case 'u':
@@ -470,6 +477,7 @@ static void do_printf(context_t *ctx, va_list args)
 			handle_int_specifier(ctx, &opts, true, data);
 			break;
 		// unsigned int
+		case 'p':
 		case 'u':
 		case 'o':
 		case 'x':
