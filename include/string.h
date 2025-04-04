@@ -59,7 +59,7 @@ extern void *memset(void *restrict dest, int c, size_t n);
  * @param n - the byte count
  * @returns a pointer to dest
  */
-extern void *memcpyv(volatile void *restrict dest,
+extern volatile void *memcpyv(volatile void *restrict dest,
 					 const volatile void *restrict src, size_t n);
 
 /**
@@ -71,7 +71,7 @@ extern void *memcpyv(volatile void *restrict dest,
  * @param n - the byte count
  * @returns a pointer to dest
  */
-extern void *memmovev(volatile void *restrict dest,
+extern volatile void *memmovev(volatile void *restrict dest,
 					  const volatile void *restrict src, size_t n);
 
 /**
@@ -81,7 +81,7 @@ extern void *memmovev(volatile void *restrict dest,
  * @param n - the byte count
  * @returns a pointer to dest
  */
-extern void *memsetv(volatile void *restrict dest, int c, size_t n);
+extern volatile void *memsetv(volatile void *restrict dest, int c, size_t n);
 
 /**
  * Calculates the length of the string pointed to by str, excluding

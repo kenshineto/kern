@@ -1,9 +1,9 @@
 #include <string.h>
 
-void *memmovev(volatile void *dest, const volatile void *src, size_t n)
+volatile void *memmovev(volatile void *dest, const volatile void *src, size_t n)
 {
-	char *d = dest;
-	const char *s = src;
+	volatile char *d = dest;
+	volatile const char *s = src;
 
 	if (d == s)
 		return d;
