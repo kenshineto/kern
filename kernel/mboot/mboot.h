@@ -11,14 +11,14 @@
 
 #include <lib.h>
 
-#define MBOOT_HEADER_MAGIC  0x36D76289
+#define MBOOT_HEADER_MAGIC 0x36D76289
 
-#define MBOOT_CMDLINE       1
-#define MBOOT_MEMORY_MAP    6
-#define MBOOT_FRAMEBUFFER   8
-#define MBOOT_ELF_SYMBOLS   9
-#define MBOOT_OLD_RSDP     14
-#define MBOOT_NEW_RSDP     15
+#define MBOOT_CMDLINE 1
+#define MBOOT_MEMORY_MAP 6
+#define MBOOT_FRAMEBUFFER 8
+#define MBOOT_ELF_SYMBOLS 9
+#define MBOOT_OLD_RSDP 14
+#define MBOOT_NEW_RSDP 15
 
 struct mboot_info {
 	uint32_t total_size;
@@ -69,7 +69,6 @@ struct mboot_tag_mmap {
 	uint32_t entry_version;
 	struct mboot_mmap_entry entries[];
 };
-
 
 struct mboot_tag_old_rsdp {
 	uint32_t type;

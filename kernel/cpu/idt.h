@@ -36,33 +36,13 @@ struct isr_regs {
 };
 
 struct rflags {
-	uint64_t cf : 1,
-	         : 1,
-	         pf : 1,
-	         : 1,
-	         af : 1,
-	         : 1,
-	         zf : 1,
-	         sf : 1,
+	uint64_t cf : 1, : 1, pf : 1, : 1, af : 1, : 1, zf : 1, sf : 1,
 
-	         tf : 1,
-	         if_ : 1,
-	         df : 1,
-	         of : 1,
-	         iopl : 2,
-	         nt : 1,
-	         md : 1,
+		tf : 1, if_ : 1, df : 1, of : 1, iopl : 2, nt : 1, md : 1,
 
-	         rf : 1,
-	         vm : 1,
-	         ac : 1,
-	         vif : 1,
-	         vip : 1,
-	         id : 1,
-	         : 42;
+		rf : 1, vm : 1, ac : 1, vif : 1, vip : 1, id : 1, : 42;
 };
 
 void idt_init(void);
 
 #endif /* idt.h */
-

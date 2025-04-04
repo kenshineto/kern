@@ -2,8 +2,8 @@
 #include <stdarg.h>
 #include <comus/asm.h>
 
-__attribute__((noreturn))
-void panic(const char *format, ...) {
+__attribute__((noreturn)) void panic(const char *format, ...)
+{
 	cli();
 	va_list list;
 	va_start(list, format);

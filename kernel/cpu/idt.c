@@ -9,12 +9,12 @@
 #define IDT_SIZE 256
 
 struct idt_entry {
-	uint16_t isr_low;    // low 16 bits of isr
-	uint16_t kernel_cs;  // kernel segment selector
-	uint8_t ist;         // interrupt stack table
-	uint8_t flags;       // gate type, privilege level, present bit
-	uint16_t isr_mid;    // middle 16 bits of isr
-	uint32_t isr_high;   // high 32 bits of isr
+	uint16_t isr_low; // low 16 bits of isr
+	uint16_t kernel_cs; // kernel segment selector
+	uint8_t ist; // interrupt stack table
+	uint8_t flags; // gate type, privilege level, present bit
+	uint16_t isr_mid; // middle 16 bits of isr
+	uint32_t isr_high; // high 32 bits of isr
 	uint32_t reserved;
 } __attribute__((packed));
 
@@ -24,7 +24,7 @@ struct idtr {
 } __attribute__((packed));
 
 // interrupt gate
-#define GATE_64BIT_INT  0x0E
+#define GATE_64BIT_INT 0x0E
 // trap gate
 #define GATE_64BIT_TRAP 0x0F
 
@@ -37,15 +37,15 @@ struct idtr {
 // interrupt is present in IDT
 #define PRESENT 0x80
 
-__attribute__((aligned(0x10)))
-static struct idt_entry idt[256];
+__attribute__((aligned(0x10))) static struct idt_entry idt[256];
 
 static struct idtr idtr;
 // from idt.S
 extern void *isr_stub_table[];
 
 // initialize and load the IDT
-void idt_init(void) {
+void idt_init(void)
+{
 	// initialize idtr
 	idtr.address = (uint64_t)&idt;
 	idtr.size = (uint16_t)sizeof(struct idt_entry) * IDT_SIZE - 1;
@@ -67,10 +67,11 @@ void idt_init(void) {
 		entry->reserved = 0;
 	}
 
-	__asm__ volatile ("lidt %0" : : "m"(idtr));
+	__asm__ volatile("lidt %0" : : "m"(idtr));
 }
 
-static void isr_print_regs(struct isr_regs *regs) {
+static void isr_print_regs(struct isr_regs *regs)
+{
 	printf("rax: %#016lx (%lu)\n", regs->rax, regs->rax);
 	printf("rbx: %#016lx (%lu)\n", regs->rbx, regs->rbx);
 	printf("rcx: %#016lx (%lu)\n", regs->rcx, regs->rcx);
@@ -79,8 +80,8 @@ static void isr_print_regs(struct isr_regs *regs) {
 	printf("rdi: %#016lx (%lu)\n", regs->rdi, regs->rdi);
 	printf("rsp: %#016lx (%lu)\n", regs->rsp, regs->rsp);
 	printf("rbp: %#016lx (%lu)\n", regs->rbp, regs->rbp);
-	printf("r8 : %#016lx (%lu)\n", regs->r8 , regs->r8 );
-	printf("r9 : %#016lx (%lu)\n", regs->r9 , regs->r9 );
+	printf("r8 : %#016lx (%lu)\n", regs->r8, regs->r8);
+	printf("r9 : %#016lx (%lu)\n", regs->r9, regs->r9);
 	printf("r10: %#016lx (%lu)\n", regs->r10, regs->r10);
 	printf("r11: %#016lx (%lu)\n", regs->r11, regs->r11);
 	printf("r12: %#016lx (%lu)\n", regs->r12, regs->r12);
@@ -91,30 +92,48 @@ static void isr_print_regs(struct isr_regs *regs) {
 	printf("rflags: %#016lx (%lu)\n", regs->rflags, regs->rflags);
 	struct rflags *rflags = (struct rflags *)regs->rflags;
 	puts("rflags: ");
-	if (rflags->cf)   puts("CF ");
-	if (rflags->pf)   puts("PF ");
-	if (rflags->af)   puts("AF ");
-	if (rflags->zf)   puts("ZF ");
-	if (rflags->sf)   puts("SF ");
-	if (rflags->tf)   puts("TF ");
-	if (rflags->if_)  puts("IF ");
-	if (rflags->df)   puts("DF ");
-	if (rflags->of)   puts("OF ");
-	if (rflags->iopl) puts("IOPL ");
-	if (rflags->nt)   puts("NT ");
-	if (rflags->md)   puts("MD ");
-	if (rflags->rf)   puts("RF ");
-	if (rflags->vm)   puts("VM ");
-	if (rflags->ac)   puts("AC ");
-	if (rflags->vif)  puts("VIF ");
-	if (rflags->vip)  puts("VIP ");
-	if (rflags->id)   puts("ID ");
+	if (rflags->cf)
+		puts("CF ");
+	if (rflags->pf)
+		puts("PF ");
+	if (rflags->af)
+		puts("AF ");
+	if (rflags->zf)
+		puts("ZF ");
+	if (rflags->sf)
+		puts("SF ");
+	if (rflags->tf)
+		puts("TF ");
+	if (rflags->if_)
+		puts("IF ");
+	if (rflags->df)
+		puts("DF ");
+	if (rflags->of)
+		puts("OF ");
+	if (rflags->iopl)
+		puts("IOPL ");
+	if (rflags->nt)
+		puts("NT ");
+	if (rflags->md)
+		puts("MD ");
+	if (rflags->rf)
+		puts("RF ");
+	if (rflags->vm)
+		puts("VM ");
+	if (rflags->ac)
+		puts("AC ");
+	if (rflags->vif)
+		puts("VIF ");
+	if (rflags->vip)
+		puts("VIP ");
+	if (rflags->id)
+		puts("ID ");
 	puts("\n");
 }
 
-#define EX_DEBUG        0x01
-#define EX_BREAKPOINT   0x03
-#define EX_PAGE_FAULT   0x0e
+#define EX_DEBUG 0x01
+#define EX_BREAKPOINT 0x03
+#define EX_PAGE_FAULT 0x0e
 
 // Intel manual vol 3 ch 6.3.1
 char *EXCEPTIONS[] = {
@@ -152,13 +171,15 @@ char *EXCEPTIONS[] = {
 	"Reserved",
 };
 
-void idt_exception_handler(uint64_t exception, uint64_t code, struct isr_regs *state) {
+void idt_exception_handler(uint64_t exception, uint64_t code,
+						   struct isr_regs *state)
+{
 	uint64_t cr2;
 
 	switch (exception) {
 	case EX_PAGE_FAULT:
 		// page faults store the offending address in cr2
-		__asm__ volatile ("mov %%cr2, %0" : "=r"(cr2));
+		__asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
 		if (!load_page((void *)cr2))
 			return;
 	}
@@ -182,13 +203,15 @@ void idt_exception_handler(uint64_t exception, uint64_t code, struct isr_regs *s
 	}
 }
 
-void idt_pic_eoi(uint8_t exception) {
+void idt_pic_eoi(uint8_t exception)
+{
 	pic_eoi(exception - PIC_REMAP_OFFSET);
 }
 
 int counter = 0;
 
-void idt_pic_timer(void) {
+void idt_pic_timer(void)
+{
 	// print a message once we know the timer works
 	// but avoid spamming the logs
 	if (counter == 3) {
@@ -199,6 +222,10 @@ void idt_pic_timer(void) {
 	}
 }
 
-void idt_pic_keyboard(void) {}
+void idt_pic_keyboard(void)
+{
+}
 
-void idt_pic_mouse(void) {}
+void idt_pic_mouse(void)
+{
+}

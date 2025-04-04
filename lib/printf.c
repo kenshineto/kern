@@ -286,10 +286,9 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 		}
 	}
 
-
 	// print zeros if needed
 	if (opts->width_set && len < opts->width && opts->zero) {
-		while(len++ < opts->width)
+		while (len++ < opts->width)
 			*(buf++) = '0';
 	}
 
@@ -351,7 +350,8 @@ static void handle_char_specifier(context_t *ctx, data_t c)
 	printf_putc(ctx, c.c);
 }
 
-static void handle_string_specifier(context_t *ctx, options_t *opts, data_t data)
+static void handle_string_specifier(context_t *ctx, options_t *opts,
+									data_t data)
 {
 	char *str = data.str;
 	int str_len = 0;
@@ -460,7 +460,7 @@ static void do_printf(context_t *ctx, va_list args)
 			// end int
 		case 's':
 			// read string
-			data.str = va_arg(args, void*);
+			data.str = va_arg(args, void *);
 			break;
 			// end string
 		case 'c':
@@ -585,15 +585,18 @@ void vfprintf(FILE *stream, const char *format, va_list args)
 	do_printf(&ctx, args);
 }
 
-void putc(char c) {
+void putc(char c)
+{
 	fputc(stdout, c);
 }
 
-void puts(const char *str) {
+void puts(const char *str)
+{
 	fputs(stdout, str);
 }
 
-void fputs(FILE *stream, const char *s) {
+void fputs(FILE *stream, const char *s)
+{
 	while (*s)
 		fputc(stream, *s++);
 }

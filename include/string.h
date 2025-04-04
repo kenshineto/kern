@@ -60,7 +60,7 @@ extern void *memset(void *restrict dest, int c, size_t n);
  * @returns a pointer to dest
  */
 extern volatile void *memcpyv(volatile void *restrict dest,
-					 const volatile void *restrict src, size_t n);
+							  const volatile void *restrict src, size_t n);
 
 /**
  * Copy the first n bytes from memory area src to memory area dest. The memory
@@ -72,7 +72,7 @@ extern volatile void *memcpyv(volatile void *restrict dest,
  * @returns a pointer to dest
  */
 extern volatile void *memmovev(volatile void *restrict dest,
-					  const volatile void *restrict src, size_t n);
+							   const volatile void *restrict src, size_t n);
 
 /**
  * Fill the first n bytes of the memory region dest with the constant byte c.

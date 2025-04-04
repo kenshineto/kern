@@ -3,13 +3,13 @@
 
 void *locate_mboot_table(volatile void *mboot, uint32_t type)
 {
-	struct mboot_info *info = (struct mboot_info *) mboot;
-	const char *mboot_end = ((char *) info) + info->total_size;
+	struct mboot_info *info = (struct mboot_info *)mboot;
+	const char *mboot_end = ((char *)info) + info->total_size;
 
 	char *tag_ptr = info->tags;
 
 	while (tag_ptr < mboot_end) {
-		struct mboot_tag *tag = (struct mboot_tag *) tag_ptr;
+		struct mboot_tag *tag = (struct mboot_tag *)tag_ptr;
 
 		if (tag->type == type)
 			return tag;
