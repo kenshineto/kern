@@ -66,8 +66,6 @@ struct file {
 	struct file_s *parent;
 	/// type of the file
 	enum file_type type;
-	/// current offset into file
-	uint64_t offset;
 	/// the filesystem of this file
 	struct file_system *fsys;
 };
@@ -152,11 +150,6 @@ struct file_system {
 	/// @returns number of bytes written, or an negative fs error code on failure
 	int (*fs_write_file)(struct file_system *fs, struct file *file,
 						 size_t offset, size_t length, uint8_t *buffer);
-	/// close a file in the filesystem
-	/// @param fs - the file system
-	/// @param file - the file to close
-	/// @returns 0 on success, or an negative fs error coude on failure
-	int (*fs_close_file)(struct file_system *fs, struct file *file);
 };
 
 // list of all disks on the system
