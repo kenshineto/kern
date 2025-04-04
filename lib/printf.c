@@ -6,6 +6,13 @@
 
 #define PRINTF_NUMERIC_BUF_LEN 50
 
+typedef union {
+	unsigned long long int u;
+	signed long long int i;
+	char *str;
+	char c;
+} data_t;
+
 /// options that can be set inside a specifier
 /// flags, width, precision, length, and data type
 typedef struct {
@@ -59,8 +66,6 @@ typedef struct {
 	/* input */
 	/// the origonal format string
 	const char *format;
-	/// variable args passed in
-	va_list *args;
 	/// maximum allowed output length
 	size_t max_len;
 	/// if a maximum output length is set
@@ -108,6 +113,9 @@ static int parse_flag(const char **res, options_t *opts)
 		opts->space = 1;
 		break;
 	case '#':
+		opts->hash = 1;
+		break;
+	case '0':
 		opts->zero = 1;
 		break;
 	default:
@@ -243,6 +251,19 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 	int precision = 0;
 	char *start = buf;
 
+	// get width of number
+	int len = 0;
+	unsigned long long int temp = num;
+	if (temp == 0)
+		len = 1;
+	while (temp) {
+		if (opts->precision_set && precision++ >= opts->precision)
+			break;
+		temp /= opts->radix;
+		len++;
+	}
+	precision = 0;
+
 	// sign
 	if (is_neg) {
 		*(buf++) = '-';
@@ -256,12 +277,19 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 	if (opts->hash) {
 		if (opts->radix == 8) {
 			*(buf++) = '0';
-			*(buf++) = 'x';
+			*(buf++) = 'o';
 		}
 		if (opts->radix == 16) {
 			*(buf++) = '0';
-			*(buf++) = 'o';
+			*(buf++) = 'x';
 		}
+	}
+
+
+	// print zeros if needed
+	if (opts->width_set && len < opts->width && opts->zero) {
+		while(len++ < opts->width)
+			*(buf++) = '0';
 	}
 
 	// write number
@@ -271,7 +299,7 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 	while (num) {
 		if (opts->precision_set && precision++ >= opts->precision)
 			break;
-		*(buf++) = printf_itoc(opts->is_uppercase, num & opts->radix);
+		*(buf++) = printf_itoc(opts->is_uppercase, num % opts->radix);
 		num /= opts->radix;
 	}
 	*(buf++) = '\0';
@@ -280,35 +308,9 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 }
 
 static void handle_int_specifier(context_t *ctx, options_t *const opts,
-								 bool has_sign_bit)
+								 bool has_sign_bit, data_t num)
 {
-	union {
-		unsigned long long int u;
-		signed long long int i;
-	} num;
 	bool is_neg = false;
-
-	// read number from arg
-	switch (opts->len) {
-	case PRINTF_LEN_CHAR:
-		num.u = va_arg(*ctx->args, unsigned int); // char
-		break;
-	case PRINTF_LEN_SHORT_INT:
-		num.u = va_arg(*ctx->args, unsigned int); // short int
-		break;
-	case PRINTF_LEN_INT:
-		num.u = va_arg(*ctx->args, unsigned int);
-		break;
-	case PRINTF_LEN_LONG_INT:
-		num.u = va_arg(*ctx->args, unsigned long int);
-		break;
-	case PRINTF_LEN_LONG_LONG_INT:
-		num.u = va_arg(*ctx->args, unsigned long long int);
-		break;
-	case PRINTF_LEN_SIZE_T:
-		num.u = va_arg(*ctx->args, size_t);
-		break;
-	}
 
 	// get sign if possible neg
 	if (has_sign_bit) {
@@ -343,15 +345,14 @@ static void handle_int_specifier(context_t *ctx, options_t *const opts,
 	}
 }
 
-static void handle_char_specifier(context_t *ctx)
+static void handle_char_specifier(context_t *ctx, data_t c)
 {
-	char c = va_arg(*ctx->args, int);
-	printf_putc(ctx, c);
+	printf_putc(ctx, c.c);
 }
 
-static void handle_string_specifier(context_t *ctx, options_t *opts)
+static void handle_string_specifier(context_t *ctx, options_t *opts, data_t data)
 {
-	char *str = va_arg(*ctx->args, char *);
+	char *str = data.str;
 	int str_len = 0;
 
 	// get length of string
@@ -381,12 +382,12 @@ static void handle_string_specifier(context_t *ctx, options_t *opts)
 	}
 }
 
-static void do_printf(context_t *ctx)
+static void do_printf(context_t *ctx, va_list args)
 {
 	const char *fmt = ctx->format;
 
-	char c = *(fmt++);
-	while (c != '\0') {
+	char c;
+	while (c = *fmt++, c != '\0') {
 		// save start of fmt for current iteration
 		const char *start = fmt;
 
@@ -405,47 +406,90 @@ static void do_printf(context_t *ctx)
 		parse_length(&fmt, &opts);
 
 		// read specifier
-		char spec = *(fmt++);
+		char spec = *fmt++;
 		get_radix(spec, &opts);
 		get_case(spec, &opts);
 
 		// read varied width / precision
 		if (opts.width_varies) {
 			opts.width_set = 1;
-			opts.width = va_arg(*ctx->args, int);
+			opts.width = va_arg(args, int);
 		}
 		if (opts.precision_varies) {
 			opts.precision_set = 1;
-			opts.precision = va_arg(*ctx->args, int);
+			opts.precision = va_arg(args, int);
+		}
+		// read data from args
+		data_t data;
+		switch (spec) {
+		case 'd':
+		case 'i':
+		case 'u':
+		case 'o':
+		case 'x':
+		case 'X':
+			// read number from arg
+			switch (opts.len) {
+			case PRINTF_LEN_CHAR:
+				data.u = va_arg(args, unsigned int); // char
+				break;
+			case PRINTF_LEN_SHORT_INT:
+				data.u = va_arg(args, unsigned int); // short int
+				break;
+			case PRINTF_LEN_INT:
+				data.u = va_arg(args, unsigned int);
+				break;
+			case PRINTF_LEN_LONG_INT:
+				data.u = va_arg(args, unsigned long int);
+				break;
+			case PRINTF_LEN_LONG_LONG_INT:
+				data.u = va_arg(args, unsigned long long int);
+				break;
+			case PRINTF_LEN_SIZE_T:
+				data.u = va_arg(args, size_t);
+				break;
+			}
+			break;
+			// end int
+		case 's':
+			// read string
+			data.str = va_arg(args, void*);
+			break;
+			// end string
+		case 'c':
+			// read char
+			data.c = va_arg(args, int);
+			break;
+			// end char
 		}
 
 		switch (spec) {
 		// signed int
 		case 'd':
 		case 'i':
-			handle_int_specifier(ctx, &opts, true);
+			handle_int_specifier(ctx, &opts, true, data);
 			break;
 		// unsigned int
 		case 'u':
 		case 'o':
 		case 'x':
 		case 'X':
-			handle_int_specifier(ctx, &opts, false);
+			handle_int_specifier(ctx, &opts, false, data);
 			break;
 		// character
 		case 'c':
-			handle_char_specifier(ctx);
+			handle_char_specifier(ctx, data);
 			break;
 		// string
 		case 's':
-			handle_string_specifier(ctx, &opts);
+			handle_string_specifier(ctx, &opts, data);
 			break;
 		// unknown
 		default:
 			// print from % to current
 			for (; start < fmt; start++)
 				printf_putc(ctx, *start);
-			return;
+			break;
 		}
 	}
 }
@@ -488,12 +532,11 @@ size_t vsprintf(char *restrict s, const char *format, va_list args)
 	// create context
 	context_t ctx = { 0 };
 	ctx.format = format;
-	ctx.args = &args;
 	// sprintf buffer
 	ctx.out.buf = s;
 	ctx.to_file = 0;
 	// print
-	do_printf(&ctx);
+	do_printf(&ctx, args);
 	return ctx.written_len;
 }
 
@@ -503,7 +546,6 @@ size_t vsnprintf(char *restrict s, size_t maxlen, const char *format,
 	// create context
 	context_t ctx = { 0 };
 	ctx.format = format;
-	ctx.args = &args;
 	// sprintf buffer
 	ctx.out.buf = s;
 	ctx.to_file = 0;
@@ -511,7 +553,7 @@ size_t vsnprintf(char *restrict s, size_t maxlen, const char *format,
 	ctx.has_max_len = 1;
 	ctx.max_len = maxlen;
 	// print
-	do_printf(&ctx);
+	do_printf(&ctx, args);
 	return ctx.written_len;
 }
 
@@ -528,10 +570,22 @@ void vfprintf(FILE *stream, const char *format, va_list args)
 	// create context
 	context_t ctx = { 0 };
 	ctx.format = format;
-	ctx.args = &args;
 	// fprintf stream
 	ctx.out.file = stream;
 	ctx.to_file = 1;
 	// print
-	do_printf(&ctx);
+	do_printf(&ctx, args);
+}
+
+void putc(char c) {
+	fputc(stdout, c);
+}
+
+void puts(const char *str) {
+	fputs(stdout, str);
+}
+
+void fputs(FILE *stream, const char *s) {
+	while (*s)
+		fputc(stream, *s++);
 }
