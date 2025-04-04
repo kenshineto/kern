@@ -66,10 +66,8 @@ struct file {
 	struct file_s *parent;
 	/// type of the file
 	enum file_type type;
-	/// times
-	uint64_t created;
-	uint64_t modified;
-	uint64_t accessed;
+	/// current offset into file
+	uint64_t offset;
 	/// the filesystem of this file
 	struct file_system *fsys;
 };
@@ -89,11 +87,23 @@ struct file_system {
 	/// get root file in file file_system
 	/// @returns the root file or NULL on failure
 	struct file *(*fs_get_root_file)(void);
-	/// update file on disk with provided file
-	/// @param file - the file to update
+	/// rename a file
+	/// @param file - the file to rename
+	/// @param name - the new file name
 	/// @returns 0 on success, or an negative fs error code on failure
-	/// used for updating created, modified, access, and file name
-	int (*fs_update_file)(struct file *file);
+	int (*fs_rename_file)(struct file *file, char *name);
+	/// get length of file
+	/// @param file - the file to get the length of
+	/// @param length - the pointer to save the length to
+	/// @return 0 on success, or an negative fs error code on failure
+	int (*fs_get_file_length)(struct file *file, uint64_t *length);
+	/// get created date of file
+	/// @param file - the file to get the date created
+	/// @param created - the pointer to save the created date to
+	/// @param modified - the pointer to save the modified date to
+	/// @param accessed - the pointer to save the accessed date to
+	/// @return 0 on success, or an negative fs error code on failure
+	int (*fs_get_file_dates)(struct file *file, uint64_t *created, uint64_t *modified, uint64_t *accessed);
 	/// delete a file in the file system
 	/// @param file - the file to delete
 	/// @returns 0 on success, or an negative fs error code on failure
@@ -118,25 +128,17 @@ struct file_system {
 	/// @param buffer - the buffer to save the data into
 	/// @returns number of bytes read, or an negative fs error code on failure
 	int (*fs_read_file)(struct file *file, size_t offset, size_t length, uint8_t *buffer);
-	/// write into a file (REPLACE ALL DATA)
+	/// write into a file
 	/// @param file - the file to write to
+	/// @param offset - the offset of the file to write into
 	/// @param length - the length of the data to write
 	/// @param buffer - the buffer the data to write is stored in
 	/// @returns number of bytes written, or an negative fs error code on failure
-	int (*fs_write_file)(struct file *file, size_t length, uint8_t *buffer);
-	/// append into a file (write data at end)
-	/// @param file - the file to append to
-	/// @param length - the length of the data to append
-	/// @param buffer - the buffer the data to append is stored in
-	/// @returns number of bytes written, or an negative fs error code on failure
-	int (*fs_append_file)(struct file *file, size_t length, uint8_t *buffer);
+	int (*fs_write_file)(struct file *file, size_t offset, size_t length, uint8_t *buffer);
 	/// close a file in the filesystem
 	/// @param file - the file to close
-	/// @returns 0 on success, or an negative fs error code on failure
+	/// @returns 0 on success, or an negative fs error coude on failure
 	int (*fs_close_file)(struct file *file);
-	///
-	/// !! PRIVATE FILE SYSTEM DATA MAY CHOOSE TO GO HERE !!
-	///
 };
 
 // list of all disks on the system
