@@ -57,3 +57,23 @@ struct file *fs_find_file_rel(struct file *rel, char *rel_path)
 
 	panic("fs_find_file_rel NOT YET IMPLEMENTED");
 }
+
+int disk_read(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+{
+	(void) disk;
+	(void) offset;
+	(void) len;
+	(void) buffer;
+
+	panic("disk_read NOT YET IMPLEMENTED");
+}
+
+int disk_write(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+{
+	(void) disk;
+	(void) offset;
+	(void) len;
+	(void) buffer;
+
+	panic("disk_write NOT YET IMPLEMENTED");
+}

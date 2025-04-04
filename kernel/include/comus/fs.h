@@ -28,6 +28,28 @@ struct disk {
 	/// we then need drivers for ide and/or sata, ide is easier
 };
 
+/**
+ * read data from a disk into a buffer
+ *
+ * @param disk - the disk to read from
+ * @param offset - the offset into the disk to read
+ * @param len - the length of the data to read into `buffer`
+ * @param buffer - the buffer to save data into
+ * @returns bytes read on success, negative fs error code in failure
+ */
+int disk_read(struct disk *disk, size_t offset, size_t len, uint8_t *buffer);
+
+/**
+ * write data from a disk into a buffer
+ *
+ * @param disk - the disk to write from
+ * @param offset - the offset into the disk to write
+ * @param len - the length of the data to write into `buffer`
+ * @param buffer - the buffer to read from
+ * @returns bytes written on success, negative fs error code in failure
+ */
+int disk_write(struct disk *disk, size_t offset, size_t len, uint8_t *buffer);
+
 enum file_type {
 	// regular file
 	F_REG = 0,
