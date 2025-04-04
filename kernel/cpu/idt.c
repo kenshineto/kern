@@ -89,7 +89,8 @@ static void isr_print_regs(regs_t *regs)
 	printf("r14: %#016lx (%lu)\n", regs->r14, regs->r14);
 	printf("r15: %#016lx (%lu)\n", regs->r15, regs->r15);
 	printf("rip: %#016lx (%lu)\n", regs->rip, regs->rip);
-	printf("rflags: %#016lx (%lu)\n", (uint64_t)regs->rflags.raw, (uint64_t)regs->rflags.raw);
+	printf("rflags: %#016lx (%lu)\n", (uint64_t)regs->rflags.raw,
+		   (uint64_t)regs->rflags.raw);
 	puts("rflags: ");
 	if (regs->rflags.cf)
 		puts("CF ");
@@ -170,8 +171,7 @@ char *EXCEPTIONS[] = {
 	"Reserved",
 };
 
-void idt_exception_handler(uint64_t exception, uint64_t code,
-						   regs_t *state)
+void idt_exception_handler(uint64_t exception, uint64_t code, regs_t *state)
 {
 	uint64_t cr2;
 
