@@ -32,7 +32,7 @@ bin/os.iso: build
 	mkdir -p bin/iso/boot/grub
 	cp grub.cfg bin/iso/boot/grub
 	cp bin/kernel bin/iso/boot
-	grub-mkrescue -o bin/os.iso bin/iso
+	grub-mkrescue -o bin/os.iso bin/iso 2>/dev/null
 
 fmt:
 	clang-format -i $(shell find -type f -name "*.[ch]")
