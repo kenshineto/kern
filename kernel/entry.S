@@ -161,7 +161,7 @@ _start.SetEntry:
 	.code64
 code64:
 
-	movw	$16, %dx        # set segment registers
+	movw	$GDT.Data, %dx        # set segment registers
 	movw	%dx, %ds
 	movw	%dx, %ss
 
@@ -173,7 +173,6 @@ code64:
 	call	main
 	cli
 
- halt:
+halt:
 	hlt
 	jmp		halt
-
