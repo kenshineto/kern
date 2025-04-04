@@ -30,6 +30,7 @@ const kernel_src = &[_][]const u8{
     "kernel/cpu/idt.c",
     "kernel/cpu/idt.S",
     "kernel/cpu/pic.c",
+    "kernel/drivers/clock.c",
     "kernel/drivers/drivers.c",
     "kernel/drivers/pci.c",
     "kernel/drivers/tty.c",
@@ -71,6 +72,7 @@ const lib_src = &[_][]const u8{
     "lib/strncpy.c",
     "lib/strtoux.c",
     "lib/strtox.c",
+    "lib/timetostr.c",
     "lib/uxtoa.c",
     "lib/xtoa.c",
 };
