@@ -5,7 +5,7 @@ const builtin = @import("builtin");
 
 const c_flags = &[_][]const u8{
     // lang
-    "-std=c99",
+    "-std=c11",
     // warnings
     "-Wall",
     "-Wextra",

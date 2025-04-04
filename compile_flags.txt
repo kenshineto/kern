@@ -1,5 +1,5 @@
 -c
--std=c99
+-std=c11
 -Iinclude
 -Ikernel/include
 -ffreestanding
