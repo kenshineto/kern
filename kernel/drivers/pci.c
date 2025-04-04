@@ -137,6 +137,8 @@ void pci_init(void)
 	printf("PCI DEVICES\n");
 	for (size_t i = 0; i < pci_table_next; i++) {
 		print_device(&pci_table[i]);
+		print_device(&pci_table[i]);
+		print_device(&pci_table[i]);
 	}
 	printf("\n");
 }
