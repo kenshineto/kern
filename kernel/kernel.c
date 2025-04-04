@@ -1,15 +1,14 @@
 #include <comus/cpu.h>
 #include <comus/memory.h>
 #include <comus/mboot.h>
+#include <comus/drivers.h>
 #include <lib.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 struct memory_map mmap;
 
 void main(long magic, volatile void *mboot)
 {
-	(void) magic; // TODO: check multiboot magic
+	(void)magic; // TODO: check multiboot magic
 
 	// initalize idt and pic
 	// WARNING: must be done before anything else
@@ -21,8 +20,8 @@ void main(long magic, volatile void *mboot)
 	// initalize memory
 	memory_init(&mmap);
 
-	char *a = malloc(3);
-	*a = 3;
+	// initalize devices
+	drivers_init();
 
 	// halt
 	printf("halting...\n");

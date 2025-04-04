@@ -30,6 +30,8 @@ const kernel_src = &[_][]const u8{
     "kernel/cpu/idt.c",
     "kernel/cpu/idt.S",
     "kernel/cpu/pic.c",
+    "kernel/drivers/drivers.c",
+    "kernel/drivers/pci.c",
     "kernel/io/io.c",
     "kernel/io/panic.c",
     "kernel/mboot/mboot.c",
