@@ -47,7 +47,7 @@ kern_stack_start:
 	.skip 8192
 kern_stack_end:
 
-	.section .rodata
+	.section .data
 	.align 16
 
 	# access bits
@@ -58,6 +58,12 @@ kern_stack_end:
 	.set RW,        1 << 1
 	.set ACCESSED,  1 << 0
 
+	# privlage level (access bit)
+	.set RING0,     0 << 5
+	.set RING1,     1 << 5
+	.set RING2,     2 << 5
+	.set RING3,     3 << 5
+
 	# flag bits
 	.set GRAN_4K,   1 << 7
 	.set SZ_32,     1 << 6
@@ -65,30 +71,45 @@ kern_stack_end:
 
 	# kernel gdt (long mode)
 GDT:
-	# Null Segment
+	# Null Segment (0x00)
 	.equ GDT.Null, . - GDT
 	.quad 0
 
-	# Code segment
+	# Kernel Code segment (0x08)
 	.equ GDT.Code, . - GDT
 	.long 0xFFFF
 	.byte 0
-	.byte PRESENT | NOT_SYS | EXEC | RW
+	.byte PRESENT | NOT_SYS | EXEC | RW | RING0
 	.byte GRAN_4K | LONG_MODE | 0xF
 	.byte 0
 
-	# Data segment
+	# Kernel Data segment (0x10)
 	.equ GDT.Data, . - GDT
 	.long 0xFFFF
 	.byte 0
-	.byte PRESENT | NOT_SYS | RW
+	.byte PRESENT | NOT_SYS | RW | RING0
 	.byte GRAN_4K | SZ_32 | 0xF
 	.byte 0
 
-	# TSS segment
+	# User Code Segment (0x18)
+	.equ GDT.UserCode, . - GDT
+	.long 0xFFFF
+	.byte 0
+	.byte PRESENT | NOT_SYS | EXEC | RW | RING3
+	.byte GRAN_4K | LONG_MODE | 0xF
+	.byte 0
+
+	# User Data Segment (0x20)
+	.equ GDT.UserData, . - GDT
+	.long 0xFFFF
+	.byte 0
+	.byte PRESENT | NOT_SYS | RW | RING3
+	.byte GRAN_4K | SZ_32 | 0xF
+	.byte 0
+
+	# TSS segment (0x28)
 	.equ GDT.TSS, . - GDT
-	.long 0x00000068
-	.long 0x00CF8900
+	.quad 0 # to be modified in kernel
 
 	# GDT Pointer
 	.equ GDT.Pointer, .
