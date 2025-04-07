@@ -7,7 +7,6 @@
 void drivers_init(void)
 {
 	uart_init();
-	tty_init();
 	pci_init();
 	clock_update();
 }

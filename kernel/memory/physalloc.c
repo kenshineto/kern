@@ -11,19 +11,14 @@ extern char kernel_end;
 // between memory_start and kernel_start will be the bitmap
 static uintptr_t memory_start = 0;
 
-struct memory_area {
-	uint64_t len;
-	uintptr_t addr;
-};
-
 static uint64_t *bitmap;
 static uint64_t total_memory;
 static uint64_t free_memory;
 static uint64_t page_count;
 static uint64_t segment_count;
-struct memory_area *page_start;
+struct memory_segment *page_start;
 
-static int n_pages(const struct memory_area *m)
+static int n_pages(const struct memory_segment *m)
 {
 	return m->len / PAGE_SIZE;
 }
@@ -32,7 +27,7 @@ static void *page_at(int i)
 {
 	int cur_page = 0;
 	for (uint64_t idx = 0; idx < segment_count; idx++) {
-		const struct memory_area *m = page_start;
+		const struct memory_segment *m = page_start;
 		int pages = n_pages(m);
 		if (i - cur_page < pages) {
 			return (void *)(m->addr + (PAGE_SIZE * (i - cur_page)));
@@ -47,7 +42,7 @@ static long page_idx(void *page)
 	uintptr_t addr = (uintptr_t)page;
 	int cur_page = 0;
 	for (uint64_t idx = 0; idx < segment_count; idx++) {
-		const struct memory_area *m = page_start;
+		const struct memory_segment *m = page_start;
 		if ((uintptr_t)m + m->len > addr) {
 			return cur_page + ((addr - m->addr) / PAGE_SIZE);
 		}
@@ -129,7 +124,7 @@ static bool segment_invalid(const struct memory_segment *segment)
 	return false;
 }
 
-static struct memory_area segment_to_area(const struct memory_segment *segment)
+static struct memory_segment clamp_segment(const struct memory_segment *segment)
 {
 	uint64_t length = segment->len;
 	uintptr_t addr = segment->addr;
@@ -147,7 +142,7 @@ static struct memory_area segment_to_area(const struct memory_segment *segment)
 		addr = segment->addr;
 	}
 
-	struct memory_area temp;
+	struct memory_segment temp;
 	temp.len = length;
 	temp.addr = addr;
 
@@ -175,7 +170,7 @@ void physalloc_init(struct memory_map *map)
 		if (segment_invalid(segment))
 			continue;
 
-		struct memory_area temp = segment_to_area(segment);
+		struct memory_segment temp = clamp_segment(segment);
 		page_count += n_pages(&temp);
 		segment_count++;
 	}
@@ -184,7 +179,7 @@ void physalloc_init(struct memory_map *map)
 	long bitmap_size = bitmap_pages * PAGE_SIZE;
 	bitmap = (uint64_t *)page_align(kaddr(kernel_end));
 
-	long page_area_size = segment_count * sizeof(struct memory_area);
+	long page_area_size = segment_count * sizeof(struct memory_segment);
 	char *page_area_addr = (char *)bitmap + bitmap_size;
 	page_area_addr = (char *)page_align((uintptr_t)page_area_addr);
 
@@ -195,9 +190,9 @@ void physalloc_init(struct memory_map *map)
 	page_area_addr = mapaddr(page_area_addr, page_area_size);
 	memset(page_area_addr, 0, page_area_size);
 
-	page_start = (struct memory_area *)page_area_addr;
+	page_start = (struct memory_segment *)page_area_addr;
 
-	struct memory_area *area = page_start;
+	struct memory_segment *area = page_start;
 
 	for (uint32_t i = 0; i < map->entry_count; i++) {
 		struct memory_segment *segment = &map->entries[i];
@@ -205,7 +200,7 @@ void physalloc_init(struct memory_map *map)
 		if (segment_invalid(segment))
 			continue;
 
-		struct memory_area temp = segment_to_area(segment);
+		struct memory_segment temp = clamp_segment(segment);
 		*area = temp;
 		area++;
 	}

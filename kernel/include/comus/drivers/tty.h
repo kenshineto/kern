@@ -10,11 +10,6 @@
 #define TTY_H_
 
 /**
- * Initalize the terminal
- */
-void tty_init(void);
-
-/**
  * Output a character to the terminal
  */
 void tty_out(char c);

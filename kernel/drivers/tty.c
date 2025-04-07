@@ -9,13 +9,13 @@
 
 static const uint8_t width = 80;
 static const uint8_t height = 25;
-static volatile uint16_t *buffer = NULL;
+static volatile uint16_t *buffer = (uint16_t*)VGA_ADDR;
 
 // position
-static uint32_t x, y;
+static uint32_t x = 0, y = 0;
 
 // color
-static uint8_t fg, bg;
+static uint8_t fg = 15, bg = 0;
 
 // blank color
 const uint16_t blank = (uint16_t)0 | 0 << 12 | 15 << 8;
@@ -52,15 +52,6 @@ static void term_scroll(int lines)
 				 (height + lines) * width);
 	}
 	sti();
-}
-
-void tty_init(void)
-{
-	buffer = mapaddr((void *)VGA_ADDR, width * height * sizeof(uint16_t));
-	x = 0;
-	y = 0;
-	fg = 15;
-	bg = 0;
 }
 
 void tty_out(char c)
