@@ -9,7 +9,7 @@
 
 static const uint8_t width = 80;
 static const uint8_t height = 25;
-static volatile uint16_t *buffer = (uint16_t*)VGA_ADDR;
+static volatile uint16_t *buffer = (uint16_t *)VGA_ADDR;
 
 // position
 static uint32_t x = 0, y = 0;
