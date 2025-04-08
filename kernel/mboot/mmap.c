@@ -29,7 +29,7 @@ int mboot_get_mmap(struct memory_map *res)
 		else
 			type = segment_type[seg->type];
 		kprintf("ADDR: %16p  LEN: %4s  TYPE: %s (%d)\n", (void *)seg->addr,
-			   btoa(seg->len, buf), type, seg->type);
+				btoa(seg->len, buf), type, seg->type);
 		if (seg->type != 1 || seg->len < 1)
 			continue;
 		res->entries[idx].addr = seg->addr;

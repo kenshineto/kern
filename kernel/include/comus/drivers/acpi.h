@@ -17,5 +17,4 @@ void acpi_init(void *rsdp);
 /**
  * Shutdowns down the system
  */
-__attribute__((noreturn))
-void acpi_shutdown(void);
+__attribute__((noreturn)) void acpi_shutdown(void);

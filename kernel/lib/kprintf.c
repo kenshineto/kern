@@ -547,7 +547,7 @@ size_t kvsprintf(char *restrict s, const char *format, va_list args)
 }
 
 size_t kvsnprintf(char *restrict s, size_t maxlen, const char *format,
-				 va_list args)
+				  va_list args)
 {
 	// create context
 	context_t ctx = { 0 };

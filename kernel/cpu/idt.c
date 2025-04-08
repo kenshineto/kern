@@ -90,7 +90,7 @@ static void isr_print_regs(regs_t *regs)
 	kprintf("r15: %#016lx (%lu)\n", regs->r15, regs->r15);
 	kprintf("rip: %#016lx (%lu)\n", regs->rip, regs->rip);
 	kprintf("rflags: %#016lx (%lu)\n", (uint64_t)regs->rflags.raw,
-		   (uint64_t)regs->rflags.raw);
+			(uint64_t)regs->rflags.raw);
 	kputs("rflags: ");
 	if (regs->rflags.cf)
 		kputs("CF ");
