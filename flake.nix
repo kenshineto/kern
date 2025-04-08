@@ -29,7 +29,6 @@
             # (writeShellScriptBin "build" "zig build -Dcpu=baseline")
             gnumake
             gdb
-            valgrind
             zig_0_14
             qemu
             grub2_light
