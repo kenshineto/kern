@@ -1,6 +1,6 @@
 #include <lib.h>
 #include <comus/drivers/uart.h>
-#include <comus/drivers/tty.h>
+#include <comus/drivers/term.h>
 
 #define PRINTF_NUMERIC_BUF_LEN 50
 
@@ -565,12 +565,12 @@ size_t kvsnprintf(char *restrict s, size_t maxlen, const char *format,
 
 void kputc(char c)
 {
-	tty_out(c);
+	term_out(c);
 	uart_out(c);
 }
 
 void kputs(const char *str)
 {
-	tty_out_str(str);
+	term_out_str(str);
 	uart_out_str(str);
 }
