@@ -11,7 +11,7 @@
 ** Declarations and descriptions of console I/O routines
 **
 **  These routines provide a rudimentary capability for printing to
-**  the screen and reading from the keyboard.
+**  the screen and reading from the keyboard.  
 **
 ** Screen output:
 **  There are two families of functions.  The first provides a window
@@ -50,7 +50,7 @@
 ** Keyboard input:
 **  Two functions are provided: getting a single character and getting
 **  a newline-terminated line.  A third function returns a count of
-**  the number of characters available for immediate reading.
+**  the number of characters available for immediate reading. 
 **  No conversions are provided (yet).
 */
 
@@ -77,7 +77,7 @@
 **
 ** @param notify  pointer to an input notification function, or NULL
 */
-void cio_init(void (*notify)(int));
+void cio_init( void (*notify)(int) );
 
 /*****************************************************************************
 **
@@ -102,8 +102,8 @@ void cio_init(void (*notify)(int));
 ** @param min_x,min_y    upper-left corner of the region
 ** @param max_x,max_y    lower-right corner of the region
 */
-void cio_setscroll(unsigned int min_x, unsigned int min_y, unsigned int max_x,
-				   unsigned int max_y);
+void cio_setscroll( unsigned int min_x, unsigned int min_y,
+		unsigned int max_x, unsigned int max_y );
 
 /**
 ** cio_moveto
@@ -114,7 +114,7 @@ void cio_setscroll(unsigned int min_x, unsigned int min_y, unsigned int max_x,
 **
 ** @param x,y   desired coordinate position
 */
-void cio_moveto(unsigned int x, unsigned int y);
+void cio_moveto( unsigned int x, unsigned int y );
 
 /**
 ** cio_putchar
@@ -123,7 +123,7 @@ void cio_moveto(unsigned int x, unsigned int y);
 **
 ** @param c   the character to be printed
 */
-void cio_putchar(unsigned int c);
+void cio_putchar( unsigned int c );
 
 /**
 ** cio_puts
@@ -133,7 +133,7 @@ void cio_putchar(unsigned int c);
 **
 ** @param str   pointer to a NUL-terminated string to be printed
 */
-void cio_puts(const char *str);
+void cio_puts( const char *str );
 
 /**
 ** cio_write
@@ -143,7 +143,7 @@ void cio_puts(const char *str);
 ** @param buf     the buffer of characters
 ** @param length  the number of characters to print
 */
-void cio_write(const char *buf, int length);
+void cio_write( const char *buf, int length );
 
 /**
 ** cio_printf
@@ -154,7 +154,7 @@ void cio_write(const char *buf, int length);
 ** @param fmt   a printf-style format control string
 ** @param ...   optional additional values to be printed
 */
-void cio_printf(char *fmt, ...);
+void cio_printf( char *fmt, ... );
 
 /**
 ** cio_scroll
@@ -165,7 +165,7 @@ void cio_printf(char *fmt, ...);
 **
 ** @param lines   the number of lines to scroll
 */
-void cio_scroll(unsigned int lines);
+void cio_scroll( unsigned int lines );
 
 /**
 ** cio_clearscroll
@@ -173,7 +173,7 @@ void cio_scroll(unsigned int lines);
 ** Clears the entire scrolling region to blank spaces, and
 ** moves the cursor to (0,0).
 */
-void cio_clearscroll(void);
+void cio_clearscroll( void );
 
 /*****************************************************************************
 **
@@ -196,7 +196,7 @@ void cio_clearscroll(void);
 ** @param x,y   desired coordinate position
 ** @param c   the character to be printed
 */
-void cio_putchar_at(unsigned int x, unsigned int y, unsigned int c);
+void cio_putchar_at( unsigned int x, unsigned int y, unsigned int c );
 
 /**
 ** cio_puts_at
@@ -207,7 +207,7 @@ void cio_putchar_at(unsigned int x, unsigned int y, unsigned int c);
 ** @param x,y   desired coordinate position
 ** @param str   pointer to a NUL-terminated string to be printed
 */
-void cio_puts_at(unsigned int x, unsigned int y, const char *str);
+void cio_puts_at( unsigned int x, unsigned int y, const char *str );
 
 /**
 ** cio_printf_at
@@ -219,14 +219,14 @@ void cio_puts_at(unsigned int x, unsigned int y, const char *str);
 ** @param fmt   a printf-style format control string
 ** @param ...   optional additional values to be printed
 */
-void cio_printf_at(unsigned int x, unsigned int y, char *fmt, ...);
+void cio_printf_at( unsigned int x, unsigned int y, char *fmt, ... );
 
 /**
 ** cio_clearscreen
 **
 ** This function clears the entire screen, including the scrolling region.
 */
-void cio_clearscreen(void);
+void cio_clearscreen( void );
 
 /*****************************************************************************
 **
@@ -251,7 +251,7 @@ void cio_clearscreen(void);
 **
 ** @return  the next character from the keyboard input buffer
 */
-int cio_getchar(void);
+int cio_getchar( void );
 
 /**
 ** cio_gets
@@ -270,7 +270,7 @@ int cio_getchar(void);
 **
 ** @return count of the number of characters read into the buffer
 */
-int cio_gets(char *buffer, unsigned int size);
+int cio_gets( char *buffer, unsigned int size );
 
 /**
 ** cio_input_queue
@@ -281,7 +281,7 @@ int cio_gets(char *buffer, unsigned int size);
 **
 ** @return number of characters in the input queue
 */
-int cio_input_queue(void);
-#endif /* !ASM_SRC */
+int cio_input_queue( void );
+#endif  /* !ASM_SRC */
 
 #endif

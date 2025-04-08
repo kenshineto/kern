@@ -24,7 +24,7 @@
 **
 ** @param ch    The character to be printed
 */
-void put_char_or_code(int ch);
+void put_char_or_code( int ch );
 
 /**
 ** Name:    backtrace
@@ -35,7 +35,7 @@ void put_char_or_code(int ch);
 ** @param ebp   Initial EBP to use
 ** @param args  Number of function argument values to print
 */
-void backtrace(uint32_t *ebp, uint_t args);
+void backtrace( uint32_t *ebp, uint_t args );
 
 /**
 ** Name:	kpanic
@@ -50,8 +50,8 @@ void backtrace(uint32_t *ebp, uint_t args);
 ** @param msg[in]  String containing a relevant message to be printed,
 **                 or NULL
 */
-void kpanic(const char *msg);
+void kpanic( const char *msg );
 
-#endif /* !ASM_SRC */
+#endif  /* !ASM_SRC */
 
 #endif

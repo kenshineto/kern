@@ -29,11 +29,11 @@
 ** @param[in,out] list  The address of a list_t variable
 ** @param[in] data      The data to prepend to the list
 */
-void list_add(list_t *list, void *data)
-{
+void list_add( list_t *list, void *data ) {
+
 	// sanity checks
-	assert1(list != NULL);
-	assert1(data != NULL);
+	assert1( list != NULL );
+	assert1( data != NULL );
 
 	list_t *tmp = (list_t *)data;
 	tmp->next = list->next;
@@ -49,15 +49,16 @@ void list_add(list_t *list, void *data)
 **
 ** @return a pointer to the removed data, or NULL if the list was empty
 */
-void *list_remove(list_t *list)
-{
-	assert1(list != NULL);
+void *list_remove( list_t *list ) {
+
+	assert1( list != NULL );
 
 	list_t *data = list->next;
-	if (data != NULL) {
+	if( data != NULL ) {
 		list->next = data->next;
 		data->next = NULL;
 	}
 
 	return (void *)data;
 }
+

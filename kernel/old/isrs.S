@@ -19,8 +19,6 @@
 #	.arch	i386
 
 #include <bootstrap.h>
-#include <offsets.h>
-#include <vm.h>
 
 /*
 ** Configuration options - define in Makefile
@@ -102,8 +100,8 @@ isr_save:
 **
 ** Set up parameters for the ISR call.
 */
-	movl	CTX_vector(%esp),%eax	// get vector number and error code
-	movl	CTX_code(%esp),%ebx
+	movl	52(%esp),%eax	// get vector number and error code
+	movl	56(%esp),%ebx
 
 /*
 ***********************
@@ -122,12 +120,11 @@ isr_save:
 
 	// save the context pointer
 	movl	current, %edx
-	movl	%esp, PCB_context(%edx)
+	movl	%esp, (%edx)
 
 	// also save the page directory pointer
 	movl	%cr3, %ecx
-	addl	$KERN_BASE, %ecx	// convert to a virtual address
-	movl	%ecx, PCB_pdir(%edx)
+	movl	%ecx, 4(%edx)
 
 	// switch to the system stack
 	//
@@ -169,9 +166,8 @@ isr_restore:
 ***********************
 */
 	movl	current, %ebx	// return to the user stack
-	movl	PCB_context(%ebx), %esp	// ESP --> context save area
-	movl	PCB_pdir(%ebx), %ecx	// page directory pointer
-	subl	$KERN_BASE, %ecx	// convert to a physical address
+	movl	(%ebx), %esp	// ESP --> context save area
+	movl	4(%ebx), %ecx	// page directory pointer
 	movl	%ecx, %cr3
 
 	// now we're operating with the user process'
@@ -187,7 +183,7 @@ isr_restore:
 /*
 ** DEBUGGING CODE PART 1
 **
-** This code will execute during each context restore, and
+** This code will execute during each context restore, and 
 ** should be modified to print out whatever debugging information
 ** is desired.
 **

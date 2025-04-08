@@ -18,9 +18,9 @@
 
 // sio interrupt settings
 
-#define SIO_TX 0x01
-#define SIO_RX 0x02
-#define SIO_BOTH (SIO_TX | SIO_RX)
+#define SIO_TX      0x01
+#define SIO_RX      0x02
+#define SIO_BOTH    (SIO_TX | SIO_RX)
 
 #ifndef ASM_SRC
 
@@ -48,7 +48,7 @@ extern QTYPE QNAME;
 **
 ** Initialize the UART chip.
 */
-void sio_init(void);
+void sio_init( void );
 
 /**
 ** sio_enable()
@@ -61,7 +61,7 @@ void sio_init(void);
 **
 ** @return the prior IER setting
 */
-uint8_t sio_enable(uint8_t which);
+uint8_t sio_enable( uint8_t which );
 
 /**
 ** sio_disable()
@@ -74,7 +74,7 @@ uint8_t sio_enable(uint8_t which);
 **
 ** @return the prior IER setting
 */
-uint8_t sio_disable(uint8_t which);
+uint8_t sio_disable( uint8_t which );
 
 /**
 ** sio_inq_length()
@@ -85,7 +85,7 @@ uint8_t sio_disable(uint8_t which);
 **
 ** @return the count of characters still in the input queue
 */
-int sio_inq_length(void);
+int sio_inq_length( void );
 
 /**
 ** sio_readc()
@@ -96,7 +96,7 @@ int sio_inq_length(void);
 **
 ** @return the next character, or -1 if no character is available
 */
-int sio_readc(void);
+int sio_readc( void );
 
 /**
 ** sio_read()
@@ -110,7 +110,7 @@ int sio_readc(void);
 **
 ** @return the number of bytes copied, or 0 if no characters were available
 */
-int sio_read(char *buffer, int length);
+int sio_read( char *buffer, int length );
 
 /**
 ** sio_writec( ch )
@@ -121,7 +121,7 @@ int sio_read(char *buffer, int length);
 **
 ** @param ch   Character to be written (in the low-order 8 bits)
 */
-void sio_writec(int ch);
+void sio_writec( int ch );
 
 /**
 ** sio_write( ch )
@@ -135,7 +135,7 @@ void sio_writec(int ch);
 **
 ** @return the number of characters copied into the SIO output buffer
 */
-int sio_write(const char *buffer, int length);
+int sio_write( const char *buffer, int length );
 
 /**
 ** sio_puts( buf )
@@ -148,7 +148,7 @@ int sio_write(const char *buffer, int length);
 **
 ** @return the count of bytes transferred
 */
-int sio_puts(const char *buffer);
+int sio_puts( const char *buffer );
 
 /**
 ** sio_dump( full )
@@ -161,8 +161,8 @@ int sio_puts(const char *buffer);
 **               is being requested (which includes the contents
 **               of the queues)
 */
-void sio_dump(bool_t full);
+void sio_dump( bool_t full );
 
-#endif /* !ASM_SRC */
+#endif	/* !ASM_SRC */
 
 #endif

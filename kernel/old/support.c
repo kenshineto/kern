@@ -29,16 +29,16 @@
 ** each interrupt.  These functions are called from the isr stub based
 ** on the interrupt number.
 */
-void (*isr_table[256])(int vector, int code);
+void ( *isr_table[ 256 ] )( int vector, int code );
 
 /*
 ** Format of an IDT entry.
 */
-typedef struct {
-	short offset_15_0;
-	short segment_selector;
-	short flags;
-	short offset_31_16;
+typedef struct  {
+	short   offset_15_0;
+	short   segment_selector;
+	short   flags;
+	short   offset_31_16;
 } IDT_Gate;
 
 /*
@@ -59,12 +59,11 @@ typedef struct {
 #ifdef RPT_INT_UNEXP
 /* add any header includes you need here */
 #endif
-static void unexpected_handler(int vector, int code)
-{
+static void unexpected_handler( int vector, int code ) {
 #ifdef RPT_INT_UNEXP
-	cio_printf("\n** UNEXPECTED vector %d code %d\n", vector, code);
+	cio_printf( "\n** UNEXPECTED vector %d code %d\n", vector, code );
 #endif
-	panic("Unexpected interrupt");
+	panic( "Unexpected interrupt" );
 }
 
 /**
@@ -76,24 +75,23 @@ static void unexpected_handler(int vector, int code)
 ** @param vector   vector number for the interrupt that occurred
 ** @param code     error code, or a dummy value
 */
-static void default_handler(int vector, int code)
-{
+static void default_handler( int vector, int code ) {
 #ifdef RPT_INT_UNEXP
-	cio_printf("\n** vector %d code %d\n", vector, code);
+	cio_printf( "\n** vector %d code %d\n", vector, code );
 #endif
-	if (vector >= 0x20 && vector < 0x30) {
-		if (vector > 0x27) {
+	if( vector >= 0x20 && vector < 0x30 ) {
+		if( vector > 0x27 ) {
 			// must also ACK the secondary PIC
-			outb(PIC2_CMD, PIC_EOI);
+			outb( PIC2_CMD, PIC_EOI );
 		}
-		outb(PIC1_CMD, PIC_EOI);
+		outb( PIC1_CMD, PIC_EOI );
 	} else {
 		/*
 		** All the "expected" interrupts will be handled by the
 		** code above.  If we get down here, the isr table may
 		** have been corrupted.  Print a message and don't return.
 		*/
-		panic("Unexpected \"expected\" interrupt!");
+		panic( "Unexpected \"expected\" interrupt!" );
 	}
 }
 
@@ -108,12 +106,12 @@ static void default_handler(int vector, int code)
 ** @param vector   vector number for the interrupt that occurred
 ** @param code     error code, or a dummy value
 */
-static void mystery_handler(int vector, int code)
-{
+static void mystery_handler( int vector, int code ) {
 #if defined(RPT_INT_MYSTERY) || defined(RPT_INT_UNEXP)
-	cio_printf("\nMystery interrupt!\nVector=0x%02x, code=%d\n", vector, code);
+	cio_printf( "\nMystery interrupt!\nVector=0x%02x, code=%d\n",
+		  vector, code );
 #endif
-	outb(PIC1_CMD, PIC_EOI);
+	outb( PIC1_CMD, PIC_EOI );
 }
 
 /**
@@ -121,38 +119,37 @@ static void mystery_handler(int vector, int code)
 **
 ** Initialize the 8259 Programmable Interrupt Controller.
 */
-static void init_pic(void)
-{
+static void init_pic( void ) {
 	/*
 	** ICW1: start the init sequence, update ICW4
 	*/
-	outb(PIC1_CMD, PIC_CW1_INIT | PIC_CW1_NEED4);
-	outb(PIC2_CMD, PIC_CW1_INIT | PIC_CW1_NEED4);
+	outb( PIC1_CMD, PIC_CW1_INIT | PIC_CW1_NEED4 );
+	outb( PIC2_CMD, PIC_CW1_INIT | PIC_CW1_NEED4 );
 
 	/*
 	** ICW2: primary offset of 0x20 in the IDT, secondary offset of 0x28
 	*/
-	outb(PIC1_DATA, PIC1_CW2_VECBASE);
-	outb(PIC2_DATA, PIC2_CW2_VECBASE);
+	outb( PIC1_DATA, PIC1_CW2_VECBASE );
+	outb( PIC2_DATA, PIC2_CW2_VECBASE );
 
 	/*
 	** ICW3: secondary attached to line 2 of primary, bit mask is 00000100
 	**   secondary id is 2
 	*/
-	outb(PIC1_DATA, PIC1_CW3_SEC_IRQ2);
-	outb(PIC2_DATA, PIC2_CW3_SEC_ID);
+	outb( PIC1_DATA, PIC1_CW3_SEC_IRQ2 );
+	outb( PIC2_DATA, PIC2_CW3_SEC_ID );
 
 	/*
 	** ICW4: want 8086 mode, not 8080/8085 mode
 	*/
-	outb(PIC1_DATA, PIC_CW4_PM86);
-	outb(PIC2_DATA, PIC_CW4_PM86);
+	outb( PIC1_DATA, PIC_CW4_PM86 );
+	outb( PIC2_DATA, PIC_CW4_PM86 );
 
 	/*
 	** OCW1: allow interrupts on all lines
 	*/
-	outb(PIC1_DATA, PIC_MASK_NONE);
-	outb(PIC2_DATA, PIC_MASK_NONE);
+	outb( PIC1_DATA, PIC_MASK_NONE );
+	outb( PIC2_DATA, PIC_MASK_NONE );
 }
 
 /**
@@ -166,8 +163,7 @@ static void init_pic(void)
 ** Note: generally, the handler invoked from the IDT will be a "stub"
 ** that calls the second-level C handler via the isr_table array.
 */
-static void set_idt_entry(int entry, void (*handler)(void))
-{
+static void set_idt_entry( int entry, void ( *handler )( void ) ) {
 	IDT_Gate *g = (IDT_Gate *)IDT_ADDR + entry;
 
 	g->offset_15_0 = (int)handler & 0xffff;
@@ -185,18 +181,17 @@ static void set_idt_entry(int entry, void (*handler)(void))
 ** are then installed for those interrupts we may get before a real
 ** handler is set up.
 */
-static void init_idt(void)
-{
+static void init_idt( void ) {
 	int i;
-	extern void (*isr_stub_table[256])(void);
+	extern  void    ( *isr_stub_table[ 256 ] )( void );
 
 	/*
 	** Make each IDT entry point to the stub for that vector.  Also
 	** make each entry in the ISR table point to the default handler.
 	*/
-	for (i = 0; i < 256; i++) {
-		set_idt_entry(i, isr_stub_table[i]);
-		install_isr(i, unexpected_handler);
+	for ( i=0; i < 256; i++ ) {
+		set_idt_entry( i, isr_stub_table[ i ] );
+		install_isr( i, unexpected_handler );
 	}
 
 	/*
@@ -205,13 +200,13 @@ static void init_idt(void)
 	** will eventually install the "real" handler.
 	*/
 
-	install_isr(VEC_KBD, default_handler); // cio_init()
-	install_isr(VEC_COM1, default_handler); // sio_init()
-	install_isr(VEC_TIMER, default_handler); // clk_init()
-	install_isr(VEC_SYSCALL, default_handler); // sys_init()
-	install_isr(VEC_PAGE_FAULT, default_handler); // vm_init()
+	install_isr( VEC_KBD, default_handler );         // cio_init()
+	install_isr( VEC_COM1, default_handler );        // sio_init()
+	install_isr( VEC_TIMER, default_handler );       // clk_init()
+	install_isr( VEC_SYSCALL, default_handler );     // sys_init()
+	install_isr( VEC_PAGE_FAULT, default_handler );  // vm_init()
 
-	install_isr(VEC_MYSTERY, mystery_handler);
+	install_isr( VEC_MYSTERY, mystery_handler );
 }
 
 /*
@@ -226,11 +221,10 @@ static void init_idt(void)
 **
 ** Called when we find an unrecoverable error.
 */
-void panic(char *reason)
-{
-	__asm__("cli");
-	cio_printf("\nPANIC: %s\nHalting...", reason);
-	for (;;) {
+void panic( char *reason ) {
+	__asm__( "cli" );
+	cio_printf( "\nPANIC: %s\nHalting...", reason );
+	for(;;) {
 		;
 	}
 }
@@ -240,8 +234,7 @@ void panic(char *reason)
 **
 ** (Re)initilizes the interrupt system.
 */
-void init_interrupts(void)
-{
+void init_interrupts( void ) {
 	init_idt();
 	init_pic();
 }
@@ -251,12 +244,13 @@ void init_interrupts(void)
 **
 ** Installs a second-level handler for a specific interrupt.
 */
-void (*install_isr(int vector, void (*handler)(int, int)))(int, int)
-{
-	void (*old_handler)(int vector, int code);
+void (*install_isr( int vector,
+		void (*handler)(int,int) ) ) ( int, int ) {
 
-	old_handler = isr_table[vector];
-	isr_table[vector] = handler;
+	void ( *old_handler )( int vector, int code );
+
+	old_handler = isr_table[ vector ];
+	isr_table[ vector ] = handler;
 	return old_handler;
 }
 
@@ -276,10 +270,10 @@ void (*install_isr(int vector, void (*handler)(int, int)))(int, int)
 **
 ** Ultimately, just remember that DELAY VALUES ARE APPROXIMATE AT BEST.
 */
-void delay(int length)
-{
-	while (--length >= 0) {
-		for (int i = 0; i < 10000000; ++i)
+void delay( int length ) {
+
+	while( --length >= 0 ) {
+		for( int i = 0; i < 10000000; ++i )
 			;
 	}
 }

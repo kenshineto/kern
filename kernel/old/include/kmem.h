@@ -28,8 +28,8 @@
 
 // Slab and slice sizes, in bytes
 
-#define SZ_SLAB SZ_PAGE
-#define SZ_SLICE (SZ_SLAB >> 2)
+#define SZ_SLAB     SZ_PAGE
+#define SZ_SLICE    (SZ_SLAB >> 2)
 
 // memory limits
 //
@@ -37,8 +37,8 @@
 // module will manage
 //
 // we won't map any memory below 1MB or above 1GB
-#define KM_LOW_CUTOFF NUM_1MB
-#define KM_HIGH_CUTOFF NUM_1GB
+#define KM_LOW_CUTOFF      NUM_1MB
+#define KM_HIGH_CUTOFF     NUM_1GB
 
 #ifndef ASM_SRC
 
@@ -68,7 +68,7 @@
 **    Must be called before any other init routine that uses
 **    dynamic storage is called.
 */
-void km_init(void);
+void km_init( void );
 
 /**
 ** Name:    km_dump
@@ -81,7 +81,7 @@ void km_init(void);
 ** @param addrs  Also dump page addresses
 ** @param both   Also dump slice addresses
 */
-void km_dump(bool_t addrs, bool_t both);
+void km_dump( bool_t addrs, bool_t both );
 
 /*
 ** Functions that manipulate free memory blocks.
@@ -95,7 +95,7 @@ void km_dump(bool_t addrs, bool_t both);
 ** @return a pointer to the beginning of the allocated page,
 **         or NULL if no memory is available
 */
-void *km_page_alloc(void);
+void *km_page_alloc( void );
 
 /**
 ** Name:    km_page_free
@@ -108,7 +108,7 @@ void *km_page_alloc(void);
 **
 ** @param[in] block   Pointer to the page to be returned to the free list
 */
-void km_page_free(void *block);
+void km_page_free( void *block );
 
 /**
 ** Name:    km_slice_alloc
@@ -119,7 +119,7 @@ void km_page_free(void *block);
 **
 ** @return a pointer to the allocated slice
 */
-void *km_slice_alloc(void);
+void *km_slice_alloc( void );
 
 /**
 ** Name:    km_slice_free
@@ -131,7 +131,7 @@ void *km_slice_alloc(void);
 **
 ** @param[in] block  Pointer to the slice (1/4 page) to be freed
 */
-void km_slice_free(void *block);
+void km_slice_free( void *block );
 
 #endif /* !ASM_SRC */
 

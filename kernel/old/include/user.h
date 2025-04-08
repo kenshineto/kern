@@ -15,7 +15,7 @@
 #include <x86/arch.h>
 
 // default value for EFLAGS in new processes
-#define DEFAULT_EFLAGS (EFL_MB1 | EFL_IF)
+#define DEFAULT_EFLAGS     (EFL_MB1 | EFL_IF)
 
 /*
 ** General (C and/or assembly) definitions
@@ -61,14 +61,14 @@ typedef struct header_s {
 } header_t;
 
 // length of the file name field
-#define NAMELEN 20
+#define NAMELEN      20
 
 // program descriptor
 typedef struct prog_s {
-	char name[NAMELEN]; // truncated name (15 chars)
-	uint32_t offset; // offset from the beginning of the blob
-	uint32_t size; // size of this ELF module
-	uint32_t flags; // miscellaneous flags
+	char name[NAMELEN];  // truncated name (15 chars)
+	uint32_t offset;     // offset from the beginning of the blob
+	uint32_t size;       // size of this ELF module
+	uint32_t flags;      // miscellaneous flags
 } prog_t;
 
 /*
@@ -84,7 +84,7 @@ typedef struct prog_s {
 **
 ** Initializes the user support module.
 */
-void user_init(void);
+void user_init( void );
 
 /**
 ** Name:	user_locate
@@ -95,7 +95,7 @@ void user_init(void);
 **
 ** @return pointer to the program table entry in the code archive, or NULL
 */
-prog_t *user_locate(uint_t what);
+prog_t *user_locate( uint_t what );
 
 /**
 ** Name:	user_duplicate
@@ -107,7 +107,7 @@ prog_t *user_locate(uint_t what);
 **
 ** @return the status of the duplicate attempt
 */
-int user_duplicate(pcb_t *new, pcb_t *old);
+int user_duplicate( pcb_t *new, pcb_t *old );
 
 /**
 ** Name:	user_load
@@ -118,11 +118,10 @@ int user_duplicate(pcb_t *new, pcb_t *old);
 ** @param prog   A pointer to the program table entry to be loaded
 ** @param pcb    The PCB for the program being loaded
 ** @param args   The argument vector for the program
-** @param sys    Is the argument vector from kernel code?
 **
 ** @return the status of the load attempt
 */
-int user_load(prog_t *prog, pcb_t *pcb, const char **args, bool_t sys);
+int user_load( prog_t *prog, pcb_t *pcb, const char **args );
 
 /**
 ** Name:	user_cleanup
@@ -132,8 +131,8 @@ int user_load(prog_t *prog, pcb_t *pcb, const char **args, bool_t sys);
 **
 ** @param pcb   The PCB of the program to be cleaned up
 */
-void user_cleanup(pcb_t *pcb);
+void user_cleanup( pcb_t *pcb );
 
-#endif /* !ASM_SRC */
+#endif  /* !ASM_SRC */
 
 #endif

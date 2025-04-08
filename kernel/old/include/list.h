@@ -35,7 +35,7 @@
 
 // The list structure
 typedef struct list_s {
-	struct list_s *next; // link to the successor
+	struct list_s *next;	// link to the successor
 } list_t;
 
 /*
@@ -50,7 +50,7 @@ typedef struct list_s {
 ** @param[in,out] list  The address of a list_t variable
 ** @param[in] data      The data to prepend to the list
 */
-void list_add(list_t *list, void *data);
+void list_add( list_t *list, void *data );
 
 /**
 ** Name:    list_remove
@@ -61,7 +61,7 @@ void list_add(list_t *list, void *data);
 **
 ** @return a pointer to the removed data, or NULL if the list was empty
 */
-void *list_remove(list_t *list);
+void *list_remove( list_t *list );
 
 #endif /* !ASM_SRC */
 

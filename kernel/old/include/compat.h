@@ -60,10 +60,10 @@
 */
 
 // type name for the PCB
-#define PCBTYPE pcb_t
+#define PCBTYPE		pcb_t
 
 // type name for our queue
-#define QTYPE pcb_queue_t
+#define QTYPE		pcb_queue_t
 
 /*
 ** Section 3:  interface and behavior
@@ -77,13 +77,13 @@
 */
 
 // string functions
-#define SLENGTH strlen
+#define SLENGTH		strlen
 
 // scheduler
-#define SCHED schedule
+#define SCHED		schedule
 
 // dispatcher
-#define DISPATCH dispatch
+#define DISPATCH	dispatch
 
 /*
 ** blocked queue for reading processes
@@ -93,7 +93,7 @@
 ** Its value should be the name of the globally-visible
 ** queue to be used.
 */
-#define QNAME sioread
+#define QNAME		sioread
 
 #ifdef QNAME
 
@@ -105,27 +105,26 @@
 // invoke the queue creation function
 // examples:
 //
-// 	#define QCREATE(q)	do {
-// 		_que_create( &(q), NULL );
+// 	#define QCREATE(q)	do { 
+// 		_que_create( &(q), NULL ); 
 //		} while(0)
 //
 //	#define QCREATE(q)	// do nothing
 
-#define QCREATE(q) // handled elsewhere for us
+#define	QCREATE(q)	// handled elsewhere for us
 
 // check to see if the queue is empty
 // examples:
 //
 //	#define QEMPTY(q)	queue_is_empty(q)
 //	#define	QEMPTY(q)	(quene_length(q) > 0)
-#define QEMPTY(q) pcb_queue_empty(q)
+#define	QEMPTY(q)	pcb_queue_empty(q)
 
 // this macro expands into code that removes a value from
 // 'q' and places it into 'd'
-#define QDEQUE(q, d)                                              \
-	do {                                                          \
-		assert(pcb_queue_remove((q), (pcb_t **)&(d)) == SUCCESS); \
-	} while (0)
+#define QDEQUE(q,d)	do { \
+		assert(pcb_queue_remove( (q), (pcb_t **) &(d) ) == SUCCESS ); \
+	} while(0)
 
 #endif /* QNAME */
 
