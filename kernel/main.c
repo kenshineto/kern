@@ -5,21 +5,16 @@
 #include <comus/fs.h>
 #include <lib.h>
 
-struct memory_map mmap;
-
 void main(long magic, volatile void *mboot)
 {
-	(void)magic; // TODO: check multiboot magic
-
 	// initalize idt and pic
-	// WARNING: must be done before anything else
 	cpu_init();
 
-	// load memory map
-	mboot_load_mmap(mboot, &mmap);
+	// load multiboot information
+	mboot_init(magic, mboot);
 
 	// initalize memory
-	memory_init(&mmap);
+	memory_init();
 
 	// initalize devices
 	drivers_init();

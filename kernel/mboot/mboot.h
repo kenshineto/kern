@@ -100,6 +100,6 @@ struct mboot_tag_framebuffer {
 	uint16_t reserved;
 };
 
-void *locate_mboot_table(volatile void *mboot, uint32_t type);
+void *locate_mboot_table(uint32_t type);
 
 #endif /* mboot.h */

@@ -8,9 +8,12 @@ static const char *segment_type[] = { "Reserved",	 "Free",
 									  "Hibernation", "Defective",
 									  "Unknown" };
 
-void mboot_load_mmap(volatile void *mboot, struct memory_map *res)
+int mboot_get_mmap(struct memory_map *res)
 {
-	void *tag = locate_mboot_table(mboot, MBOOT_MEMORY_MAP);
+	void *tag = locate_mboot_table(MBOOT_MEMORY_MAP);
+	if (tag == NULL)
+		return 1;
+
 	struct mboot_tag_mmap *mmap = (struct mboot_tag_mmap *)tag;
 
 	int idx = 0;
@@ -33,4 +36,6 @@ void mboot_load_mmap(volatile void *mboot, struct memory_map *res)
 		res->entries[idx].len = seg->len;
 	}
 	res->entry_count = idx;
+
+	return 0;
 }

@@ -11,6 +11,19 @@
 
 #include <comus/memory.h>
 
-void mboot_load_mmap(volatile void *mboot, struct memory_map *map);
+/**
+ * Load the multiboot information passed from the bootloader
+ */
+void mboot_init(long magic, volatile void *mboot);
+
+/**
+ * Get the memory map from multiboot
+ */
+int mboot_get_mmap(struct memory_map *map);
+
+/**
+ * Get the ACPI rsdp addr from multiboot
+ */
+void *mboot_get_rsdp(void);
 
 #endif /* mboot.h */

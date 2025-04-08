@@ -135,7 +135,7 @@ static void parse_width(const char **res, options_t *opts)
 	// check varies
 	if (*fmt == '*') {
 		opts->width_varies = true;
-		*res = fmt++;
+		*res = ++fmt;
 		return;
 	}
 
@@ -161,7 +161,7 @@ static void parse_precision(const char **res, options_t *opts)
 	// check varies
 	if (*fmt == '*') {
 		opts->precision_varies = true;
-		*res = fmt++;
+		*res = ++fmt;
 		return;
 	}
 

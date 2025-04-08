@@ -1,7 +1,18 @@
+#include <lib.h>
+#include <comus/mboot.h>
 
 #include "mboot.h"
 
-void *locate_mboot_table(volatile void *mboot, uint32_t type)
+static volatile void *mboot;
+
+void mboot_init(long magic, volatile void *ptr)
+{
+	if (magic != MBOOT_HEADER_MAGIC)
+		panic("invalid multiboot magic");
+	mboot = ptr;
+}
+
+void *locate_mboot_table(uint32_t type)
 {
 	struct mboot_info *info = (struct mboot_info *)mboot;
 	const char *mboot_end = ((char *)info) + info->total_size;

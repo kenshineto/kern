@@ -28,7 +28,7 @@ struct memory_map {
 /**
  * Initalize system memory allocator
  */
-void memory_init(struct memory_map *map);
+void memory_init(void);
 
 /**
  * @returns how much memory the system has
