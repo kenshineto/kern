@@ -5,11 +5,6 @@
 
 UNAME := $(shell uname)
 
-GRUB = grub-mkrescue
-ifeq ($(UNAME), Darwin)
-	GRUB = x86_64-elf-grub-mkrescue
-endif
-
 QEMU = qemu-system-x86_64
 QEMUOPTS = -cdrom bin/os.iso \
 		   -no-reboot \
@@ -37,7 +32,7 @@ bin/os.iso: build
 	mkdir -p bin/iso/boot/grub
 	cp config/grub.cfg bin/iso/boot/grub
 	cp bin/kernel bin/iso/boot
-	$(GRUB) -o bin/os.iso bin/iso 2>/dev/null
+	grub-mkrescue -o bin/os.iso bin/iso 2>/dev/null
 
 fmt:
 	clang-format -i $(shell find -type f -name "*.[ch]" -and -not -path "./kernel/old/*")
