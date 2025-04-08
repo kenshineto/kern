@@ -7,20 +7,20 @@ static volatile void *mboot;
 
 void mboot_init(long magic, volatile void *ptr)
 {
-	if (magic != MBOOT_HEADER_MAGIC)
+	if (magic != MULTIBOOT2_BOOTLOADER_MAGIC)
 		panic("invalid multiboot magic");
 	mboot = ptr;
 }
 
 void *locate_mboot_table(uint32_t type)
 {
-	struct mboot_info *info = (struct mboot_info *)mboot;
+	struct multiboot *info = (struct multiboot *)mboot;
 	const char *mboot_end = ((char *)info) + info->total_size;
 
 	char *tag_ptr = info->tags;
 
 	while (tag_ptr < mboot_end) {
-		struct mboot_tag *tag = (struct mboot_tag *)tag_ptr;
+		struct multiboot_tag *tag = (struct multiboot_tag *)tag_ptr;
 
 		if (tag->type == type)
 			return tag;
