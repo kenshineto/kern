@@ -1,5 +1,5 @@
 #include <lib.h>
-#include <comus/drivers/tty.h>
+#include <comus/drivers/term.h>
 #include <comus/asm.h>
 #include <comus/memory.h>
 
@@ -18,7 +18,7 @@ static uint8_t fg = 15, bg = 0;
 // blank color
 const uint16_t blank = (uint16_t)0 | 0 << 12 | 15 << 8;
 
-static void term_clear_line(int line)
+void term_clear_line(int line)
 {
 	if (line < 0 || line >= height)
 		return;
@@ -28,13 +28,13 @@ static void term_clear_line(int line)
 	}
 }
 
-static void term_clear(void)
+void term_clear(void)
 {
 	for (uint8_t y = 0; y < height; y++)
 		term_clear_line(y);
 }
 
-static void term_scroll(int lines)
+void term_scroll(int lines)
 {
 	cli();
 	y -= lines;
@@ -52,7 +52,7 @@ static void term_scroll(int lines)
 	sti();
 }
 
-void tty_out(char c)
+void term_out(char c)
 {
 	if (buffer == NULL)
 		return;
@@ -98,8 +98,8 @@ void tty_out(char c)
 	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 }
 
-void tty_out_str(const char *str)
+void term_out_str(const char *str)
 {
 	while (*str)
-		tty_out(*str++);
+		term_out(*str++);
 }

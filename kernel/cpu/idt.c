@@ -1,3 +1,4 @@
+#include "lib/klib.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
@@ -196,6 +197,8 @@ void idt_exception_handler(uint64_t exception, uint64_t code, regs_t *state)
 	isr_print_regs(state);
 
 	kputs("\n");
+
+	log_backtrace_ex((void *)state->rip, (void *)state->rbp);
 
 	while (1) {
 		halt();

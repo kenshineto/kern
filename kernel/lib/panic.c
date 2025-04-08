@@ -1,3 +1,4 @@
+#include "lib/klib.h"
 #include <lib.h>
 #include <stdarg.h>
 #include <comus/asm.h>
@@ -10,6 +11,7 @@ __attribute__((noreturn)) void panic(const char *format, ...)
 	kprintf("\n\n!!! PANIC !!!\n");
 	kvprintf(format, list);
 	kprintf("\n\n");
+	log_backtrace();
 
 	while (1)
 		halt();

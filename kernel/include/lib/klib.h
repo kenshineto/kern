@@ -193,4 +193,30 @@ unsigned int bound(unsigned int min, unsigned int value, unsigned int max);
  */
 __attribute__((noreturn)) void panic(const char *format, ...);
 
+/**
+ * Fill dst with a stack trace consisting of return addresses in order
+ * from top to bottom
+ *
+ * @returns number of backtraces (at most len)
+ */
+size_t backtrace(void **dst, size_t len);
+
+/**
+ * Fill dst with a stack trace consisting of return addresses in order
+ * from top to bottom, starting at a provided ip/bp
+ *
+ * @returns number of backtraces (at most len)
+ */
+size_t backtrace_ex(void **dst, size_t len, void *ip, void *bp);
+
+/**
+ * Log a backtrace to output
+ */
+void log_backtrace(void);
+
+/**
+ * Log a backtrace to output starting at a provided ip/bp
+ */
+void log_backtrace_ex(void *ip, void *bp);
+
 #endif /* klib.h */
