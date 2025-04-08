@@ -31,6 +31,8 @@
             valgrind
             zig_0_14
             qemu
+            grub2_light
+            xorriso
           ];
         };
 
