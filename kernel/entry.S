@@ -134,7 +134,7 @@ _start:
 	push 	%eax
 
 	# zero out kernel page table
-	movl	$0x1000, %edi    # pml4 located at 0x1000
+	movl	$kernel_pml4, %edi
 	movl	%edi, %cr3
 	xorl	%eax, %eax
 	movl	$4096, %ecx      # zero 4096 pages
