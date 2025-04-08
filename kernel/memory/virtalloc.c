@@ -64,11 +64,11 @@ static struct addr_node *get_node(void)
 		if (new_alloc < 8)
 			new_alloc = 8;
 		struct addr_node *new_nodes;
-		new_nodes = malloc(sizeof(struct addr_node) * new_alloc);
+		new_nodes = kalloc(sizeof(struct addr_node) * new_alloc);
 		if (new_nodes == NULL)
 			panic("virt addr alloc nodes is null");
 		update_node_ptrs(alloc_nodes, new_nodes, alloc_node_count, new_alloc);
-		free(alloc_nodes);
+		kfree(alloc_nodes);
 		alloc_nodes = new_nodes;
 		alloc_node_count = new_alloc;
 		is_allocating = false;

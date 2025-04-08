@@ -52,38 +52,6 @@ extern void *memmove(void *restrict dest, const void *restrict src, size_t n);
 extern void *memset(void *restrict dest, int c, size_t n);
 
 /**
- * Copy the first n bytes from memory area src to memory area dest. The memory
- * areas must not overlap.
- * @param dest - the destination
- * @param src - the source
- * @param n - the byte count
- * @returns a pointer to dest
- */
-extern volatile void *memcpyv(volatile void *restrict dest,
-							  const volatile void *restrict src, size_t n);
-
-/**
- * Copy the first n bytes from memory area src to memory area dest. The memory
- * areas may overlap; memmove behaves as though the bytes are first copied to a
- * temporary array.
- * @param dest - the destination
- * @param src - the source
- * @param n - the byte count
- * @returns a pointer to dest
- */
-extern volatile void *memmovev(volatile void *restrict dest,
-							   const volatile void *restrict src, size_t n);
-
-/**
- * Fill the first n bytes of the memory region dest with the constant byte c.
- * @param dest - the destination
- * @param c - the byte to write
- * @param n - the byte count
- * @returns a pointer to dest
- */
-extern volatile void *memsetv(volatile void *restrict dest, int c, size_t n);
-
-/**
  * Calculates the length of the string pointed to by str, excluding
  * the terminating null byte
  * @param str - the string pointer

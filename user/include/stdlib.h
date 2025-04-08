@@ -11,8 +11,6 @@
 
 #include <stddef.h>
 
-#define PAGE_SIZE 4096
-
 /**
  * converts single digit int to base 36
  * @param i - int
@@ -220,35 +218,5 @@ extern void *realloc(void *ptr, size_t size);
  * @param ptr - the pointer to free
  */
 extern void free(void *ptr);
-
-/**
- * Allocate a single page of memory
- *
- * @returns the address allocated or NULL on failure
- */
-extern void *alloc_page(void);
-
-/**
- * Allocate size_t amount of contiguous virtual pages
- *
- * @param count - the number of pages to allocate
- * @returns the address allocated or NULL on failure
- */
-extern void *alloc_pages(size_t count);
-
-/**
- * Free allocated pages.
- *
- * @param ptr - the pointer provided by alloc_page or alloc_pages
- */
-extern void free_pages(void *ptr);
-
-/**
- * Abort the current process with a given message.
- *
- * @param format - the format string
- * @param ... - variable args for the format
- */
-__attribute__((noreturn)) extern void panic(const char *format, ...);
 
 #endif /* stlib.h */

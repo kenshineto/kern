@@ -12,19 +12,13 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+// TODO: implement
 typedef void FILE;
 
-/// standard input
-#define stdin ((FILE *)1)
-/// standard output
-#define stdout ((FILE *)2)
-/// standard error
-#define stderr ((FILE *)3)
-
-/// console output
-#define stdcon ((FILE *)4)
-/// serial output
-#define stduart ((FILE *)5)
+extern FILE *stdin;
+extern FILE *stdout;
+#define stdin stdin
+#define stdout stdout
 
 /**
  * Prints out a char

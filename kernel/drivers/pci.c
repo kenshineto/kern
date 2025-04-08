@@ -34,7 +34,7 @@ uint32_t pci_rcfg_d(struct pci_device dev, uint8_t offset)
 
 static void print_device(struct pci_table_entry *entry)
 {
-	printf(
+	kprintf(
 		"BUS: %#-4x  DEV: %#-4x  FUNC: %#-4x  ID: %04x:%04x  CLASS: %02x:%02x:%02x  REV: %#02x\n",
 		entry->device.bus, entry->device.device, entry->device.function,
 		entry->vendor_id, entry->device_id, entry->class, entry->subclass,
@@ -134,11 +134,11 @@ void pci_init(void)
 			}
 		}
 	}
-	printf("PCI DEVICES\n");
+	kprintf("PCI DEVICES\n");
 	for (size_t i = 0; i < pci_table_next; i++) {
 		print_device(&pci_table[i]);
 	}
-	printf("\n");
+	kprintf("\n");
 }
 
 bool pci_findby_class(struct pci_device *dest, uint8_t class, uint8_t subclass,

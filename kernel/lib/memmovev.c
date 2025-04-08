@@ -1,4 +1,4 @@
-#include <string.h>
+#include <lib.h>
 
 volatile void *memmovev(volatile void *dest, const volatile void *src, size_t n)
 {

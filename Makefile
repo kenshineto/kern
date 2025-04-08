@@ -19,7 +19,7 @@ qemu-gdb: bin/os.iso
 	$(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
 
 gdb:
-	gdb -q -n -x util/gdbinit
+	gdb -q -n -x config/gdbinit
 
 clean:
 	rm -fr .zig-cache
@@ -30,7 +30,7 @@ build:
 
 bin/os.iso: build
 	mkdir -p bin/iso/boot/grub
-	cp grub.cfg bin/iso/boot/grub
+	cp config/grub.cfg bin/iso/boot/grub
 	cp bin/kernel bin/iso/boot
 	grub-mkrescue -o bin/os.iso bin/iso 2>/dev/null
 

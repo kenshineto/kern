@@ -17,6 +17,6 @@ void tty_out(char c);
 /**
  * Output a string to the terminal
  */
-void tty_out_str(char *str);
+void tty_out_str(const char *str);
 
 #endif /* tty.h */

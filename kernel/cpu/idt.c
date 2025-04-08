@@ -72,63 +72,63 @@ void idt_init(void)
 
 static void isr_print_regs(regs_t *regs)
 {
-	printf("rax: %#016lx (%lu)\n", regs->rax, regs->rax);
-	printf("rbx: %#016lx (%lu)\n", regs->rbx, regs->rbx);
-	printf("rcx: %#016lx (%lu)\n", regs->rcx, regs->rcx);
-	printf("rdx: %#016lx (%lu)\n", regs->rdx, regs->rdx);
-	printf("rsi: %#016lx (%lu)\n", regs->rsi, regs->rsi);
-	printf("rdi: %#016lx (%lu)\n", regs->rdi, regs->rdi);
-	printf("rsp: %#016lx (%lu)\n", regs->rsp, regs->rsp);
-	printf("rbp: %#016lx (%lu)\n", regs->rbp, regs->rbp);
-	printf("r8 : %#016lx (%lu)\n", regs->r8, regs->r8);
-	printf("r9 : %#016lx (%lu)\n", regs->r9, regs->r9);
-	printf("r10: %#016lx (%lu)\n", regs->r10, regs->r10);
-	printf("r11: %#016lx (%lu)\n", regs->r11, regs->r11);
-	printf("r12: %#016lx (%lu)\n", regs->r12, regs->r12);
-	printf("r13: %#016lx (%lu)\n", regs->r13, regs->r13);
-	printf("r14: %#016lx (%lu)\n", regs->r14, regs->r14);
-	printf("r15: %#016lx (%lu)\n", regs->r15, regs->r15);
-	printf("rip: %#016lx (%lu)\n", regs->rip, regs->rip);
-	printf("rflags: %#016lx (%lu)\n", (uint64_t)regs->rflags.raw,
+	kprintf("rax: %#016lx (%lu)\n", regs->rax, regs->rax);
+	kprintf("rbx: %#016lx (%lu)\n", regs->rbx, regs->rbx);
+	kprintf("rcx: %#016lx (%lu)\n", regs->rcx, regs->rcx);
+	kprintf("rdx: %#016lx (%lu)\n", regs->rdx, regs->rdx);
+	kprintf("rsi: %#016lx (%lu)\n", regs->rsi, regs->rsi);
+	kprintf("rdi: %#016lx (%lu)\n", regs->rdi, regs->rdi);
+	kprintf("rsp: %#016lx (%lu)\n", regs->rsp, regs->rsp);
+	kprintf("rbp: %#016lx (%lu)\n", regs->rbp, regs->rbp);
+	kprintf("r8 : %#016lx (%lu)\n", regs->r8, regs->r8);
+	kprintf("r9 : %#016lx (%lu)\n", regs->r9, regs->r9);
+	kprintf("r10: %#016lx (%lu)\n", regs->r10, regs->r10);
+	kprintf("r11: %#016lx (%lu)\n", regs->r11, regs->r11);
+	kprintf("r12: %#016lx (%lu)\n", regs->r12, regs->r12);
+	kprintf("r13: %#016lx (%lu)\n", regs->r13, regs->r13);
+	kprintf("r14: %#016lx (%lu)\n", regs->r14, regs->r14);
+	kprintf("r15: %#016lx (%lu)\n", regs->r15, regs->r15);
+	kprintf("rip: %#016lx (%lu)\n", regs->rip, regs->rip);
+	kprintf("rflags: %#016lx (%lu)\n", (uint64_t)regs->rflags.raw,
 		   (uint64_t)regs->rflags.raw);
-	puts("rflags: ");
+	kputs("rflags: ");
 	if (regs->rflags.cf)
-		puts("CF ");
+		kputs("CF ");
 	if (regs->rflags.pf)
-		puts("PF ");
+		kputs("PF ");
 	if (regs->rflags.af)
-		puts("AF ");
+		kputs("AF ");
 	if (regs->rflags.zf)
-		puts("ZF ");
+		kputs("ZF ");
 	if (regs->rflags.sf)
-		puts("SF ");
+		kputs("SF ");
 	if (regs->rflags.tf)
-		puts("TF ");
+		kputs("TF ");
 	if (regs->rflags.if_)
-		puts("IF ");
+		kputs("IF ");
 	if (regs->rflags.df)
-		puts("DF ");
+		kputs("DF ");
 	if (regs->rflags.of)
-		puts("OF ");
+		kputs("OF ");
 	if (regs->rflags.iopl)
-		puts("IOPL ");
+		kputs("IOPL ");
 	if (regs->rflags.nt)
-		puts("NT ");
+		kputs("NT ");
 	if (regs->rflags.md)
-		puts("MD ");
+		kputs("MD ");
 	if (regs->rflags.rf)
-		puts("RF ");
+		kputs("RF ");
 	if (regs->rflags.vm)
-		puts("VM ");
+		kputs("VM ");
 	if (regs->rflags.ac)
-		puts("AC ");
+		kputs("AC ");
 	if (regs->rflags.vif)
-		puts("VIF ");
+		kputs("VIF ");
 	if (regs->rflags.vip)
-		puts("VIP ");
+		kputs("VIP ");
 	if (regs->rflags.id)
-		puts("ID ");
-	puts("\n");
+		kputs("ID ");
+	kputs("\n");
 }
 
 #define EX_DEBUG 0x01
@@ -179,23 +179,23 @@ void idt_exception_handler(uint64_t exception, uint64_t code, regs_t *state)
 	case EX_PAGE_FAULT:
 		// page faults store the offending address in cr2
 		__asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-		if (!load_page((void *)cr2))
+		if (!kload_page((void *)cr2))
 			return;
 	}
 
-	puts("\n\n!!! EXCEPTION !!!\n");
-	printf("%#02lX %s\n", exception, EXCEPTIONS[exception]);
-	printf("Error code %#lX\n", code);
+	kputs("\n\n!!! EXCEPTION !!!\n");
+	kprintf("%#02lX %s\n", exception, EXCEPTIONS[exception]);
+	kprintf("Error code %#lX\n", code);
 
 	if (exception == EX_PAGE_FAULT) {
-		printf("Page fault address: %#016lx\n", cr2);
+		kprintf("Page fault address: %#016lx\n", cr2);
 	}
 
-	puts("\n");
+	kputs("\n");
 
 	isr_print_regs(state);
 
-	puts("\n");
+	kputs("\n");
 
 	while (1) {
 		halt();

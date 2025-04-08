@@ -1,4 +1,4 @@
-#include <string.h>
+#include <lib.h>
 
 volatile void *memcpyv(volatile void *restrict dest,
 					   const volatile void *restrict src, size_t n)

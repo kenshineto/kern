@@ -514,7 +514,7 @@ static inline void *page_align(void *addr)
 	return (void *)a;
 }
 
-void *mapaddr(void *addr, size_t len)
+void *kmapaddr(void *addr, size_t len)
 {
 	void *phys = page_align(addr);
 	ptrdiff_t error = (char *)addr - (char *)phys;
@@ -531,7 +531,7 @@ void *mapaddr(void *addr, size_t len)
 	return (char *)virt + error;
 }
 
-void unmapaddr(void *addr)
+void kunmapaddr(void *addr)
 {
 	long pages = virtaddr_free(addr);
 	if (pages < 1)
@@ -539,7 +539,7 @@ void unmapaddr(void *addr)
 	unmap_pages(kernel_pml4, addr, pages);
 }
 
-void *alloc_pages(size_t count)
+void *kalloc_pages(size_t count)
 {
 	void *virt = virtaddr_alloc(count);
 	if (virt == NULL)
@@ -559,13 +559,12 @@ void *alloc_pages(size_t count)
 	return virt;
 }
 
-void free_page(void *virt)
+void *kalloc_page(void)
 {
-	(void)virt;
-	panic("free_page is not yet implemented");
+	return kalloc_pages(1);
 }
 
-void free_pages(void *virt)
+void kfree_pages(void *virt)
 {
 	long pages = virtaddr_free(virt);
 	if (pages < 1)
@@ -573,7 +572,7 @@ void free_pages(void *virt)
 	unmap_pages(kernel_pml4, virt, pages);
 }
 
-int load_page(void *virt_addr)
+int kload_page(void *virt_addr)
 {
 	volatile struct pte *page = get_page(kernel_pml4, virt_addr);
 	if (page == NULL)

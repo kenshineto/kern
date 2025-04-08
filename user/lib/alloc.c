@@ -1,8 +1,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define MAGIC 0xBEEFCAFE
+#define PAGE_SIZE 4096
 
 struct page_header {
 	struct page_header *next;
@@ -37,6 +39,7 @@ static void *alloc_new(size_t size)
 {
 	size_t pages = ((size + header_len) / PAGE_SIZE) + 1;
 
+	// FIXME: use brk/sbrk
 	void *addr = alloc_pages(pages);
 	void *mem = (char *)addr + header_len;
 
@@ -206,6 +209,7 @@ void free(void *ptr)
 			header->next->prev = header->prev;
 		if (header->prev)
 			header->prev->next = header->next;
+		// FIXME: use brk/sbrk
 		free_pages(header);
 	}
 }

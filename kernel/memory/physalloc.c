@@ -185,9 +185,9 @@ void physalloc_init(struct memory_map *map)
 
 	memory_start = page_align((uintptr_t)page_area_addr + page_area_size);
 
-	bitmap = mapaddr(bitmap, bitmap_size);
+	bitmap = kmapaddr(bitmap, bitmap_size);
 	memset(bitmap, 0, bitmap_size);
-	page_area_addr = mapaddr(page_area_addr, page_area_size);
+	page_area_addr = kmapaddr(page_area_addr, page_area_size);
 	memset(page_area_addr, 0, page_area_size);
 
 	page_start = (struct memory_segment *)page_area_addr;
@@ -210,15 +210,10 @@ void physalloc_init(struct memory_map *map)
 	free_memory = page_count * PAGE_SIZE;
 
 	char buf[20];
-	printf("\nMEMORY USAGE\n");
-	printf("mem total: %s\n", btoa(memory_total(), buf));
-	printf("mem free:  %s\n", btoa(memory_free(), buf));
-	printf("mem used:  %s\n\n", btoa(memory_used(), buf));
-}
-
-void *alloc_page(void)
-{
-	return alloc_pages(1);
+	kprintf("\nMEMORY USAGE\n");
+	kprintf("mem total: %s\n", btoa(memory_total(), buf));
+	kprintf("mem free:  %s\n", btoa(memory_free(), buf));
+	kprintf("mem used:  %s\n\n", btoa(memory_used(), buf));
 }
 
 uint64_t memory_total(void)

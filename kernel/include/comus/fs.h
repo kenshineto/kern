@@ -11,7 +11,10 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <limits.h>
+
+// FIXME: aaaa
+#define MAX_DISKS 8
+#define MAX_FILE_NAME_LEN 256
 
 struct disk {
 	/// set to 1 in array to state that fs is defined

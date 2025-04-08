@@ -2,8 +2,6 @@
 #include <comus/drivers/tty.h>
 #include <comus/asm.h>
 #include <comus/memory.h>
-#include <stdint.h>
-#include <stdio.h>
 
 #define VGA_ADDR 0xB8000
 
@@ -98,4 +96,10 @@ void tty_out(char c)
 	outb(0x3D5, (uint8_t)(pos & 0xFF));
 	outb(0x3D4, 0x0E);
 	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+}
+
+void tty_out_str(const char *str)
+{
+	while (*str)
+		tty_out(*str++);
 }

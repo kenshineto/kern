@@ -2,8 +2,6 @@
 #include <comus/mboot.h>
 
 #include "mboot.h"
-#include <stdint.h>
-#include <stdio.h>
 
 static const char *segment_type[] = { "Reserved",	 "Free",
 									  "Reserved",	 "ACPI Reserved",
@@ -17,7 +15,7 @@ void mboot_load_mmap(volatile void *mboot, struct memory_map *res)
 
 	int idx = 0;
 	uintptr_t i = (uintptr_t)mmap->entries;
-	printf("MEMORY MAP\n");
+	kprintf("MEMORY MAP\n");
 	char buf[20];
 	for (; i < (uintptr_t)mmap->entries + mmap->size;
 		 i += mmap->entry_size, idx++) {
@@ -27,7 +25,7 @@ void mboot_load_mmap(volatile void *mboot, struct memory_map *res)
 			type = segment_type[6];
 		else
 			type = segment_type[seg->type];
-		printf("ADDR: %16p  LEN: %4s  TYPE: %s (%d)\n", (void *)seg->addr,
+		kprintf("ADDR: %16p  LEN: %4s  TYPE: %s (%d)\n", (void *)seg->addr,
 			   btoa(seg->len, buf), type, seg->type);
 		if (seg->type != 1 || seg->len < 1)
 			continue;

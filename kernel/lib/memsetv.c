@@ -1,4 +1,4 @@
-#include <string.h>
+#include <lib.h>
 
 volatile void *memsetv(volatile void *dest, int c, size_t n)
 {
