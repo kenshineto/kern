@@ -16,7 +16,7 @@ qemu: bin/os.iso
 	$(QEMU) $(QEMUOPTS)
 
 qemu-nox: bin/os.iso
-	$(QEMU) &(QEMUOPTS) -nographic
+	$(QEMU) $(QEMUOPTS) -nographic
 
 qemu-gdb: bin/os.iso
 	$(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
