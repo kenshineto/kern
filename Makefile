@@ -13,16 +13,16 @@ QEMUOPTS = -cdrom bin/os.iso \
 		   -name kern
 
 qemu: bin/os.iso
-        $(QEMU) $(QEMUOPTS)
+	$(QEMU) $(QEMUOPTS)
 
 qemu-nox: bin/os.iso
-        $(QEMU) &(QEMUOPTS) -nographic
+	$(QEMU) &(QEMUOPTS) -nographic
 
 qemu-gdb: bin/os.iso
-        $(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
+	$(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
 
 qemu-gdb-nox: bin/os.iso
-        $(QEMU) $(QEMUOPTS) -nographic -S -gdb tcp::1337
+	$(QEMU) $(QEMUOPTS) -nographic -S -gdb tcp::1337
 
 gdb:
 	gdb -q -n -x config/gdbinit
