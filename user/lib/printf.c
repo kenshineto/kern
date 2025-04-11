@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 #define PRINTF_NUMERIC_BUF_LEN 50
 
@@ -74,6 +75,7 @@ typedef struct {
 
 	/* output */
 	size_t written_len;
+	size_t possible_written_len;
 	bool to_file;
 	union {
 		FILE *file;
@@ -86,6 +88,8 @@ typedef struct {
 
 static void printf_putc(context_t *ctx, char c)
 {
+	ctx->possible_written_len++;
+
 	// bounds check
 	if (ctx->has_max_len)
 		if (ctx->written_len >= ctx->max_len)
@@ -93,7 +97,7 @@ static void printf_putc(context_t *ctx, char c)
 
 	// write to correct
 	if (ctx->to_file)
-		fputc(ctx->out.file, c);
+		fputc(c, ctx->out.file);
 	else
 		*(ctx->out.buf++) = c;
 
@@ -354,9 +358,11 @@ static void handle_string_specifier(context_t *ctx, options_t *opts,
 									data_t data)
 {
 	char *str = data.str;
-	int str_len = 0;
+	if (str == NULL)
+		str = "(null)";
 
 	// get length of string
+	int str_len = 0;
 	if (opts->precision_set)
 		str_len = opts->precision;
 	else
@@ -492,6 +498,13 @@ static void do_printf(context_t *ctx, va_list args)
 		case 's':
 			handle_string_specifier(ctx, &opts, data);
 			break;
+		// very terrible why in the love of FUCKING GOD would you do this
+		// but its in printf so im adding it for you fucks
+		case 'n': {
+			size_t *bad = va_arg(args, size_t *);
+			*bad = ctx->written_len;
+			break;
+		}
 		// unknown
 		default:
 			// print from % to current
@@ -500,103 +513,138 @@ static void do_printf(context_t *ctx, va_list args)
 			break;
 		}
 	}
+
+	// add \0 on sprintf
+	if (ctx->to_file == 0) {
+		int len, plen;
+		len = ctx->written_len;
+		plen = ctx->possible_written_len;
+		printf_putc(ctx, '\0');
+		ctx->written_len = len;
+		ctx->possible_written_len = plen;
+	}
 }
 
-void printf(const char *format, ...)
+int printf(const char *format, ...)
 {
 	va_list args;
+	int len;
+
 	va_start(args, format);
-	vprintf(format, args);
+	len = vprintf(format, args);
 	va_end(args);
+	return len;
 }
 
-size_t sprintf(char *restrict s, const char *format, ...)
+int sprintf(char *restrict s, const char *format, ...)
 {
 	va_list args;
-	size_t amt;
+	int len;
+
 	va_start(args, format);
-	amt = vsprintf(s, format, args);
+	len = vsprintf(s, format, args);
 	va_end(args);
-	return amt;
+	return len;
 }
 
-size_t snprintf(char *restrict s, size_t maxlen, const char *format, ...)
+int snprintf(char *restrict s, size_t maxlen, const char *format, ...)
 {
 	va_list args;
-	size_t amt;
+	int len;
+
 	va_start(args, format);
-	amt = vsnprintf(s, maxlen, format, args);
+	len = vsnprintf(s, maxlen, format, args);
 	va_end(args);
-	return amt;
+	return len;
 }
 
-void vprintf(const char *format, va_list args)
+int vprintf(const char *format, va_list args)
 {
-	vfprintf(stdout, format, args);
+	return vfprintf(stdout, format, args);
 }
 
-size_t vsprintf(char *restrict s, const char *format, va_list args)
+int vsprintf(char *restrict s, const char *format, va_list args)
 {
-	// create context
 	context_t ctx = { 0 };
 	ctx.format = format;
-	// sprintf buffer
 	ctx.out.buf = s;
 	ctx.to_file = 0;
-	// print
+
 	do_printf(&ctx, args);
 	return ctx.written_len;
 }
 
-size_t vsnprintf(char *restrict s, size_t maxlen, const char *format,
+int vsnprintf(char *restrict s, size_t maxlen, const char *format,
 				 va_list args)
 {
-	// create context
 	context_t ctx = { 0 };
 	ctx.format = format;
-	// sprintf buffer
 	ctx.out.buf = s;
 	ctx.to_file = 0;
-	// sprintf max_len
 	ctx.has_max_len = 1;
 	ctx.max_len = maxlen;
-	// print
+
+	do_printf(&ctx, args);
+	return ctx.possible_written_len;
+}
+
+int fprintf(FILE *stream, const char *format, ...)
+{
+	va_list args;
+	int len;
+
+	va_start(args, format);
+	len = vfprintf(stream, format, args);
+	va_end(args);
+	return len;
+}
+
+int vfprintf(FILE *stream, const char *format, va_list args)
+{
+	context_t ctx = { 0 };
+	ctx.format = format;
+	ctx.out.file = stream;
+	ctx.to_file = 1;
+
 	do_printf(&ctx, args);
 	return ctx.written_len;
 }
 
-void fprintf(FILE *stream, const char *format, ...)
+int putchar(int c)
 {
-	va_list args;
-	va_start(args, format);
-	vfprintf(stream, format, args);
-	va_end(args);
+	return putc(c, stdout);
 }
 
-void vfprintf(FILE *stream, const char *format, va_list args)
+int putc(int c, FILE *stream)
 {
-	// create context
-	context_t ctx = { 0 };
-	ctx.format = format;
-	// fprintf stream
-	ctx.out.file = stream;
-	ctx.to_file = 1;
-	// print
-	do_printf(&ctx, args);
+	return fputc(c, stream);
 }
 
-void putc(char c)
+int fputc(int c, FILE *stream)
 {
-	fputc(stdout, c);
+	// TODO: a
+	return c;
 }
 
-void puts(const char *str)
+int puts(const char *str)
 {
-	fputs(stdout, str);
+	int res;
+	res = fputs(str, stdout);
+	if (res == EOF)
+		return res;
+	res = fputc('\n', stdout);
+	if (res == EOF)
+		return res;
+	return 0;
 }
 
-void fputs(FILE *stream, const char *s)
+int fputs(const char *str, FILE *stream)
 {
-	while (*s)
-		fputc(stream, *s++);
+	int res;
+	while (*str) {
+		res = fputc(*str++, stream);
+		if (res == EOF)
+			return res;
+	}
+	return 0;
 }

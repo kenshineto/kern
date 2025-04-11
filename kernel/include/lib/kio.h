@@ -31,8 +31,9 @@ void kputs(const char *s);
  *
  * @param format - the format string
  * @param ... - variable args for the format
+ * @returns number of bytes written
  */
-__attribute__((format(printf, 1, 2))) void kprintf(const char *format, ...);
+__attribute__((format(printf, 1, 2))) int kprintf(const char *format, ...);
 
 /**
  * prints out a formatted string to a buffer
@@ -42,7 +43,7 @@ __attribute__((format(printf, 1, 2))) void kprintf(const char *format, ...);
  * @param ... - variable args for the format
  * @returns number of bytes written
  */
-__attribute__((format(printf, 2, 3))) size_t ksprintf(char *restrict s,
+__attribute__((format(printf, 2, 3))) int ksprintf(char *restrict s,
 													  const char *format, ...);
 
 /**
@@ -53,8 +54,9 @@ __attribute__((format(printf, 2, 3))) size_t ksprintf(char *restrict s,
  * @param format - the format string
  * @param ... - variable args for the format
  * @returns number of bytes written
+ * @returns number of bytes that would of been written (past maxlen)
  */
-__attribute__((format(printf, 3, 4))) size_t ksnprintf(char *restrict s,
+__attribute__((format(printf, 3, 4))) int ksnprintf(char *restrict s,
 													   size_t maxlen,
 													   const char *format, ...);
 
@@ -63,8 +65,9 @@ __attribute__((format(printf, 3, 4))) size_t ksnprintf(char *restrict s,
  *
  * @param format - the format string
  * @param args - variable arg list for the format
+ * @returns number of bytes written
  */
-void kvprintf(const char *format, va_list args);
+int kvprintf(const char *format, va_list args);
 
 /**
  * prints out a formatted string to a buffer
@@ -74,7 +77,7 @@ void kvprintf(const char *format, va_list args);
  * @param args - variable arg list for the format
  * @returns number of bytes written
  */
-size_t kvsprintf(char *restrict s, const char *format, va_list args);
+int kvsprintf(char *restrict s, const char *format, va_list args);
 
 /**
  * prints out a formatted string to a buffer with a given max length
@@ -83,9 +86,9 @@ size_t kvsprintf(char *restrict s, const char *format, va_list args);
  * @param maxlen - the max len of the buffer
  * @param format - the format string
  * @param args - variable arg list for the format
- * @returns number of bytes written
+ * @returns number of bytes that would of been written (past maxlen)
  */
-size_t kvsnprintf(char *restrict s, size_t maxlen, const char *format,
+int kvsnprintf(char *restrict s, size_t maxlen, const char *format,
 				  va_list args);
 
 #endif /* kio.h */

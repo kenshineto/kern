@@ -71,6 +71,7 @@ typedef struct {
 
 	/* output */
 	size_t written_len;
+	size_t possible_written_len;
 	bool sprintf;
 	char *sprintf_buf;
 
@@ -80,6 +81,8 @@ typedef struct {
 
 static void printf_putc(context_t *ctx, char c)
 {
+	ctx->possible_written_len++;
+
 	// bounds check
 	if (ctx->has_max_len)
 		if (ctx->written_len >= ctx->max_len)
@@ -348,9 +351,11 @@ static void handle_string_specifier(context_t *ctx, options_t *opts,
 									data_t data)
 {
 	char *str = data.str;
-	int str_len = 0;
+	if (str == NULL)
+		str = "(null)";
 
 	// get length of string
+	int str_len = 0;
 	if (opts->precision_set)
 		str_len = opts->precision;
 	else
@@ -486,6 +491,13 @@ static void do_printf(context_t *ctx, va_list args)
 		case 's':
 			handle_string_specifier(ctx, &opts, data);
 			break;
+		// very terrible why in the love of FUCKING GOD would you do this
+		// but its in printf so im adding it for you fucks
+		case 'n': {
+			size_t *bad = va_arg(args, size_t *);
+			*bad = ctx->written_len;
+			break;
+		}
 		// unknown
 		default:
 			// print from % to current
@@ -494,73 +506,83 @@ static void do_printf(context_t *ctx, va_list args)
 			break;
 		}
 	}
+
+	// add \0 on sprintf
+	if (ctx->sprintf) {
+		int len, plen;
+		len = ctx->written_len;
+		plen = ctx->possible_written_len;
+		printf_putc(ctx, '\0');
+		ctx->written_len = len;
+		ctx->possible_written_len = plen;
+	}
 }
 
-void kprintf(const char *format, ...)
+int kprintf(const char *format, ...)
 {
 	va_list args;
+	int len;
+
 	va_start(args, format);
-	kvprintf(format, args);
+	len = kvprintf(format, args);
 	va_end(args);
+	return len;
 }
 
-size_t ksprintf(char *restrict s, const char *format, ...)
+int ksprintf(char *restrict s, const char *format, ...)
 {
 	va_list args;
-	size_t amt;
+	int len;
+
 	va_start(args, format);
-	amt = kvsprintf(s, format, args);
+	len = kvsprintf(s, format, args);
 	va_end(args);
-	return amt;
+	return len;
 }
 
-size_t snprintf(char *restrict s, size_t maxlen, const char *format, ...)
+int snprintf(char *restrict s, size_t maxlen, const char *format, ...)
 {
 	va_list args;
-	size_t amt;
+	int len;
+
 	va_start(args, format);
-	amt = kvsnprintf(s, maxlen, format, args);
+	len = kvsnprintf(s, maxlen, format, args);
 	va_end(args);
-	return amt;
+	return len;
 }
 
-void kvprintf(const char *format, va_list args)
+int kvprintf(const char *format, va_list args)
 {
-	// create context
 	context_t ctx = { 0 };
 	ctx.format = format;
-	// print
-	do_printf(&ctx, args);
-}
 
-size_t kvsprintf(char *restrict s, const char *format, va_list args)
-{
-	// create context
-	context_t ctx = { 0 };
-	ctx.format = format;
-	// sprintf buffer
-	ctx.sprintf_buf = s;
-	ctx.sprintf = 1;
-	// print
 	do_printf(&ctx, args);
 	return ctx.written_len;
 }
 
-size_t kvsnprintf(char *restrict s, size_t maxlen, const char *format,
+int kvsprintf(char *restrict s, const char *format, va_list args)
+{
+	context_t ctx = { 0 };
+	ctx.format = format;
+	ctx.sprintf_buf = s;
+	ctx.sprintf = 1;
+
+	do_printf(&ctx, args);
+	return ctx.written_len;
+}
+
+int kvsnprintf(char *restrict s, size_t maxlen, const char *format,
 				  va_list args)
 {
-	// create context
 	context_t ctx = { 0 };
 	ctx.format = format;
-	// sprintf buffer
 	ctx.sprintf_buf = s;
 	ctx.sprintf = 1;
-	// sprintf max_len
 	ctx.has_max_len = 1;
 	ctx.max_len = maxlen;
-	// print
+
 	do_printf(&ctx, args);
-	return ctx.written_len;
+	return ctx.possible_written_len;
 }
 
 void kputc(char c)

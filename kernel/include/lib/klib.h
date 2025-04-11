@@ -185,13 +185,20 @@ char *btoa(size_t bytes, char *buf);
  */
 unsigned int bound(unsigned int min, unsigned int value, unsigned int max);
 
+#define __PANIC_STR(x) __PANIC_STR2(x)
+#define __PANIC_STR2(x) #x
+
+#define panic(...) __panic(__PANIC_STR(__LINE__), __FILE__, __VA_ARGS__)
+#define assert(val, ...) do { if (!(val)) { panic(__VA_ARGS__); } } while (0)
+
 /**
  * Abort the kernel with a given message.
  *
  * @param format - the format string
  * @param ... - variable args for the format
  */
-__attribute__((noreturn)) void panic(const char *format, ...);
+__attribute__((noreturn, format(printf, 3, 4)))
+void __panic(const char *line, const char *file, const char *format, ...);
 
 /**
  * Fill dst with a stack trace consisting of return addresses in order
