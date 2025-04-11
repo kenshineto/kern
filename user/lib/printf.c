@@ -501,7 +501,7 @@ static void do_printf(context_t *ctx, va_list args)
 		// very terrible why in the love of FUCKING GOD would you do this
 		// but its in printf so im adding it for you fucks
 		case 'n': {
-			size_t *bad = va_arg(args, size_t *);
+			int *bad = va_arg(args, int *);
 			*bad = ctx->written_len;
 			break;
 		}
