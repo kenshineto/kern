@@ -574,8 +574,7 @@ int vsprintf(char *restrict s, const char *format, va_list args)
 	return ctx.written_len;
 }
 
-int vsnprintf(char *restrict s, size_t maxlen, const char *format,
-				 va_list args)
+int vsnprintf(char *restrict s, size_t maxlen, const char *format, va_list args)
 {
 	context_t ctx = { 0 };
 	ctx.format = format;

@@ -25,14 +25,16 @@ void *mboot_get_rsdp(void)
 	// acpi 2.0
 	tag = locate_mboot_table(MULTIBOOT_TAG_TYPE_ACPI_NEW);
 	if (tag != NULL) {
-		struct multiboot_tag_new_acpi *rsdp = (struct multiboot_tag_new_acpi *)tag;
+		struct multiboot_tag_new_acpi *rsdp =
+			(struct multiboot_tag_new_acpi *)tag;
 		return rsdp->rsdp;
 	}
 
 	// acpi 1.0
 	tag = locate_mboot_table(MULTIBOOT_TAG_TYPE_ACPI_OLD);
 	if (tag != NULL) {
-		struct multiboot_tag_old_acpi *rsdp = (struct multiboot_tag_old_acpi *)tag;
+		struct multiboot_tag_old_acpi *rsdp =
+			(struct multiboot_tag_old_acpi *)tag;
 		return rsdp->rsdp;
 	}
 

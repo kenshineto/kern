@@ -1,7 +1,6 @@
 -c
 -std=c11
 -Ikernel/include
--Iuser/include
 -ffreestanding
 -fno-builtin
 -Wall

@@ -77,7 +77,7 @@ extern int fputs(const char *str, FILE *stream);
  * @returns number of bytes written
  */
 __attribute__((format(printf, 1, 2))) extern int printf(const char *format,
-														 ...);
+														...);
 
 /**
  * prints out a formatted string to a buffer
@@ -131,7 +131,7 @@ extern int vsprintf(char *restrict s, const char *format, va_list args);
  * @returns number of bytes that would of been written (past maxlen)
  */
 extern int vsnprintf(char *restrict s, size_t maxlen, const char *format,
-						va_list args);
+					 va_list args);
 
 /**
  * prints out a formatted string
@@ -169,7 +169,8 @@ extern FILE *fopen(const char *restrict filename, const char *restrict modes);
  * @param stream - the stream to replace
  * @returns the file pointer of success, NULL on error
  */
-extern FILE *freopen(const char *restrict filename, const char *restrict modes, FILE *restrict stream);
+extern FILE *freopen(const char *restrict filename, const char *restrict modes,
+					 FILE *restrict stream);
 
 /**
  * closes a opened file
@@ -187,7 +188,8 @@ extern void fclose(FILE *stream);
  * @param stream - the file stream to read from
  * @returns the number of blocks read
  */
-extern size_t fread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
+extern size_t fread(void *restrict ptr, size_t size, size_t n,
+					FILE *restrict stream);
 
 /**
  * writes data from a pointer into a filename
@@ -198,7 +200,8 @@ extern size_t fread(void *restrict ptr, size_t size, size_t n, FILE *restrict st
  * @param stream - the file stream to write into
  * @returns the number of blocks written
  */
-extern size_t fwrite(const void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
+extern size_t fwrite(const void *restrict ptr, size_t size, size_t n,
+					 FILE *restrict stream);
 
 /**
  * seek to a certain position on stream

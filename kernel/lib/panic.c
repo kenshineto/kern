@@ -3,7 +3,8 @@
 #include <stdarg.h>
 #include <comus/asm.h>
 
-__attribute__((noreturn)) void __panic(const char *line, const char *file, const char *format, ...)
+__attribute__((noreturn)) void __panic(const char *line, const char *file,
+									   const char *format, ...)
 {
 	cli();
 	va_list list;
