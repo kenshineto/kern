@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/drivers/uart.h>
 #include <comus/drivers/term.h>
@@ -217,6 +218,9 @@ static void get_radix(char spec, options_t *opts)
 	case 'o':
 		opts->radix = 8;
 		break;
+	case 'b':
+		opts->radix = 2;
+		break;
 	default:
 		opts->radix = 10;
 		break;
@@ -281,6 +285,10 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 
 	// radix specifier
 	if (opts->hash) {
+		if (opts->radix == 2) {
+			*(buf++) = 'b';
+			*(buf++) = '0';
+		}
 		if (opts->radix == 8) {
 			*(buf++) = 'o';
 			*(buf++) = '0';
@@ -433,6 +441,7 @@ static void do_printf(context_t *ctx, va_list args)
 		case 'd':
 		case 'i':
 		case 'u':
+		case 'b':
 		case 'o':
 		case 'x':
 		case 'X':
@@ -480,6 +489,7 @@ static void do_printf(context_t *ctx, va_list args)
 		// unsigned int
 		case 'p':
 		case 'u':
+		case 'b':
 		case 'o':
 		case 'x':
 		case 'X':
