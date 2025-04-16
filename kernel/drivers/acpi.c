@@ -327,29 +327,29 @@ void acpi_report(void)
 {
 	if (state.version == 0) {
 		kprintf("ACPI 1.0\n");
-		kprintf("%.*s: %#016lx\n", 4, (char *) &state.sdt.rsdt->h.signature,
-				(uintptr_t) state.sdt.rsdt);
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.sdt.rsdt->h.signature,
+				(uintptr_t)state.sdt.rsdt);
 	} else {
 		kprintf("ACPI 2.0\n");
-		kprintf("%.*s: %#016lx\n", 4, (char *) &state.sdt.xsdt->h.signature,
-				(uintptr_t) state.sdt.xsdt);
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.sdt.xsdt->h.signature,
+				(uintptr_t)state.sdt.xsdt);
 	}
 
 	if (state.fadt)
-		kprintf("%.*s: %#016lx\n", 4, (char *) &state.fadt->h.signature,
-				(uintptr_t) state.fadt);
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.fadt->h.signature,
+				(uintptr_t)state.fadt);
 	if (state.dsdt)
-		kprintf("%.*s: %#016lx\n", 4, (char *) &state.dsdt->h.signature,
-				(uintptr_t) state.dsdt);
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.dsdt->h.signature,
+				(uintptr_t)state.dsdt);
 	if (state.apic)
-		kprintf("%.*s: %#016lx\n", 4, (char *) &state.apic->h.signature,
-				(uintptr_t) state.apic);
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.apic->h.signature,
+				(uintptr_t)state.apic);
 	if (state.hept)
-		kprintf("%.*s: %#016lx\n", 4, (char *) &state.hept->h.signature,
-				(uintptr_t) state.hept);
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.hept->h.signature,
+				(uintptr_t)state.hept);
 	if (state.waet)
-		kprintf("%.*s: %#016lx\n", 4, (char *) &state.waet->h.signature,
-				(uintptr_t) state.waet);
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.waet->h.signature,
+				(uintptr_t)state.waet);
 
 	kprintf("\n");
 }

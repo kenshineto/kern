@@ -21,9 +21,9 @@ struct memory_map phys_mmap;
 struct memory_segment *page_start;
 
 static const char *segment_type_str[] = { "Reserved",	 "Free",
-									  "Reserved",	 "ACPI Reserved",
-									  "Hibernation", "Defective",
-									  "Unknown" };
+										  "Reserved",	 "ACPI Reserved",
+										  "Hibernation", "Defective",
+										  "Unknown" };
 
 static int n_pages(const struct memory_segment *m)
 {
