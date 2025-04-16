@@ -71,6 +71,7 @@ const kernel_src = &[_][]const u8{
     "kernel/memory/paging.c",
     "kernel/memory/physalloc.c",
     "kernel/memory/virtalloc.c",
+    "kernel/procs/procs.c",
 };
 
 const Prog = struct {
