@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-typedef union {
+union cpu_rflags {
 	uint64_t raw;
 	struct {
 		uint64_t cf : 1;
@@ -37,9 +37,9 @@ typedef union {
 		uint64_t id : 1;
 		uint64_t : 42;
 	};
-} rflags_t;
+};
 
-typedef struct {
+struct cpu_regs {
 	// registers
 	uint64_t r15;
 	uint64_t r14;
@@ -61,16 +61,21 @@ typedef struct {
 	// code segment
 	uint64_t cs;
 	// rflags
-	rflags_t rflags;
+	union cpu_rflags rflags;
 	// stack pointer
 	uint64_t rsp;
 	// stack segment
 	uint64_t ss;
-} regs_t;
+};
 
 /**
  * Initalize current cpu
  */
 void cpu_init(void);
+
+/**
+ * Dump registers to output
+ */
+void cpu_print_regs(struct cpu_regs *regs);
 
 #endif /* cpu.h */
