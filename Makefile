@@ -15,6 +15,9 @@ QEMUOPTS = -cdrom bin/os.iso \
 qemu: bin/os.iso
 	$(QEMU) $(QEMUOPTS)
 
+qemu-kvm: bin/os.iso
+	$(QEMU) -cpu host --enable-kvm $(QEMUOPTS)
+
 qemu-nox: bin/os.iso
 	$(QEMU) $(QEMUOPTS) -nographic
 
