@@ -29,6 +29,7 @@
 struct memory_segment {
 	uint64_t addr;
 	uint64_t len;
+	uint32_t type;
 };
 
 struct memory_map {
@@ -58,6 +59,11 @@ uint64_t memory_free(void);
  * @returns how much memory is used
  */
 uint64_t memory_used(void);
+
+/**
+ * Reports system memory usage and map
+ */
+void memory_report(void);
 
 /**
  * Allocate a new memory context

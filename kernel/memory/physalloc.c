@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
@@ -16,7 +17,13 @@ static uint64_t total_memory;
 static uint64_t free_memory;
 static uint64_t page_count;
 static uint64_t segment_count;
+struct memory_map phys_mmap;
 struct memory_segment *page_start;
+
+static const char *segment_type_str[] = { "Reserved",	 "Free",
+									  "Reserved",	 "ACPI Reserved",
+									  "Hibernation", "Defective",
+									  "Unknown" };
 
 static int n_pages(const struct memory_segment *m)
 {
@@ -115,6 +122,10 @@ void free_phys_pages(void *ptr, int pages)
 
 static bool segment_invalid(const struct memory_segment *segment)
 {
+	if (segment->len < 1)
+		return true;
+	if (segment->type != 1)
+		return true;
 	if (segment->addr < kaddr(kernel_start))
 		return true;
 	if (segment->addr + segment->len < memory_start)
@@ -161,6 +172,7 @@ void physalloc_init(struct memory_map *map)
 	free_memory = 0;
 	page_count = 0;
 	page_start = NULL;
+	phys_mmap = *map;
 
 	segment_count = 0;
 
@@ -209,12 +221,6 @@ void physalloc_init(struct memory_map *map)
 	total_memory = page_count * PAGE_SIZE;
 	page_count -= bitmap_pages;
 	free_memory = page_count * PAGE_SIZE;
-
-	char buf[20];
-	kprintf("\nMEMORY USAGE\n");
-	kprintf("mem total: %s\n", btoa(memory_total(), buf));
-	kprintf("mem free:  %s\n", btoa(memory_free(), buf));
-	kprintf("mem used:  %s\n\n", btoa(memory_used(), buf));
 }
 
 uint64_t memory_total(void)
@@ -230,4 +236,29 @@ uint64_t memory_free(void)
 uint64_t memory_used(void)
 {
 	return total_memory - free_memory;
+}
+
+void memory_report(void)
+{
+	char buf[20];
+
+	kprintf("MEMORY MAP\n");
+	for (uint32_t i = 0; i < phys_mmap.entry_count; i++) {
+		struct memory_segment *seg;
+		const char *type_str;
+
+		seg = &phys_mmap.entries[i];
+		if (seg->type > 6)
+			type_str = segment_type_str[6];
+		else
+			type_str = segment_type_str[seg->type];
+
+		kprintf("ADDR: %16p  LEN: %4s  TYPE: %s (%d)\n", (void *)seg->addr,
+				btoa(seg->len, buf), type_str, seg->type);
+	}
+
+	kprintf("\nMEMORY USAGE\n");
+	kprintf("mem total: %s\n", btoa(memory_total(), buf));
+	kprintf("mem free:  %s\n", btoa(memory_free(), buf));
+	kprintf("mem used:  %s\n\n", btoa(memory_used(), buf));
 }

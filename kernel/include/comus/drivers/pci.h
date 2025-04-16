@@ -56,6 +56,11 @@ struct pci_device {
  */
 void pci_init(void);
 
+/**
+ * Report all PCI devices
+ */
+void pci_report(void);
+
 bool pci_findby_class(struct pci_device *dest, uint8_t class, uint8_t subclass,
 					  size_t *offset);
 bool pci_findby_id(struct pci_device *dest, uint16_t device, uint16_t vendor,

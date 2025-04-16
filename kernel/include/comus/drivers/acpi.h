@@ -15,6 +15,11 @@
 void acpi_init(void *rsdp);
 
 /**
+ * Report ACPI tables
+ */
+void acpi_report(void);
+
+/**
  * Shutdowns down the system
  */
 __attribute__((noreturn)) void acpi_shutdown(void);
