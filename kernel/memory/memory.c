@@ -51,15 +51,15 @@ mem_ctx_t mem_ctx_alloc(void)
 
 mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow)
 {
-	(void) ctx;
-	(void) cow;
+	(void)ctx;
+	(void)cow;
 
 	panic("not yet implemented");
 }
 
 void mem_ctx_free(mem_ctx_t ctx)
 {
-	(void) ctx;
+	(void)ctx;
 
 	panic("not yet implemented");
 }

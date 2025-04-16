@@ -110,7 +110,8 @@ char *EXCEPTIONS[] = {
 	"Reserved",
 };
 
-void idt_exception_handler(uint64_t exception, uint64_t code, struct cpu_regs *state)
+void idt_exception_handler(uint64_t exception, uint64_t code,
+						   struct cpu_regs *state)
 {
 	uint64_t cr2;
 
