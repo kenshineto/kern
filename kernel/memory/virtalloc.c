@@ -3,45 +3,29 @@
 
 #include "virtalloc.h"
 
-struct addr_node {
-	uintptr_t start;
-	uintptr_t end;
-	struct addr_node *next;
-	struct addr_node *prev;
-	uint8_t is_alloc; // if node is storing allocated data
-	uint8_t is_used; // if node is in use by virtalloc
-};
+struct virt_ctx kernel_virt_ctx;
 
-#define BSS_NODES 64
-static struct addr_node bootstrap_nodes[BSS_NODES];
-static struct addr_node *alloc_nodes = NULL;
-static size_t free_node_start = 0;
-static size_t alloc_node_count = 0;
-static size_t used_node_count = 0;
-static bool is_allocating = false;
-
-static struct addr_node *start_node = NULL;
-
-static struct addr_node *get_node_idx(int idx)
+static struct virt_addr_node *get_node_idx(struct virt_ctx *ctx, int idx)
 {
-	if (idx < BSS_NODES) {
-		return &bootstrap_nodes[idx];
+	if (idx < BOOTSTRAP_VIRT_ALLOC_NODES) {
+		return &ctx->bootstrap_nodes[idx];
 	} else {
-		return &alloc_nodes[idx - BSS_NODES];
+		return &ctx->alloc_nodes[idx - BOOTSTRAP_VIRT_ALLOC_NODES];
 	}
 }
 
-static void update_node_ptrs(struct addr_node *old, struct addr_node *new,
-							 int old_len, int new_len)
+static void update_node_ptrs(struct virt_addr_node *old,
+							 struct virt_addr_node *new, int old_len,
+							 int new_len)
 {
 	if (old == NULL)
 		return;
 	int idx = 0;
 	for (int i = 0; i < old_len; i++) {
-		struct addr_node *o = &old[i];
+		struct virt_addr_node *o = &old[i];
 		if (o && !o->is_used)
 			continue;
-		struct addr_node *n = &new[idx++];
+		struct virt_addr_node *n = &new[idx++];
 		*n = *o;
 		if (n->prev != NULL)
 			n->prev->next = n;
@@ -49,37 +33,38 @@ static void update_node_ptrs(struct addr_node *old, struct addr_node *new,
 			n->next->prev = n;
 	}
 	for (int i = idx; i < new_len; i++) {
-		struct addr_node *n = &new[idx++];
+		struct virt_addr_node *n = &new[idx++];
 		n->is_used = false;
 	}
 }
 
-static struct addr_node *get_node(void)
+static struct virt_addr_node *get_node(struct virt_ctx *ctx)
 {
-	size_t count = BSS_NODES + alloc_node_count;
+	size_t count = BOOTSTRAP_VIRT_ALLOC_NODES + ctx->alloc_node_count;
 
-	if (!is_allocating && used_node_count + 16 >= count) {
-		is_allocating = true;
-		int new_alloc = alloc_node_count * 2;
+	if (!ctx->is_allocating && ctx->used_node_count + 16 >= count) {
+		ctx->is_allocating = true;
+		int new_alloc = ctx->alloc_node_count * 2;
 		if (new_alloc < 8)
 			new_alloc = 8;
-		struct addr_node *new_nodes;
-		new_nodes = kalloc(sizeof(struct addr_node) * new_alloc);
+		struct virt_addr_node *new_nodes;
+		new_nodes = kalloc(sizeof(struct virt_addr_node) * new_alloc);
 		if (new_nodes == NULL)
 			panic("virt addr alloc nodes is null");
-		update_node_ptrs(alloc_nodes, new_nodes, alloc_node_count, new_alloc);
-		kfree(alloc_nodes);
-		alloc_nodes = new_nodes;
-		alloc_node_count = new_alloc;
-		is_allocating = false;
-		count = BSS_NODES + alloc_node_count;
+		update_node_ptrs(ctx->alloc_nodes, new_nodes, ctx->alloc_node_count,
+						 new_alloc);
+		kfree(ctx->alloc_nodes);
+		ctx->alloc_nodes = new_nodes;
+		ctx->alloc_node_count = new_alloc;
+		ctx->is_allocating = false;
+		count = BOOTSTRAP_VIRT_ALLOC_NODES + ctx->alloc_node_count;
 	}
 
-	size_t idx = free_node_start;
+	size_t idx = ctx->free_node_start;
 	for (; idx < count; idx++) {
-		struct addr_node *node = get_node_idx(idx);
+		struct virt_addr_node *node = get_node_idx(ctx, idx);
 		if (!node->is_used) {
-			used_node_count++;
+			ctx->used_node_count++;
 			return node;
 		}
 	}
@@ -87,15 +72,15 @@ static struct addr_node *get_node(void)
 	panic("could not get virtaddr node");
 }
 
-static void free_node(struct addr_node *node)
+static void free_node(struct virt_ctx *ctx, struct virt_addr_node *node)
 {
 	node->is_used = false;
-	used_node_count--;
+	ctx->used_node_count--;
 }
 
-void virtaddr_init(void)
+void virtaddr_init(struct virt_ctx *ctx)
 {
-	struct addr_node init = {
+	struct virt_addr_node init = {
 		.start = 0x400000, // third page table
 		.end = 0x1000000000000, // 48bit memory address max
 		.next = NULL,
@@ -103,48 +88,53 @@ void virtaddr_init(void)
 		.is_alloc = false,
 		.is_used = true,
 	};
-	memsetv(bootstrap_nodes, 0, sizeof(bootstrap_nodes));
-	bootstrap_nodes[0] = init;
-	start_node = &bootstrap_nodes[0];
+	memsetv(ctx->bootstrap_nodes, 0, sizeof(ctx->bootstrap_nodes));
+	ctx->bootstrap_nodes[0] = init;
+	ctx->alloc_nodes = NULL;
+	ctx->start_node = &ctx->bootstrap_nodes[0];
+	ctx->free_node_start = 0;
+	ctx->alloc_node_count = 0;
+	ctx->used_node_count = 0;
+	ctx->is_allocating = false;
 }
 
-static void merge_back(struct addr_node *node)
+static void merge_back(struct virt_ctx *ctx, struct virt_addr_node *node)
 {
 	while (node->prev) {
 		if (node->is_alloc != node->prev->is_alloc)
 			break;
-		struct addr_node *temp = node->prev;
+		struct virt_addr_node *temp = node->prev;
 		node->start = temp->start;
 		node->prev = temp->prev;
 		if (temp->prev)
 			temp->prev->next = node;
-		free_node(temp);
+		free_node(ctx, temp);
 	}
 	if (node->prev == NULL) {
-		start_node = node;
+		ctx->start_node = node;
 	}
 }
 
-static void merge_forward(struct addr_node *node)
+static void merge_forward(struct virt_ctx *ctx, struct virt_addr_node *node)
 {
 	while (node->next) {
 		if (node->is_alloc != node->next->is_alloc)
 			break;
-		struct addr_node *temp = node->next;
+		struct virt_addr_node *temp = node->next;
 		node->end = temp->end;
 		node->next = temp->next;
 		if (temp->next)
 			temp->next->prev = node;
-		free_node(temp);
+		free_node(ctx, temp);
 	}
 }
 
-void *virtaddr_alloc(int n_pages)
+void *virtaddr_alloc(struct virt_ctx *ctx, int n_pages)
 {
 	if (n_pages < 1)
 		return NULL;
 	long n_length = n_pages * PAGE_SIZE;
-	struct addr_node *node = start_node;
+	struct virt_addr_node *node = ctx->start_node;
 
 	for (; node != NULL; node = node->next) {
 		long length = node->end - node->start;
@@ -152,11 +142,11 @@ void *virtaddr_alloc(int n_pages)
 			continue;
 
 		if (length >= n_length) {
-			struct addr_node *new = get_node();
+			struct virt_addr_node *new = get_node(ctx);
 			if (node->prev != NULL) {
 				node->prev->next = new;
 			} else {
-				start_node = new;
+				ctx->start_node = new;
 			}
 			new->next = node;
 			new->prev = node->prev;
@@ -168,8 +158,8 @@ void *virtaddr_alloc(int n_pages)
 			new->is_used = true;
 			new->next = node;
 			void *mem = (void *)new->start;
-			merge_back(new);
-			merge_forward(new);
+			merge_back(ctx, new);
+			merge_forward(ctx, new);
 			return mem;
 		}
 	}
@@ -177,21 +167,21 @@ void *virtaddr_alloc(int n_pages)
 	return NULL;
 }
 
-long virtaddr_free(void *virtaddr)
+long virtaddr_free(struct virt_ctx *ctx, void *virtaddr)
 {
 	uintptr_t virt = (uintptr_t)virtaddr;
 
 	if (virt % PAGE_SIZE)
 		return -1; // not page aligned, we did not give this out!!!
 
-	struct addr_node *node = start_node;
+	struct virt_addr_node *node = ctx->start_node;
 
 	for (; node != NULL; node = node->next) {
 		if (node->start == virt) {
 			int length = node->end - node->start;
 			int pages = length / PAGE_SIZE;
-			merge_back(node);
-			merge_forward(node);
+			merge_back(ctx, node);
+			merge_forward(ctx, node);
 			return pages;
 		}
 	}

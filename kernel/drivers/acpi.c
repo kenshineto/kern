@@ -287,10 +287,10 @@ static void acpi_load_table(uint64_t addr)
 	struct acpi_header *temp, *mapped;
 	uint32_t length;
 	temp = (struct acpi_header *)(uintptr_t)addr;
-	mapped = kmapaddr(temp, sizeof(struct acpi_header));
+	mapped = kmapaddr(temp, NULL, sizeof(struct acpi_header), 0);
 	length = mapped->length;
 	kunmapaddr(mapped);
-	mapped = kmapaddr(temp, length);
+	mapped = kmapaddr(temp, NULL, length, 0);
 	if (!checksum((uint8_t *)mapped, mapped->length)) {
 		kunmapaddr(mapped);
 		return;

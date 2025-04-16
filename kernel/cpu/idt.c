@@ -1,4 +1,3 @@
-#include "lib/klib.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>

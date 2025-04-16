@@ -185,9 +185,10 @@ void physalloc_init(struct memory_map *map)
 
 	memory_start = page_align((uintptr_t)page_area_addr + page_area_size);
 
-	bitmap = kmapaddr(bitmap, bitmap_size);
+	bitmap = kmapaddr(bitmap, NULL, bitmap_size, F_WRITEABLE);
 	memset(bitmap, 0, bitmap_size);
-	page_area_addr = kmapaddr(page_area_addr, page_area_size);
+	page_area_addr =
+		kmapaddr(page_area_addr, NULL, page_area_size, F_WRITEABLE);
 	memset(page_area_addr, 0, page_area_size);
 
 	page_start = (struct memory_segment *)page_area_addr;

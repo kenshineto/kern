@@ -26,6 +26,16 @@ void kputc(char c);
  */
 void kputs(const char *s);
 
+#ifdef TRACING
+#define TRACE(format, ...)                    \
+	do {                                      \
+		kprintf("[TRACE] %s ", __FUNCTION__); \
+		kprintf(format, ##__VA_ARGS__);       \
+	} while (0)
+#else
+#define TRACE(format, ...)
+#endif
+
 /**
  * prints out a formatted string
  *
