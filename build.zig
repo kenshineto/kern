@@ -24,7 +24,6 @@ const kernel_src = &[_][]const u8{
     "kernel/entry.S", // must be first
     "kernel/main.c", // main function
     "kernel/cpu/cpu.c",
-    "kernel/cpu/fpu.c",
     "kernel/cpu/idt.c",
     "kernel/cpu/idt.S",
     "kernel/cpu/pic.c",
