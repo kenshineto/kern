@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define MMAP_MAX_ENTRY 64
 #define PAGE_SIZE 4096
@@ -63,7 +64,24 @@ uint64_t memory_used(void);
  *
  * @returns pointer context or NULL on failure
  */
-mem_ctx_t alloc_mem_ctx(void);
+mem_ctx_t mem_ctx_alloc(void);
+
+/**
+ * Clone a current memory context into a new one
+ *
+ * @param ctx - the memory context
+ * @param cow - mark all of the pages as copy on write
+ *
+ * @returns pointer context or NULL on failure
+ */
+mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow);
+
+/**
+ * Free a memory context into a new one
+ *
+ * @param ctx - the memory context
+ */
+void mem_ctx_free(mem_ctx_t ctx);
 
 /**
  * Free a memory context

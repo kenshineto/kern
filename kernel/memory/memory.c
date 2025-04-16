@@ -44,9 +44,24 @@ int kload_page(void *virt)
 	return mem_load_page(kernel_mem_ctx, virt);
 }
 
-mem_ctx_t alloc_mem_ctx(void)
+mem_ctx_t mem_ctx_alloc(void)
 {
-	panic("alloc_mem_ctx not yet implemented");
+	panic("not yet implemented");
+}
+
+mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow)
+{
+	(void) ctx;
+	(void) cow;
+
+	panic("not yet implemented");
+}
+
+void mem_ctx_free(mem_ctx_t ctx)
+{
+	(void) ctx;
+
+	panic("not yet implemented");
 }
 
 void memory_init(void)
