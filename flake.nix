@@ -23,10 +23,9 @@
       pkgs = import nixpkgs {inherit system;};
     in {
       devShell =
-        pkgs.mkShell
+        (pkgs.mkShell.override { stdenv = pkgs.gcc14Stdenv; })
         {
           packages = with pkgs; [
-            llvmPackages_18.clang
             gnumake
             gdb
             qemu
