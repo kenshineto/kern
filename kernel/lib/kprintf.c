@@ -438,6 +438,7 @@ static void do_printf(context_t *ctx, va_list args)
 			opts.radix = 16;
 			opts.hash = true;
 			opts.zero = true;
+			/* fallthrough */
 		case 'd':
 		case 'i':
 		case 'u':
