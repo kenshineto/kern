@@ -45,7 +45,10 @@ qemu: $(BIN)/$(ISO)
 	$(QEMU) $(QEMUOPTS)
 
 qemu-kvm: $(BIN)/$(ISO)
-	$(QEMU) -cpu host --enable-kvm $(QEMUOPTS)
+	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm
+
+qemu-kvm-nox: $(BIN)/$(ISO)
+	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm -nographic
 
 qemu-nox: $(BIN)/$(ISO)
 	$(QEMU) $(QEMUOPTS) -nographic
