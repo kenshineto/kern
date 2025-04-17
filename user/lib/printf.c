@@ -224,6 +224,9 @@ static void get_radix(char spec, options_t *opts)
 	case 'o':
 		opts->radix = 8;
 		break;
+	case 'b':
+		opts->radix = 2;
+		break;
 	default:
 		opts->radix = 10;
 		break;
@@ -269,33 +272,6 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 	}
 	precision = 0;
 
-	// sign
-	if (is_neg) {
-		*(buf++) = '-';
-	} else if (opts->sign) {
-		*(buf++) = '+';
-	} else if (opts->space) {
-		*(buf++) = ' ';
-	}
-
-	// radix specifier
-	if (opts->hash) {
-		if (opts->radix == 8) {
-			*(buf++) = '0';
-			*(buf++) = 'o';
-		}
-		if (opts->radix == 16) {
-			*(buf++) = '0';
-			*(buf++) = 'x';
-		}
-	}
-
-	// print zeros if needed
-	if (opts->width_set && len < opts->width && opts->zero) {
-		while (len++ < opts->width)
-			*(buf++) = '0';
-	}
-
 	// write number
 	if (num == 0) {
 		*(buf++) = '0';
@@ -306,6 +282,38 @@ static int printf_lltoa(char *buf, options_t *opts, bool is_neg,
 		*(buf++) = printf_itoc(opts->is_uppercase, num % opts->radix);
 		num /= opts->radix;
 	}
+
+	// print zeros if needed
+	if (opts->width_set && len < opts->width && opts->zero) {
+		while (len++ < opts->width)
+			*(buf++) = '0';
+	}
+
+	// radix specifier
+	if (opts->hash) {
+		if (opts->radix == 2) {
+			*(buf++) = 'b';
+			*(buf++) = '0';
+		}
+		if (opts->radix == 8) {
+			*(buf++) = 'o';
+			*(buf++) = '0';
+		}
+		if (opts->radix == 16) {
+			*(buf++) = 'x';
+			*(buf++) = '0';
+		}
+	}
+
+	// sign
+	if (is_neg) {
+		*(buf++) = '-';
+	} else if (opts->sign) {
+		*(buf++) = '+';
+	} else if (opts->space) {
+		*(buf++) = ' ';
+	}
+
 	*(buf++) = '\0';
 
 	return buf - start;
@@ -340,8 +348,8 @@ static void handle_int_specifier(context_t *ctx, options_t *const opts,
 			printf_putc(ctx, opts->zero ? '0' : ' ');
 	}
 	// number
-	for (int i = 0; i < buf_len; i++)
-		printf_putc(ctx, buf[i]);
+	for (int i = 1; i <= buf_len; i++)
+		printf_putc(ctx, buf[buf_len - i]);
 	// right padding
 	if (opts->left == 1) {
 		for (int i = 0; i < padding; i++)
@@ -431,13 +439,15 @@ static void do_printf(context_t *ctx, va_list args)
 		switch (spec) {
 		case 'p':
 			opts.len = PRINTF_LEN_SIZE_T;
-			opts.width_set = true;
+			opts.width_set = 1;
+			opts.width = sizeof(void *) * 2;
 			opts.radix = 16;
 			opts.hash = true;
 			opts.zero = true;
 		case 'd':
 		case 'i':
 		case 'u':
+		case 'b':
 		case 'o':
 		case 'x':
 		case 'X':
@@ -485,6 +495,7 @@ static void do_printf(context_t *ctx, va_list args)
 		// unsigned int
 		case 'p':
 		case 'u':
+		case 'b':
 		case 'o':
 		case 'x':
 		case 'X':

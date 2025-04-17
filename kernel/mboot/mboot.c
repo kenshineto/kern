@@ -3,7 +3,7 @@
 
 #include "mboot.h"
 
-static volatile void *mboot;
+static volatile void *mboot = NULL;
 
 void mboot_init(long magic, volatile void *ptr)
 {
@@ -14,9 +14,12 @@ void mboot_init(long magic, volatile void *ptr)
 
 void *locate_mboot_table(uint32_t type)
 {
-	struct multiboot *info = (struct multiboot *)mboot;
-	const char *mboot_end = ((char *)info) + info->total_size;
+	if (mboot == NULL)
+		return NULL;
 
+	struct multiboot *info = (struct multiboot *)mboot;
+
+	const char *mboot_end = ((char *)info) + info->total_size;
 	char *tag_ptr = info->tags;
 
 	while (tag_ptr < mboot_end) {

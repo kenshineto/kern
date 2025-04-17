@@ -26,10 +26,9 @@
         pkgs.mkShell
         {
           packages = with pkgs; [
-            # (writeShellScriptBin "build" "zig build -Dcpu=baseline")
+            llvmPackages_18.clang
             gnumake
             gdb
-            zig_0_14
             qemu
             grub2_light
             xorriso

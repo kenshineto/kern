@@ -10,36 +10,27 @@
 #define _CPU_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
-typedef union {
-	uint64_t raw;
-	struct {
-		uint64_t cf : 1;
-		uint64_t : 1;
-		uint64_t pf : 1;
-		uint64_t : 1;
-		uint64_t af : 1;
-		uint64_t : 1;
-		uint64_t zf : 1;
-		uint64_t sf : 1;
-		uint64_t tf : 1;
-		uint64_t if_ : 1;
-		uint64_t df : 1;
-		uint64_t of : 1;
-		uint64_t iopl : 2;
-		uint64_t nt : 1;
-		uint64_t md : 1;
-		uint64_t rf : 1;
-		uint64_t vm : 1;
-		uint64_t ac : 1;
-		uint64_t vif : 1;
-		uint64_t vip : 1;
-		uint64_t id : 1;
-		uint64_t : 42;
-	};
-} rflags_t;
+struct cpu_feat {
+	// floating point
+	uint32_t fpu : 1;
+	// simd
+	uint32_t mmx : 1;
+	uint32_t sse : 1;
+	uint32_t sse2 : 1;
+	uint32_t sse3 : 1;
+	uint32_t ssse3 : 1;
+	uint32_t sse41 : 1;
+	uint32_t sse42 : 1;
+	uint32_t sse4a : 1;
+	uint32_t avx : 1;
+	uint32_t xsave : 1;
+	uint32_t avx2 : 1;
+	uint32_t avx512 : 1;
+};
 
-typedef struct {
+struct cpu_regs {
 	// registers
 	uint64_t r15;
 	uint64_t r14;
@@ -61,16 +52,41 @@ typedef struct {
 	// code segment
 	uint64_t cs;
 	// rflags
-	rflags_t rflags;
+	uint64_t rflags;
 	// stack pointer
 	uint64_t rsp;
 	// stack segment
 	uint64_t ss;
-} regs_t;
+};
 
 /**
  * Initalize current cpu
  */
 void cpu_init(void);
+
+/**
+ * Report all cpu information
+ */
+void cpu_report(void);
+
+/**
+ * @returns the name/model of the cpu
+ */
+void cpu_name(char name[48]);
+
+/**
+ * @returns the vendor of the cpu
+ */
+void cpu_vendor(char vendor[12]);
+
+/**
+ * @returns get features of the cpu
+ */
+void cpu_feats(struct cpu_feat *feats);
+
+/**
+ * Dump registers to output
+ */
+void cpu_print_regs(struct cpu_regs *regs);
 
 #endif /* cpu.h */

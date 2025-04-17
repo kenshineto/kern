@@ -1,4 +1,5 @@
 #include <lib.h>
+#include <comus/mboot.h>
 
 struct stackframe {
 	struct stackframe *rbp;
@@ -38,9 +39,10 @@ void log_backtrace_ex(void *ip, void *bp)
 {
 	struct stackframe *frame = bp;
 	kputs("Stack trace:\n");
-	kprintf("  %p\n", ip);
+	kprintf("  %p\t%s\n", ip, mboot_get_elf_sym((uint64_t)ip));
 	while (frame) {
-		kprintf("  %p\n", frame->rip);
+		kprintf("  %p\t%s\n", frame->rip,
+				mboot_get_elf_sym((uint64_t)frame->rip));
 		frame = frame->rbp;
 	}
 }

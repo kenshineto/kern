@@ -1,7 +1,9 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/drivers/acpi.h>
 #include <comus/asm.h>
 #include <comus/memory.h>
+#include <stdint.h>
 
 struct acpi_header {
 	uint32_t signature;
@@ -287,15 +289,14 @@ static void acpi_load_table(uint64_t addr)
 	struct acpi_header *temp, *mapped;
 	uint32_t length;
 	temp = (struct acpi_header *)(uintptr_t)addr;
-	mapped = kmapaddr(temp, sizeof(struct acpi_header));
+	mapped = kmapaddr(temp, NULL, sizeof(struct acpi_header), 0);
 	length = mapped->length;
 	kunmapaddr(mapped);
-	mapped = kmapaddr(temp, length);
+	mapped = kmapaddr(temp, NULL, length, 0);
 	if (!checksum((uint8_t *)mapped, mapped->length)) {
 		kunmapaddr(mapped);
 		return;
 	}
-	kprintf("%.*s: %#016lx\n", 4, (char *)&mapped->signature, (size_t)temp);
 	acpi_handle_table(mapped);
 }
 
@@ -311,18 +312,46 @@ void acpi_init(void *rootsdp)
 	}
 	if (rsdp->revision == 0) {
 		state.version = 0;
-		kprintf("ACPI 1.0\n");
 		acpi_load_table(rsdp->rsdt_addr);
 	} else if (rsdp->revision == 2) {
 		state.version = 2;
 		struct xsdp *xsdp = (struct xsdp *)rsdp;
-		kprintf("ACPI 2.0\n");
 		acpi_load_table(xsdp->xsdt_addr);
 	} else {
 		panic("invalid acpi rev: %d\n", rsdp->revision);
 	}
-	kprintf("\n");
 	outb(state.fadt->smi_command_port, state.fadt->acpi_enable);
+}
+
+void acpi_report(void)
+{
+	if (state.version == 0) {
+		kprintf("ACPI 1.0\n");
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.sdt.rsdt->h.signature,
+				(uintptr_t)state.sdt.rsdt);
+	} else {
+		kprintf("ACPI 2.0\n");
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.sdt.xsdt->h.signature,
+				(uintptr_t)state.sdt.xsdt);
+	}
+
+	if (state.fadt)
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.fadt->h.signature,
+				(uintptr_t)state.fadt);
+	if (state.dsdt)
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.dsdt->h.signature,
+				(uintptr_t)state.dsdt);
+	if (state.apic)
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.apic->h.signature,
+				(uintptr_t)state.apic);
+	if (state.hept)
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.hept->h.signature,
+				(uintptr_t)state.hept);
+	if (state.waet)
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.waet->h.signature,
+				(uintptr_t)state.waet);
+
+	kprintf("\n");
 }
 
 void acpi_shutdown(void)

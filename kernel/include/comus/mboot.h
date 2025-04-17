@@ -26,4 +26,9 @@ int mboot_get_mmap(struct memory_map *map);
  */
 void *mboot_get_rsdp(void);
 
+/**
+ * Get elf symbols from multiboot
+ */
+const char *mboot_get_elf_sym(uint64_t addr);
+
 #endif /* mboot.h */

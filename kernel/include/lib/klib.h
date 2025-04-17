@@ -231,4 +231,29 @@ void log_backtrace(void);
  */
 void log_backtrace_ex(void *ip, void *bp);
 
+/**
+ * Allocates size_t bytes in memory
+ *
+ * @param size - the amount of bytes to allocate
+ * @returns the address allocated or NULL on failure
+ */
+void *kalloc(size_t size);
+
+/**
+ * Rellocates a given allocated ptr to a new size of bytes in memory.
+ * If ptr is NULL it will allocate new memory.
+ *
+ * @param ptr - the pointer to reallocate
+ * @param size - the amount of bytes to reallocate to
+ * @returns the address allocated or NULL on failure
+ */
+void *krealloc(void *ptr, size_t size);
+
+/**
+ * Frees an allocated pointer in memory
+ *
+ * @param ptr - the pointer to free
+ */
+void kfree(void *ptr);
+
 #endif /* klib.h */
