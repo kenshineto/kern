@@ -19,19 +19,24 @@
 #define IDE_PROG_IF_SECONDARY_CHANNEL_CAN_SWITCH_TO_AND_FROM_PCI_NATIVE_FLAG 0x4
 #define IDE_PROG_IF_DMA_SUPPORT_FLAG 0x7
 
-#include "comus/drivers/pci.h"
-#include "comus/drivers/ata.h"
+#include <comus/drivers/pci.h>
+#include <comus/drivers/ata.h>
+#include <lib.h>
 
 bool ata_find_primary_drive(struct pci_device *out)
 {
 	if (!pci_findby_class(out, CLASS_MASS_STORAGE_CONTROLLER,
-							SUBCLASS_IDE_CONTROLLER, NULL)) {
+						  SUBCLASS_IDE_CONTROLLER, NULL)) {
+		return false;
+	}
+
+	const uint8_t prog_if = pci_rcfg_b(*out, PCI_PROG_IF_B);
+	const uint8_t header_type = pci_rcfg_b(*out, PCI_HEADER_TYPE_B);
+
+    if (header_type != 0x0) {
+        TRACE("Wrong header type for IDE_CONTROLLER device, not reading BARs");
         return false;
     }
 
-    const uint8_t prog_if = pci_rcfg_b(*out, PCI_PROG_IF_B);
-
-    return true;
+	return true;
 }
-
-

@@ -185,10 +185,64 @@ char *btoa(size_t bytes, char *buf);
  */
 unsigned int bound(unsigned int min, unsigned int value, unsigned int max);
 
-#define __PANIC_STR(x) __PANIC_STR2(x)
-#define __PANIC_STR2(x) #x
+enum log_level {
+	LOG_LVL_PANIC = 0,
+	LOG_LVL_ERROR = 1,
+	LOG_LVL_WARN = 2,
+	LOG_LVL_INFO = 3,
+	LOG_LVL_TRACE = 4,
+};
 
-#define panic(...) __panic(__PANIC_STR(__LINE__), __FILE__, __VA_ARGS__)
+// define LOG_LEVEL to disable logs above that number in the enum above
+#ifndef LOG_LEVEL
+#define LOG_LEVEL 4
+#endif
+
+// #define __AS_STR_LITERAL(x) __AS_STR_LITERAL_IMPL(x)
+// #define __AS_STR_LITERAL_IMPL(x) #x
+
+#if LOG_LEVEL >= LOG_LEVEL_TRACE
+#define TRACE(...)                                                          \
+	do {                                                                    \
+		kprintf("[TRACE] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf(__VA_ARGS__);                                               \
+	} while (0)
+#else
+#define TRACE(...)
+#endif
+
+#if LOG_LEVEL >= LOG_LVL_INFO
+#define INFO(...)                                                          \
+	do {                                                                   \
+		kprintf("[INFO] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf(__VA_ARGS__);                                              \
+	} while (0)
+#else
+#define INFO(...)
+#endif
+
+#if LOG_LEVEL >= LOG_LVL_WARN
+#define WARN(...)                                                          \
+	do {                                                                   \
+		kprintf("[WARN] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf(__VA_ARGS__);                                              \
+	} while (0)
+#else
+#define WARN(format, ...)
+#endif
+
+#if LOG_LEVEL >= LOG_LVL_ERROR
+#define ERROR(...)                                                          \
+	do {                                                                    \
+		kprintf("[ERROR] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf(__VA_ARGS__);                                               \
+	} while (0)
+#else
+#define ERROR(...)
+#endif
+
+#define panic(...) __panic(__LINE__, __FILE__, __VA_ARGS__)
+
 #define assert(val, ...)        \
 	do {                        \
 		if (!(val)) {           \
@@ -203,7 +257,7 @@ unsigned int bound(unsigned int min, unsigned int value, unsigned int max);
  * @param ... - variable args for the format
  */
 __attribute__((noreturn, format(printf, 3, 4))) void
-__panic(const char *line, const char *file, const char *format, ...);
+__panic(unsigned int line, const char *file, const char *format, ...);
 
 /**
  * Fill dst with a stack trace consisting of return addresses in order
