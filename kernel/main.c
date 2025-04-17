@@ -1,4 +1,3 @@
-#include "lib/kio.h"
 #include <comus/cpu.h>
 #include <comus/memory.h>
 #include <comus/mboot.h>

@@ -67,6 +67,7 @@ const kernel_src = &[_][]const u8{
     "kernel/lib/strtox.c",
     "kernel/lib/uxtoa.c",
     "kernel/lib/xtoa.c",
+    "kernel/mboot/elf.c",
     "kernel/mboot/mboot.c",
     "kernel/mboot/mmap.c",
     "kernel/mboot/rsdp.c",
@@ -185,7 +186,7 @@ pub fn build(b: *std.Build) !void {
         .abi = std.Target.Abi.gnu,
         .ofmt = std.Target.ObjectFormat.elf,
     });
-    const optimize = std.builtin.OptimizeMode.ReleaseFast;
+    const optimize = std.builtin.OptimizeMode.Debug;
 
     // kernel
     build_kern_binary(b, .{

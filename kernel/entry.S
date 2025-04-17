@@ -9,15 +9,26 @@
 	.extern GDT
 
 	.section .multiboot
-	.align 8
 
 	# multiboot header
 mb_start:
+	.align 8
 	# magic
 	.long 0xe85250d6
 	.long 0
 	.long mb_end - mb_start
 	.long 0x100000000 - (0xe85250d6 + (mb_end - mb_start))
+mbi_start:
+	.align 8
+	# info request
+	.short 1
+	.short 1
+	.long mbi_end - mbi_start
+  	.long 1 # cmdline
+  	.long 6 # mmap
+  	.long 9 # elf section
+mbi_end:
+	.align 8
 	# null
 	.short 0
 	.short 0

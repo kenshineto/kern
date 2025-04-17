@@ -30,11 +30,9 @@ int mboot_get_mmap(struct memory_map *res)
 
 	int idx = 0;
 	uintptr_t i = (uintptr_t)mmap->entries;
-	char buf[20];
 	for (; i < (uintptr_t)mmap->entries + mmap->size;
 		 i += mmap->entry_size, idx++) {
 		struct multiboot_mmap_entry *seg = (struct multiboot_mmap_entry *)i;
-		const char *type = NULL;
 		res->entries[idx].addr = seg->addr;
 		res->entries[idx].len = seg->len;
 		res->entries[idx].type = seg->type;

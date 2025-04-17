@@ -33,4 +33,8 @@ SECTIONS
 	}
 
 	kernel_end = .;
+
+	/DISCARD/ : {
+		*(.eh_frame .note.GNU-stack .note.gnu.property .comment)
+	}
 }

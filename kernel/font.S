@@ -4,4 +4,4 @@
 
 	.align 8
 en_font:
-	.incbin "../../font/default8x16.psfu"
+	.incbin "font/default8x16.psfu"
