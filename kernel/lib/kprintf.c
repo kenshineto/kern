@@ -1,7 +1,7 @@
 #include "lib/kio.h"
 #include <lib.h>
+#include <comus/term.h>
 #include <comus/drivers/uart.h>
-#include <comus/drivers/term.h>
 
 #define PRINTF_NUMERIC_BUF_LEN 50
 

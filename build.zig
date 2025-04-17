@@ -27,12 +27,15 @@ const kernel_src = &[_][]const u8{
     "kernel/cpu/idt.c",
     "kernel/cpu/idt.S",
     "kernel/cpu/pic.c",
+    "kernel/drivers.c",
     "kernel/drivers/acpi.c",
     "kernel/drivers/clock.c",
-    "kernel/drivers/drivers.c",
+    "kernel/drivers/gpu.c",
+    "kernel/drivers/gpu/bochs.c",
     "kernel/drivers/pci.c",
-    "kernel/drivers/term.c",
     "kernel/drivers/uart.c",
+    "kernel/drivers/vga.c",
+    "kernel/font.S",
     "kernel/fs/fs.c",
     "kernel/lib/atox.c",
     "kernel/lib/backtrace.c",
@@ -40,6 +43,7 @@ const kernel_src = &[_][]const u8{
     "kernel/lib/btoa.c",
     "kernel/lib/ctoi.c",
     "kernel/lib/isdigit.c",
+    "kernel/lib/isprint.c",
     "kernel/lib/isspace.c",
     "kernel/lib/itoc.c",
     "kernel/lib/kalloc.c",
@@ -71,6 +75,7 @@ const kernel_src = &[_][]const u8{
     "kernel/memory/physalloc.c",
     "kernel/memory/virtalloc.c",
     "kernel/procs/procs.c",
+    "kernel/term.c",
 };
 
 const Prog = struct {

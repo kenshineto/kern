@@ -19,4 +19,9 @@ int isspace(int c);
  */
 int isdigit(int c);
 
+/**
+ * @returns if a character is ascii printable
+ */
+int isprint(int c);
+
 #endif /* kctype.h */
