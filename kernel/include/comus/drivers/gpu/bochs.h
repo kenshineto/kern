@@ -35,6 +35,7 @@ uint8_t bochs_bit_depth(void);
 /**
  * Sets the pixel at a given position
  */
-void bochs_set_pixel(uint32_t x, uint32_t y, uint32_t r, uint32_t g, uint32_t b);
+void bochs_set_pixel(uint32_t x, uint32_t y, uint32_t r, uint32_t g,
+					 uint32_t b);
 
 #endif /* bochs.h */

@@ -13,9 +13,7 @@ enum gpu_type {
 
 static enum gpu_type type = GPU_UNSET;
 
-static const char *gpu_type_str[N_GPU_TYPE] = {
-	"Unknown", "Bochs"
-};
+static const char *gpu_type_str[N_GPU_TYPE] = { "Unknown", "Bochs" };
 
 struct psf2_font {
 	uint8_t magic[4];

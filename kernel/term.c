@@ -19,7 +19,7 @@ static uint16_t x = 0;
 static uint16_t y = 0;
 
 #define BUFY(y) ((buffer_line + (y)) % TERM_MAX_HEIGHT)
-#define BUFIDX(x,y) ((x) + (BUFY(y) * TERM_MAX_WIDTH))
+#define BUFIDX(x, y) ((x) + (BUFY(y) * TERM_MAX_WIDTH))
 
 static void buffer_check(void)
 {
@@ -160,7 +160,8 @@ void term_scroll(uint16_t lines)
 	term_redraw();
 }
 
-void term_switch_handler(uint16_t w, uint16_t h, void (*fn)(char c, uint16_t x, uint16_t y))
+void term_switch_handler(uint16_t w, uint16_t h,
+						 void (*fn)(char c, uint16_t x, uint16_t y))
 {
 	draw_char = fn;
 	width = w % TERM_MAX_WIDTH;
