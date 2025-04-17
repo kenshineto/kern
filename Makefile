@@ -19,7 +19,7 @@ CFLAGS += -fno-builtin
 CFLAGS += -D DEBUG -g
 CFLAGS += $(CPPFLAGS)
 
-LDFLAGS += -nmagic --no-warn-rwx-segments -nostdlib -E
+LDFLAGS += -nmagic -nostdlib
 
 SRC=kernel
 BIN=bin
