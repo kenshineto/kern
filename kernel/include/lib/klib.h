@@ -204,7 +204,7 @@ enum log_level {
 #if LOG_LEVEL >= LOG_LEVEL_TRACE
 #define TRACE(...)                                                          \
 	do {                                                                    \
-		kprintf("[TRACE] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf("[TRACE] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                               \
 	} while (0)
 #else
@@ -214,7 +214,7 @@ enum log_level {
 #if LOG_LEVEL >= LOG_LVL_INFO
 #define INFO(...)                                                          \
 	do {                                                                   \
-		kprintf("[INFO] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf("[INFO] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                              \
 	} while (0)
 #else
@@ -224,7 +224,7 @@ enum log_level {
 #if LOG_LEVEL >= LOG_LVL_WARN
 #define WARN(...)                                                          \
 	do {                                                                   \
-		kprintf("[WARN] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf("[WARN] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                              \
 	} while (0)
 #else
@@ -234,7 +234,7 @@ enum log_level {
 #if LOG_LEVEL >= LOG_LVL_ERROR
 #define ERROR(...)                                                          \
 	do {                                                                    \
-		kprintf("[ERROR] [%s:%s:%d] : ", __FILE__, __FUNCTION__, __LINE__); \
+		kprintf("[ERROR] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                               \
 	} while (0)
 #else
