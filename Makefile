@@ -20,6 +20,7 @@ CFLAGS += -D DEBUG -g
 CFLAGS += $(CPPFLAGS)
 
 LDFLAGS += -nmagic -nostdlib
+LDFLAGS += -z noexecstack
 
 SRC=kernel
 BIN=bin

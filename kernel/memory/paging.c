@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 
@@ -521,8 +522,6 @@ static inline void *page_align(void *addr)
 void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 				  unsigned int flags)
 {
-	TRACE("PHYS %16p VIRT %16p LEN %zu FLAGS %08x \n", phys, virt, len, flags);
-
 	long pages;
 	ptrdiff_t error;
 	void *aligned_phys;
@@ -550,8 +549,6 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 
 void mem_unmapaddr(mem_ctx_t ctx, void *virt)
 {
-	TRACE("VIRT %16p\n", virt);
-
 	long pages = virtaddr_free(ctx->virtctx, virt);
 	if (pages < 1)
 		return;
@@ -560,25 +557,23 @@ void mem_unmapaddr(mem_ctx_t ctx, void *virt)
 
 void *mem_alloc_page(mem_ctx_t ctx)
 {
-	return mem_alloc_pages(ctx, 1);
+	void *virt = virtaddr_alloc(ctx->virtctx, 1);
+	if (virt == NULL)
+		return NULL;
+	if (map_page((volatile struct pml4e *)ctx->pml4, virt, NULL, F_WRITEABLE)) {
+		virtaddr_free(ctx->virtctx, virt);
+		return NULL;
+	}
+	return virt;
 }
 
 void *mem_alloc_pages(mem_ctx_t ctx, size_t count)
 {
-	TRACE("COUNT %zu\n", count);
-
 	void *virt = virtaddr_alloc(ctx->virtctx, count);
 	if (virt == NULL)
 		return NULL;
-	//void *phys = alloc_phys_pages(count);
-	//if (phys == NULL) {
-	//	virtaddr_free(virt);
-	//	return NULL;
-	//}
-	if (map_pages((volatile struct pml4e *)ctx->pml4, virt,
-				  //phys,
-				  //F_WRITEABLE,
-				  NULL, F_WRITEABLE, count)) {
+	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, NULL, F_WRITEABLE,
+				  count)) {
 		virtaddr_free(ctx->virtctx, virt);
 		return NULL;
 	}
@@ -587,8 +582,6 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count)
 
 void mem_free_pages(mem_ctx_t ctx, void *virt)
 {
-	TRACE("VIRT %16p\n", virt);
-
 	long pages = virtaddr_free(ctx->virtctx, virt);
 	if (pages == 1)
 		unmap_page((volatile struct pml4e *)ctx->pml4, virt);
@@ -598,8 +591,6 @@ void mem_free_pages(mem_ctx_t ctx, void *virt)
 
 int mem_load_page(mem_ctx_t ctx, void *virt_addr)
 {
-	TRACE("VIRT %16p\n", virt_addr);
-
 	volatile struct pte *page =
 		get_page((volatile struct pml4e *)ctx->pml4, virt_addr);
 	if (page == NULL)
