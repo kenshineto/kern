@@ -1,5 +1,3 @@
-#include "comus/memory.h"
-#include "lib/klib.h"
 #include <lib.h>
 #include <comus/mboot.h>
 

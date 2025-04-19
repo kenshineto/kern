@@ -1,4 +1,3 @@
-#include "lib/kio.h"
 #include <lib.h>
 #include <comus/drivers/acpi.h>
 #include <comus/asm.h>
