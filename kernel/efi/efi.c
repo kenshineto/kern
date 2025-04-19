@@ -1,4 +1,3 @@
-#include "lib/klib.h"
 #include <lib.h>
 #include <comus/efi.h>
 #include <comus/mboot.h>

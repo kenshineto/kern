@@ -1,4 +1,3 @@
-#include "lib/kio.h"
 #include <lib.h>
 #include <comus/term.h>
 #include <comus/drivers/uart.h>
