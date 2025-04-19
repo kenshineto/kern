@@ -22,10 +22,14 @@ mb_start:
 	.align 8
 	.short 1
 	.short 1
-	.long 20
+	.long 36
 	.long 1 # cmdline
 	.long 6 # mmap
 	.long 9 # elf section
+	.long 12 # efi64
+	.long 14 # rsdp
+	.long 15 # xsdp
+	.long 20 # efi64 IH
 	# bios entry
 	.align 8
 	.short 3

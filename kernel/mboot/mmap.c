@@ -59,7 +59,8 @@ int mboot_get_mmap(struct memory_map *res)
 			res->entries[idx].type = SEG_TYPE_DEFECTIVE;
 			break;
 		default:
-			continue;
+			res->entries[idx].type = SEG_TYPE_RESERVED;
+			break;
 		}
 		idx++;
 	}

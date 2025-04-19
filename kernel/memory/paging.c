@@ -522,31 +522,40 @@ void paging_init(void)
 	__asm__ volatile("mov %0, %%cr3" ::"r"(kernel_pml4) : "memory");
 }
 
+static inline void *page_align(void *addr)
+{
+	uintptr_t a = (uintptr_t)addr;
+	a /= PAGE_SIZE;
+	a *= PAGE_SIZE;
+	return (void *)a;
+}
+
 void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 				  unsigned int flags)
 {
 	long pages;
-	int alloc = 0;
+	ptrdiff_t error;
+	void *aligned_phys;
 
-	pages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
-	len += (PAGE_SIZE - len) % PAGE_SIZE;
+	// get length and physical page aligned address
+	aligned_phys = page_align(phys);
+	error = (char *)phys - (char *)aligned_phys;
+	len += error;
+	pages = len / PAGE_SIZE + 1;
 
-	if (virt == NULL) {
+	// get page aligned (or allocate) vitural address
+	if (virt == NULL)
 		virt = virtaddr_alloc(ctx->virtctx, pages);
-		alloc = 1;
-	}
-
 	if (virt == NULL)
 		return NULL;
 
-	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, phys,
+	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, aligned_phys,
 				  F_WRITEABLE | flags, pages)) {
-		if (alloc)
-			virtaddr_free(ctx->virtctx, virt);
+		virtaddr_free(ctx->virtctx, virt);
 		return NULL;
 	}
 
-	return (char *)virt;
+	return (char *)virt + error;
 }
 
 void mem_unmapaddr(mem_ctx_t ctx, void *virt)
