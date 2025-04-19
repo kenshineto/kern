@@ -13,7 +13,7 @@
 #define N_PCI_DEV 256
 
 /// max memory entires
-#define N_MMAP_ENTRY 64
+#define N_MMAP_ENTRY 256
 
 /// length of terminal buffer
 #define TERM_MAX_WIDTH 480

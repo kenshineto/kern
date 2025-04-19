@@ -20,10 +20,11 @@ static uint64_t segment_count;
 struct memory_map phys_mmap;
 struct memory_segment *page_start;
 
-static const char *segment_type_str[] = { "Reserved",	 "Free",
-										  "Reserved",	 "ACPI Reserved",
-										  "Hibernation", "Defective",
-										  "Unknown" };
+static const char *segment_type_str[] = {
+	[SEG_TYPE_FREE] = "Free",			[SEG_TYPE_RESERVED] = "Reserved",
+	[SEG_TYPE_ACPI] = "ACPI Reserved",	[SEG_TYPE_HIBERNATION] = "Hibernation",
+	[SEG_TYPE_DEFECTIVE] = "Defective", [SEG_TYPE_EFI] = "EFI Reserved",
+};
 
 static int n_pages(const struct memory_segment *m)
 {
@@ -124,7 +125,7 @@ static bool segment_invalid(const struct memory_segment *segment)
 {
 	if (segment->len < 1)
 		return true;
-	if (segment->type != 1)
+	if (segment->type != SEG_TYPE_FREE)
 		return true;
 	if (segment->addr < kaddr(kernel_start))
 		return true;
@@ -245,16 +246,9 @@ void memory_report(void)
 	kprintf("MEMORY MAP\n");
 	for (uint32_t i = 0; i < phys_mmap.entry_count; i++) {
 		struct memory_segment *seg;
-		const char *type_str;
-
 		seg = &phys_mmap.entries[i];
-		if (seg->type > 6)
-			type_str = segment_type_str[6];
-		else
-			type_str = segment_type_str[seg->type];
-
-		kprintf("ADDR: %16p  LEN: %4s  TYPE: %s (%d)\n", (void *)seg->addr,
-				btoa(seg->len, buf), type_str, seg->type);
+		kprintf("ADDR: %16p  LEN: %4s  TYPE: %s\n", (void *)seg->addr,
+				btoa(seg->len, buf), segment_type_str[seg->type]);
 	}
 
 	kprintf("\nMEMORY USAGE\n");

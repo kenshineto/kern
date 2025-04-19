@@ -1,6 +1,7 @@
 #include <comus/cpu.h>
 #include <comus/memory.h>
 #include <comus/mboot.h>
+#include <comus/efi.h>
 #include <comus/drivers.h>
 #include <comus/drivers/acpi.h>
 #include <comus/drivers/pci.h>
@@ -24,6 +25,9 @@ void main(long magic, volatile void *mboot)
 
 	// load multiboot information
 	mboot_init(magic, mboot);
+
+	// load efi structures
+	efi_init(mboot_get_efi_hdl(), mboot_get_efi_st());
 
 	// initalize memory
 	memory_init();

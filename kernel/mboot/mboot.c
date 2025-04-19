@@ -8,7 +8,7 @@ static volatile void *mboot = NULL;
 void mboot_init(long magic, volatile void *ptr)
 {
 	if (magic != MULTIBOOT2_BOOTLOADER_MAGIC)
-		panic("invalid multiboot magic");
+		panic("invalid multiboot magic: %#08lx", magic);
 	mboot = ptr;
 }
 

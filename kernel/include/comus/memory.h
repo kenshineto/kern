@@ -26,6 +26,13 @@
 #define F_MEGABYTE 0x080
 #define F_GLOBAL 0x100
 
+#define SEG_TYPE_FREE 0
+#define SEG_TYPE_RESERVED 1
+#define SEG_TYPE_ACPI 2
+#define SEG_TYPE_HIBERNATION 3
+#define SEG_TYPE_DEFECTIVE 4
+#define SEG_TYPE_EFI 5
+
 struct memory_segment {
 	uint64_t addr;
 	uint64_t len;

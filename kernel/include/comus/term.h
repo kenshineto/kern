@@ -11,22 +11,6 @@
 
 #include <stdint.h>
 
-/// vtable structure for terminal handlers
-///
-/// required:
-///		out_at - put out char at position
-///		scroll - scroll the terminal count lines
-///
-/// optional:
-///		clear - clear terminal
-///		clear_line - clear a specific line on the terminal
-///
-struct terminal {
-	uint16_t width;
-	uint16_t height;
-	void (*draw_char)(char c, uint16_t x, uint16_t y);
-};
-
 /**
  * Get the character width of the terminal
  */
@@ -78,9 +62,8 @@ void term_redraw(void);
 void term_scroll(uint16_t lines);
 
 /**
- * Switch terminal handler
+ * Resize terminal
  */
-void term_switch_handler(uint16_t width, uint16_t height,
-						 void (*draw_char)(char c, uint16_t x, uint16_t y));
+void term_resize(uint16_t width, uint16_t height);
 
 #endif /* term.h */

@@ -2,6 +2,7 @@
 #include <comus/asm.h>
 #include <comus/memory.h>
 #include <comus/drivers/pci.h>
+#include <comus/drivers/gpu.h>
 #include <comus/drivers/gpu/bochs.h>
 
 #define INDEX 0x1CE
@@ -30,10 +31,7 @@
 #define BOCHS_HEIGHT 768
 #define BOCHS_BIT_DEPTH 32
 
-static volatile uint32_t *framebuffer;
-static uint16_t width = BOCHS_WIDTH;
-static uint16_t height = BOCHS_HEIGHT;
-static uint8_t bit_depth = BOCHS_BIT_DEPTH;
+struct gpu bochs_dev = { 0 };
 
 static void write(uint16_t index, uint16_t data)
 {
@@ -47,23 +45,7 @@ static uint16_t read(uint16_t value)
 	return inw(DATA);
 }
 
-static int is_available(void)
-{
-	return (read(INDEX_ID) == 0xB0C5);
-}
-
-static void set_mode(uint16_t width, uint16_t height, uint16_t bit_depth,
-					 int lfb, int clear)
-{
-	write(INDEX_ENABLE, DATA_DISP_DISABLE);
-	write(INDEX_XRES, width);
-	write(INDEX_YRES, height);
-	write(INDEX_BPP, bit_depth);
-	write(INDEX_ENABLE, DATA_DISP_ENABLE | (lfb ? DATA_LFB_ENABLE : 0) |
-							(clear ? 0 : DATA_NO_CLEAR_MEM));
-}
-
-int bochs_init(void)
+int bochs_init(struct gpu **gpu_dev)
 {
 	struct pci_device bochs = { 0 };
 	bool found =
@@ -71,34 +53,24 @@ int bochs_init(void)
 	if (!found)
 		return 1;
 
-	set_mode(width, height, bit_depth, true, true);
-	if (!is_available())
+	write(INDEX_ENABLE, DATA_DISP_DISABLE);
+	write(INDEX_XRES, BOCHS_WIDTH);
+	write(INDEX_YRES, BOCHS_HEIGHT);
+	write(INDEX_BPP, BOCHS_BIT_DEPTH);
+	write(INDEX_ENABLE, DATA_DISP_ENABLE | DATA_LFB_ENABLE);
+	if (read(INDEX_ID) != 0xB0C5)
 		return 1;
 
 	uint32_t bar0 = pci_rcfg_d(bochs, PCI_BAR0_D);
 	uint32_t *addr = (uint32_t *)(uintptr_t)bar0;
-	framebuffer = kmapaddr(addr, NULL, width * height * bit_depth, F_WRITEABLE);
+
+	bochs_dev.name = "Bochs";
+	bochs_dev.width = BOCHS_WIDTH;
+	bochs_dev.height = BOCHS_HEIGHT;
+	bochs_dev.bit_depth = BOCHS_BIT_DEPTH;
+	bochs_dev.framebuffer = kmapaddr(
+		addr, NULL, BOCHS_WIDTH * BOCHS_HEIGHT * BOCHS_BIT_DEPTH, F_WRITEABLE);
+	*gpu_dev = &bochs_dev;
 
 	return 0;
-}
-
-uint32_t bochs_width(void)
-{
-	return width;
-}
-
-uint32_t bochs_height(void)
-{
-	return height;
-}
-
-uint8_t bochs_bit_depth(void)
-{
-	return bit_depth;
-}
-
-void bochs_set_pixel(uint32_t x, uint32_t y, uint32_t r, uint32_t g, uint32_t b)
-{
-	uint32_t index = x + y * width;
-	framebuffer[index] = (b << 0) | (g << 8) | (r << 16);
 }
