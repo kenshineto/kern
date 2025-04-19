@@ -1,10 +1,10 @@
 #include <comus/drivers/pci.h>
 #include <comus/asm.h>
+#include <comus/limits.h>
 #include <lib.h>
 
 #define CONF_ADDR 0xCF8
 #define CONF_DATA 0xCFC
-#define TABLE_LEN 16
 
 struct pci_table_entry {
 	struct pci_device device;
@@ -16,7 +16,7 @@ struct pci_table_entry {
 	uint8_t revision;
 };
 
-static struct pci_table_entry pci_table[TABLE_LEN];
+static struct pci_table_entry pci_table[N_PCI_DEV];
 static size_t pci_table_next = 0;
 
 uint32_t pci_rcfg_d(struct pci_device dev, uint8_t offset)
@@ -43,8 +43,8 @@ static void print_device(struct pci_table_entry *entry)
 
 static struct pci_table_entry *load_device(struct pci_device dev)
 {
-	if (pci_table_next >= TABLE_LEN)
-		panic("Too many PCI devices: limit is %d", TABLE_LEN);
+	if (pci_table_next >= N_PCI_DEV)
+		panic("Too many PCI devices: limit is %d", N_PCI_DEV);
 	struct pci_table_entry *entry = &pci_table[pci_table_next++];
 	entry->device = dev;
 	uint32_t dword0 = pci_rcfg_d(dev, 0);
