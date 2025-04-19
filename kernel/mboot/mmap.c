@@ -1,3 +1,5 @@
+#include "comus/memory.h"
+#include "lib/klib.h"
 #include <lib.h>
 #include <comus/mboot.h>
 
@@ -32,6 +34,8 @@ int mboot_get_mmap(struct memory_map *res)
 	uintptr_t i = (uintptr_t)mmap->entries;
 	for (; i < (uintptr_t)mmap->entries + mmap->size;
 		 i += mmap->entry_size, idx++) {
+		if (idx >= N_MMAP_ENTRY)
+			panic("Too many mmap entries: limit is %d", N_MMAP_ENTRY);
 		struct multiboot_mmap_entry *seg = (struct multiboot_mmap_entry *)i;
 		res->entries[idx].addr = seg->addr;
 		res->entries[idx].len = seg->len;

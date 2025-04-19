@@ -9,11 +9,11 @@
 #ifndef _MEMORY_H
 #define _MEMORY_H
 
+#include <comus/limits.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 
-#define MMAP_MAX_ENTRY 64
 #define PAGE_SIZE 4096
 
 #define F_PRESENT 0x001
@@ -34,7 +34,7 @@ struct memory_segment {
 
 struct memory_map {
 	uint32_t entry_count;
-	struct memory_segment entries[MMAP_MAX_ENTRY];
+	struct memory_segment entries[N_MMAP_ENTRY];
 };
 
 typedef struct mem_ctx_s *mem_ctx_t;
