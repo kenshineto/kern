@@ -10,7 +10,7 @@ CPP ?= cpp
 
 CPPFLAGS += -Ikernel/include
 
-CFLAGS += -O0
+CFLAGS += -O2
 CFLAGS += -std=c11
 CFLAGS += -Wall -Wextra -pedantic
 CFLAGS += -fno-pie -fno-stack-protector
@@ -41,6 +41,13 @@ QEMUOPTS = -cdrom $(BIN)/$(ISO) \
 		   -serial mon:stdio \
 		   -m 4G \
 		   -name kern
+
+GRUB = grub-mkrescue
+
+ifdef UEFI
+QEMU = qemu-system-x86_64-uefi
+GRUB = grub-mkrescue-uefi
+endif
 
 qemu: $(BIN)/$(ISO)
 	$(QEMU) $(QEMUOPTS)
@@ -88,7 +95,7 @@ $(BIN)/$(ISO): $(BIN)/$(KERNEL)
 	mkdir -p $(BIN)/iso/boot/grub
 	cp config/grub.cfg $(BIN)/iso/boot/grub
 	cp $(BIN)/$(KERNEL) $(BIN)/iso/boot
-	grub-mkrescue -o $(BIN)/$(ISO) bin/iso 2>/dev/null
+	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
 
 fmt:
 	clang-format -i $(shell find -type f -name "*.[ch]" -and -not -path "./kernel/old/*")

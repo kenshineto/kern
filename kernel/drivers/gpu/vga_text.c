@@ -2,15 +2,17 @@
 #include <comus/term.h>
 #include <comus/asm.h>
 #include <comus/memory.h>
-#include <comus/drivers/vga.h>
+#include <comus/drivers/gpu/vga_text.h>
 
 #define VGA_ADDR 0xB8000
+#define VGA_WIDTH 80
+#define VGA_HEIGHT 25
 static volatile uint16_t *buffer = (uint16_t *)VGA_ADDR;
 
 // color
 static uint8_t fg = 15, bg = 0;
 
-void vga_draw_char(char c, uint16_t x, uint16_t y)
+void vga_text_draw_char(char c, uint16_t x, uint16_t y)
 {
 	// output character
 	const size_t index = y * VGA_WIDTH + x;

@@ -56,6 +56,7 @@ struct pte {
 extern volatile struct pml4e kernel_pml4[512];
 extern volatile struct pdpte kernel_pdpt_0[512];
 extern volatile struct pde kernel_pd_0[512];
+extern volatile struct pte kernel_pt_0[512];
 extern volatile struct pte bootstrap_pt[512];
 extern volatile struct pte
 	paging_pt[512]; // paging_pt should NEVER be outside of this file, NEVER i say
@@ -502,49 +503,51 @@ void paging_init(void)
 	kernel_pdpt_0[0].flags = F_PRESENT | F_WRITEABLE;
 	kernel_pdpt_0[0].address = (uint64_t)(&kernel_pd_0) >> 12;
 
+	kernel_pd_0[0].flags = F_PRESENT | F_WRITEABLE;
+	kernel_pd_0[0].address = (uint64_t)(&kernel_pt_0) >> 12;
 	kernel_pd_0[1].flags = F_PRESENT | F_WRITEABLE;
 	kernel_pd_0[1].address = (uint64_t)(&paging_pt) >> 12;
 	kernel_pd_0[2].flags = F_PRESENT | F_WRITEABLE;
 	kernel_pd_0[2].address = (uint64_t)(&bootstrap_pt) >> 12;
 
+	for (size_t i = 0; i < 512; i++) {
+		kernel_pt_0[i].flags = F_PRESENT | F_WRITEABLE;
+		kernel_pt_0[i].address = (i * PAGE_SIZE) >> 12;
+	}
+
 	memsetv(&paging_pt, 0, 4096);
 	memsetv(&bootstrap_pt, 0, 4096);
-}
 
-static inline void *page_align(void *addr)
-{
-	uintptr_t a = (uintptr_t)addr;
-	a /= PAGE_SIZE;
-	a *= PAGE_SIZE;
-	return (void *)a;
+	// make sure we are using THESE pagetables
+	// EFI doesnt on boot
+	__asm__ volatile("mov %0, %%cr3" ::"r"(kernel_pml4) : "memory");
 }
 
 void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 				  unsigned int flags)
 {
 	long pages;
-	ptrdiff_t error;
-	void *aligned_phys;
+	int alloc = 0;
 
-	// get length and physical page aligned address
-	aligned_phys = page_align(phys);
-	error = (char *)phys - (char *)aligned_phys;
-	len += error;
-	pages = len / PAGE_SIZE + 1;
+	pages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+	len += (PAGE_SIZE - len) % PAGE_SIZE;
 
-	// get page aligned (or allocate) vitural address
-	if (virt == NULL)
+	if (virt == NULL) {
 		virt = virtaddr_alloc(ctx->virtctx, pages);
+		alloc = 1;
+	}
+
 	if (virt == NULL)
 		return NULL;
 
-	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, aligned_phys,
+	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, phys,
 				  F_WRITEABLE | flags, pages)) {
-		virtaddr_free(ctx->virtctx, virt);
+		if (alloc)
+			virtaddr_free(ctx->virtctx, virt);
 		return NULL;
 	}
 
-	return (char *)virt + error;
+	return (char *)virt;
 }
 
 void mem_unmapaddr(mem_ctx_t ctx, void *virt)

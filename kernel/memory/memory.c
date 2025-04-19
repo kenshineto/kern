@@ -2,6 +2,7 @@
 #include <comus/memory.h>
 #include <comus/asm.h>
 #include <comus/mboot.h>
+#include <comus/efi.h>
 #include <lib.h>
 
 #include "memory.h"
@@ -68,7 +69,8 @@ void memory_init(void)
 {
 	struct memory_map mmap;
 	if (mboot_get_mmap(&mmap))
-		panic("failed to load memory map");
+		if (efi_get_mmap(&mmap))
+			panic("failed to load memory map");
 
 	kernel_mem_ctx = &_kernel_mem_ctx;
 	kernel_mem_ctx->pml4 = kernel_pml4;
@@ -79,4 +81,12 @@ void memory_init(void)
 	virtaddr_init(kernel_mem_ctx->virtctx);
 	physalloc_init(&mmap);
 	sti();
+
+	// identiy map EFI functions
+	for (size_t i = 0; i < mmap.entry_count; i++) {
+		struct memory_segment *seg = &mmap.entries[i];
+		if (seg->type != SEG_TYPE_EFI)
+			continue;
+		kmapaddr((void *)seg->addr, (void *)seg->addr, seg->len, F_WRITEABLE);
+	}
 }

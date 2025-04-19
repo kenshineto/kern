@@ -11,26 +11,34 @@
 
 #include <stdint.h>
 
+struct gpu {
+	const char *name;
+	uint16_t width;
+	uint16_t height;
+	uint16_t bit_depth;
+	volatile void *framebuffer;
+};
+
+struct psf2_font {
+	uint8_t magic[4];
+	uint32_t version;
+	uint32_t header_size;
+	uint32_t flags;
+	uint32_t length;
+	uint32_t glyph_size;
+	uint32_t height;
+	uint32_t width;
+	uint8_t data[];
+};
+
+extern struct gpu *gpu_dev;
+extern struct psf2_font en_font;
+
 /**
  * Loads any gpu graphics driver
  * @returns 0 on success
  */
 int gpu_init(void);
-
-/**
- * @returns the width of the framebuffer
- */
-uint32_t gpu_width(void);
-
-/**
- * @returns the height of the framebuffer
- */
-uint32_t gpu_height(void);
-
-/**
- * @returns the bit depth of the framebuffer
- */
-uint8_t gpu_bit_depth(void);
 
 /**
  * Sets the pixel at a given position

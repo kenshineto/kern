@@ -1,20 +1,14 @@
-#include "lib/kio.h"
 #include <lib.h>
 #include <comus/term.h>
 #include <comus/asm.h>
 #include <comus/limits.h>
-#include <comus/memory.h>
-#include <comus/drivers/vga.h>
-#include <comus/drivers/uart.h>
-
-// draw function
-static void (*draw_char)(char c, uint16_t x, uint16_t y) = vga_draw_char;
+#include <comus/drivers/gpu.h>
 
 // terminal data
 static char buffer[TERM_MAX_WIDTH * TERM_MAX_HEIGHT];
 static uint16_t buffer_line = UINT16_MAX;
-static uint16_t width = VGA_WIDTH;
-static uint16_t height = VGA_HEIGHT;
+static uint16_t width = 80; // baseline vga text mode until resized
+static uint16_t height = 25;
 static uint16_t x = 0;
 static uint16_t y = 0;
 
@@ -102,7 +96,7 @@ void term_out_at(char c, uint16_t x, uint16_t y)
 		return;
 
 	buffer[BUFIDX(x, y)] = c;
-	draw_char(c, x, y);
+	gpu_draw_char(c, x, y);
 }
 
 void term_out_str(const char *str)
@@ -136,7 +130,7 @@ void term_clear_line(uint16_t line)
 
 	for (uint16_t x = 0; x < width; x++) {
 		buffer[BUFIDX(x, line)] = 0;
-		draw_char(0, x, line);
+		gpu_draw_char(0, x, line);
 	}
 }
 
@@ -147,7 +141,7 @@ void term_redraw(void)
 	for (uint16_t j = 0; j < height; j++) {
 		for (uint16_t i = 0; i < width; i++) {
 			char c = buffer[BUFIDX(i, j)];
-			draw_char(c, i, j);
+			gpu_draw_char(c, i, j);
 		}
 	}
 }
@@ -160,10 +154,8 @@ void term_scroll(uint16_t lines)
 	term_redraw();
 }
 
-void term_switch_handler(uint16_t w, uint16_t h,
-						 void (*fn)(char c, uint16_t x, uint16_t y))
+void term_resize(uint16_t w, uint16_t h)
 {
-	draw_char = fn;
 	width = w % TERM_MAX_WIDTH;
 	height = h % TERM_MAX_HEIGHT;
 	term_redraw();

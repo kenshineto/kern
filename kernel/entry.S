@@ -12,24 +12,47 @@
 
 	# multiboot header
 mb_start:
-	.align 8
 	# magic
+	.align 8
 	.long 0xe85250d6
 	.long 0
 	.long mb_end - mb_start
 	.long 0x100000000 - (0xe85250d6 + (mb_end - mb_start))
-mbi_start:
-	.align 8
 	# info request
-	.short 1
-	.short 1
-	.long mbi_end - mbi_start
-  	.long 1 # cmdline
-  	.long 6 # mmap
-  	.long 9 # elf section
-mbi_end:
 	.align 8
+	.short 1
+	.short 1
+	.long 20
+	.long 1 # cmdline
+	.long 6 # mmap
+	.long 9 # elf section
+	# bios entry
+	.align 8
+	.short 3
+	.short 0
+	.long 12
+	.long _start
+	# framebuffer
+	.align 8
+	.short 5
+	.short 1
+	.long 20
+	.long 720 # width
+	.long 480 # height
+	.long 32 # bpp
+	# efi boot services
+	.align 8
+	.short 7
+	.short 0
+	.long 8
+	# efi amd64 entry
+	.align 8
+	.short 9
+	.short 0
+	.long 12
+	.long _start_efi
 	# null
+	.align 8
 	.short 0
 	.short 0
 	.long 8
@@ -131,7 +154,7 @@ GDT:
 	.code32
 
 _start:
-    # enable interrupts
+    # disable interrupts
 	cli
 
     # setup stack
@@ -203,8 +226,36 @@ code64:
 	pop		%rsi
 
 	call	main
+	jmp		halt
+
+_start_efi:
+    # disable interrupts
 	cli
 
+	# setup stack
+	movq	$kern_stack_end, %rsp
+	movq	$kern_stack_end, %rbp
+
+	# load gdt
+	lgdt	GDT.Pointer
+
+	# set segment registers
+	movw	$GDT.Code, %dx
+	movw	%dx, %cs
+	movw	%dx, %es
+	movw	$GDT.Data, %dx
+	movw	%dx, %ds
+	movw	%dx, %ss
+
+	xorq	%rbp, %rbp      # set ebp to 0 so we know where to end stack traces
+
+	movq	%rax, %rdi
+	movq	%rbx, %rsi
+
+	call	main
+	jmp		halt
+
 halt:
+	cli
 	hlt
 	jmp		halt

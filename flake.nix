@@ -31,6 +31,16 @@
             qemu
             grub2_light
             xorriso
+            gnu-efi
+            (pkgs.writeShellScriptBin "qemu-system-x86_64-uefi" ''
+              qemu-system-x86_64 \
+                -smbios type=0,uefi=on \
+                -bios ${pkgs.OVMF.fd}/FV/OVMF.fd \
+                "$@"
+            '')
+            (pkgs.writeShellScriptBin "grub-mkrescue-uefi" ''
+              ${pkgs.grub2_efi}/bin/grub-mkrescue "$@"
+            '')
           ];
         };
 
