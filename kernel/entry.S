@@ -218,20 +218,6 @@ _start.SetEntry:
 	ljmp	$GDT.Code, $code64
 
 	.code64
-code64:
-
-	movw	$GDT.Data, %dx        # set segment registers
-	movw	%dx, %ds
-	movw	%dx, %ss
-
-	xorq	%rbp, %rbp      # set ebp to 0 so we know where to end stack traces
-
-	pop		%rdi            # pop possible multiboot header
-	pop		%rsi
-
-	call	main
-	jmp		halt
-
 _start_efi:
     # disable interrupts
 	cli
@@ -240,24 +226,30 @@ _start_efi:
 	movq	$kern_stack_end, %rsp
 	movq	$kern_stack_end, %rbp
 
+	# save multiboot
+	pushq	%rbx
+	pushq	%rax
+
 	# load gdt
 	lgdt	GDT.Pointer
+	pushq	$GDT.Code
+	pushq	$code64
+	retfq
 
+code64:
 	# set segment registers
-	movw	$GDT.Code, %dx
-	movw	%dx, %cs
-	movw	%dx, %es
 	movw	$GDT.Data, %dx
 	movw	%dx, %ds
 	movw	%dx, %ss
 
-	xorq	%rbp, %rbp      # set ebp to 0 so we know where to end stack traces
+	# set ebp to 0 so we know where to end stack traces
+	xorq	%rbp, %rbp
 
-	movq	%rax, %rdi
-	movq	%rbx, %rsi
+	# pop multiboot header
+	pop		%rdi
+	pop		%rsi
 
 	call	main
-	jmp		halt
 
 halt:
 	cli
