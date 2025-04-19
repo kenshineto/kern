@@ -1003,7 +1003,7 @@ typedef struct {
 	//
 	EFI_IMAGE_LOAD LoadImage; // EFI 1.0+
 	EFI_IMAGE_START
-		StartImage; // EFI 1.0+UEFI Specification, Version 2.8 EFI System Table
+	StartImage; // EFI 1.0+UEFI Specification, Version 2.8 EFI System Table
 	EFI_EXIT Exit; // EFI 1.0+
 	EFI_IMAGE_UNLOAD UnloadImage; // EFI 1.0+
 	EFI_EXIT_BOOT_SERVICES ExitBootServices; // EFI 1.0+
@@ -1049,7 +1049,7 @@ typedef struct {
 	//
 	EFI_COPY_MEM CopyMem; // EFI 1.1+
 	EFI_SET_MEM
-		SetMem; // EFI 1.1+UEFI Specification, Version 2.8 EFI System Table
+	SetMem; // EFI 1.1+UEFI Specification, Version 2.8 EFI System Table
 	EFI_CREATE_EVENT_EX CreateEventEx; // UEFI 2.0+
 } EFI_BOOT_SERVICES;
 
