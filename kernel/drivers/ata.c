@@ -163,8 +163,8 @@ static void ide_channel_write(struct ide_channel *channel, const uint8_t reg,
 		outb(channel->io_base + reg - 0x06, data);
 	} else if (reg < 0x0E) {
 		outb(channel->control_base + reg - 0x0A, data);
-        // someone on OSdev said this was the correct thing
-        // https://wiki.osdev.org/Talk:PCI_IDE_Controller
+		// someone on OSdev said this was the correct thing
+		// https://wiki.osdev.org/Talk:PCI_IDE_Controller
 		// outb(channel->control_base + reg - 0x0C, data);
 	} else if (reg < 0x16) {
 		outb(channel->bus_master_ide_base + reg - 0x0E, data);
@@ -368,6 +368,9 @@ uint8_t ide_device_print_poll_error(struct ide_device *dev,
 
 	static const char *channel_displaynames[] = { "Primary", "Secondary" };
 	static const char *device_displaynames[] = { "Master", "Slave" };
+
+	if (dev->channel_idx >= 2 || dev->drive_idx >= 2)
+		panic("out of bounds");
 
 	const char *channel_displayname = channel_displaynames[dev->channel_idx];
 	const char *device_displayname = device_displaynames[dev->drive_idx];
