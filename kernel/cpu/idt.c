@@ -2,6 +2,7 @@
 #include <comus/memory.h>
 #include <comus/asm.h>
 #include <comus/cpu.h>
+#include <comus/drivers/pit.h>
 
 #include "idt.h"
 #include "pic.h"
@@ -153,14 +154,7 @@ int counter = 0;
 
 void idt_pic_timer(void)
 {
-	// print a message once we know the timer works
-	// but avoid spamming the logs
-	if (counter == 3) {
-		//kputs("pic timer!\n");
-	}
-	if (counter <= 3) {
-		counter++;
-	}
+	ticks++;
 }
 
 void idt_pic_keyboard(void)
