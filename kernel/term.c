@@ -67,8 +67,8 @@ static inline void term_move_cur(char c)
 		y++;
 	}
 	if (y >= height) {
-		term_scroll(y - (height - 1));
 		y = height - 1;
+		term_scroll(1);
 	}
 }
 
