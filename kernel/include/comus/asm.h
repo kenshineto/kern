@@ -26,10 +26,15 @@ static inline void outw(uint16_t port, uint16_t val)
 	__asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port));
 }
 
+#define __inl_nocall(port, out_uint32)                                  \
+	do {                                                                \
+		__asm__ volatile("inl %1, %0" : "=a"(out_uint32) : "Nd"(port)); \
+	} while (0);
+
 static inline uint32_t inl(uint16_t port)
 {
 	uint32_t ret;
-	__asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
+	__inl_nocall(port, ret);
 	return ret;
 }
 
