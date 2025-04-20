@@ -507,26 +507,46 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
 		}
 }
 
-void ata_init(void)
+bool ata_init(void)
 {
-    // numbers for supporting only parallel ATA
-	ide_initialize(0x1F0, 0x3F6, 0x170, 0x376, 0x000);
-}
+	struct pci_device dev;
 
-bool ata_find_primary_drive(struct pci_device *out)
-{
-	if (!pci_findby_class(out, CLASS_MASS_STORAGE_CONTROLLER,
+	if (!pci_findby_class(&dev, CLASS_MASS_STORAGE_CONTROLLER,
 						  SUBCLASS_IDE_CONTROLLER, NULL)) {
+		TRACE("No disks found by PCI class");
 		return false;
 	}
 
-	const uint8_t prog_if = pci_rcfg_b(*out, PCI_PROG_IF_B);
-	const uint8_t header_type = pci_rcfg_b(*out, PCI_HEADER_TYPE_B);
+	// const uint8_t prog_if = pci_rcfg_b(dev, PCI_PROG_IF_B);
+	const uint8_t header_type = pci_rcfg_b(dev, PCI_HEADER_TYPE_B);
 
 	if (header_type != 0x0) {
 		TRACE("Wrong header type for IDE_CONTROLLER device, not reading BARs");
 		return false;
 	}
+
+	// const bool primary_channel_is_pci_native =
+	// 	prog_if & IDE_PROG_IF_PRIMARY_CHANNEL_IS_PCI_NATIVE_FLAG;
+	// const bool primary_channel_can_switch_native_mode =
+	// 	prog_if &
+	// 	IDE_PROG_IF_PRIMARY_CHANNEL_CAN_SWITCH_TO_AND_FROM_PCI_NATIVE_FLAG;
+	// const bool secondary_channel_is_pci_native =
+	// 	prog_if & IDE_PROG_IF_SECONDARY_CHANNEL_IS_PCI_NATIVE_FLAG;
+	// const bool secondary_channel_can_switch_native_mode =
+	// 	prog_if &
+	// 	IDE_PROG_IF_SECONDARY_CHANNEL_CAN_SWITCH_TO_AND_FROM_PCI_NATIVE_FLAG;
+	// const bool device_supports_dma = prog_if & IDE_PROG_IF_DMA_SUPPORT_FLAG;
+
+	const uint32_t BAR0 = pci_rcfg_d(dev, PCI_BAR0_D);
+	const uint32_t BAR1 = pci_rcfg_d(dev, PCI_BAR1_D);
+	const uint32_t BAR2 = pci_rcfg_d(dev, PCI_BAR2_D);
+	const uint32_t BAR3 = pci_rcfg_d(dev, PCI_BAR3_D);
+	const uint32_t BAR4 = pci_rcfg_d(dev, PCI_BAR4_D);
+
+	// numbers for supporting only parallel IDE
+	// ide_initialize(0x1F0, 0x3F6, 0x170, 0x376, 0x000);
+
+	ide_initialize(BAR0, BAR1, BAR2, BAR3, BAR4);
 
 	return true;
 }

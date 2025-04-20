@@ -9,6 +9,10 @@
  * ATA driver
  */
 
-void ata_init(void);
+#include <stdbool.h>
+
+/// Returns true if a PCE IDE device is connected and we will have disk space,
+/// false on no disks found.
+bool ata_init(void);
 
 #endif
