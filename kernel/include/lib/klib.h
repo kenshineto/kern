@@ -310,4 +310,11 @@ void *krealloc(void *ptr, size_t size);
  */
 void kfree(void *ptr);
 
+/*
+ * Calls unixtime over and over until a number of seconds have passed
+ *
+ * @param seconds - number of seconds to wait, minimum (may take longer)
+ */
+void kspin_sleep_seconds(size_t seconds);
+
 #endif /* klib.h */
