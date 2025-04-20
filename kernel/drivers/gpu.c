@@ -12,20 +12,27 @@ struct gpu *gpu_dev = NULL;
 int gpu_init(void)
 {
 	// try to get a gpu device
-	if (!gpu_dev && gop_init(&gpu_dev) == SUCCESS) {
-	}
-	if (!gpu_dev && bochs_init(&gpu_dev) == SUCCESS) {
-	}
+	if (gpu_dev == NULL)
+		gop_init(&gpu_dev);
+	if (gpu_dev == NULL)
+		bochs_init(&gpu_dev);
 
 	// if we did (yay!) resize terminal
 	if (gpu_dev)
-		term_resize(gpu_dev->width, gpu_dev->height);
+		term_resize(gpu_dev->width / en_font.width,
+					gpu_dev->height / en_font.height);
 
 	return gpu_dev != NULL;
 }
 
 void gpu_set_pixel(uint32_t x, uint32_t y, uint32_t r, uint32_t g, uint32_t b)
 {
+	if (gpu_dev == NULL)
+		return;
+
+	x %= gpu_dev->width;
+	y %= gpu_dev->height;
+
 	// TODO: handle other bpp
 	volatile uint32_t *fb = (volatile uint32_t *)gpu_dev->framebuffer;
 	int offset = y * gpu_dev->width + x;

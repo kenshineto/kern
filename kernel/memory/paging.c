@@ -55,19 +55,19 @@ struct pte {
 extern volatile struct pml4e kernel_pml4[512];
 extern volatile struct pdpte kernel_pdpt_0[512];
 extern volatile struct pde kernel_pd_0[512];
-extern volatile struct pte kernel_pt_0[512];
-extern volatile struct pte bootstrap_pt[512];
+extern volatile struct pte kernel_pd_0_ents[512 * N_IDENT_PTS];
+extern volatile struct pde kernel_pd_1[512];
 extern volatile struct pte
 	paging_pt[512]; // paging_pt should NEVER be outside of this file, NEVER i say
 
 // paged address to read page tables
 // the structures are not gurenteed to be ident mapped
 // map them here with map_<type>(phys_addr) before useing structures
-void volatile *addr_mapped = (void *)(uintptr_t)0x204000;
-static volatile struct pml4e *pml4_mapped = (void *)(uintptr_t)0x200000;
-static volatile struct pdpte *pdpt_mapped = (void *)(uintptr_t)0x201000;
-static volatile struct pde *pd_mapped = (void *)(uintptr_t)0x202000;
-static volatile struct pte *pt_mapped = (void *)(uintptr_t)0x203000;
+void volatile *addr_mapped = (void *)(uintptr_t)0x40004000;
+static volatile struct pml4e *pml4_mapped = (void *)(uintptr_t)0x40000000;
+static volatile struct pdpte *pdpt_mapped = (void *)(uintptr_t)0x40001000;
+static volatile struct pde *pd_mapped = (void *)(uintptr_t)0x40002000;
+static volatile struct pte *pt_mapped = (void *)(uintptr_t)0x40003000;
 
 static inline void invlpg(volatile void *addr)
 {
@@ -496,26 +496,33 @@ failed:
 
 void paging_init(void)
 {
+	// map pdpt
 	kernel_pml4[0].flags = F_PRESENT | F_WRITEABLE;
 	kernel_pml4[0].address = (uint64_t)(&kernel_pdpt_0) >> 12;
 
+	// map pd0 & pd1
 	kernel_pdpt_0[0].flags = F_PRESENT | F_WRITEABLE;
 	kernel_pdpt_0[0].address = (uint64_t)(&kernel_pd_0) >> 12;
+	kernel_pdpt_0[1].flags = F_PRESENT | F_WRITEABLE;
+	kernel_pdpt_0[1].address = (uint64_t)(&kernel_pd_1) >> 12;
 
-	kernel_pd_0[0].flags = F_PRESENT | F_WRITEABLE;
-	kernel_pd_0[0].address = (uint64_t)(&kernel_pt_0) >> 12;
-	kernel_pd_0[1].flags = F_PRESENT | F_WRITEABLE;
-	kernel_pd_0[1].address = (uint64_t)(&paging_pt) >> 12;
-	kernel_pd_0[2].flags = F_PRESENT | F_WRITEABLE;
-	kernel_pd_0[2].address = (uint64_t)(&bootstrap_pt) >> 12;
-
-	for (size_t i = 0; i < 512; i++) {
-		kernel_pt_0[i].flags = F_PRESENT | F_WRITEABLE;
-		kernel_pt_0[i].address = (i * PAGE_SIZE) >> 12;
+	// map pd0 entires (length N_IDENT_PTS)
+	for (int i = 0; i < N_IDENT_PTS; i++) {
+		kernel_pd_0[i].flags = F_PRESENT | F_WRITEABLE;
+		kernel_pd_0[i].address = (uint64_t)(&kernel_pd_0_ents[512 * i]) >> 12;
 	}
 
+	// identity map kernel
+	for (size_t i = 0; i < 512 * N_IDENT_PTS; i++) {
+		kernel_pd_0_ents[i].flags = F_PRESENT | F_WRITEABLE;
+		kernel_pd_0_ents[i].address = (i * PAGE_SIZE) >> 12;
+	}
+
+	// map paging_pt
+	kernel_pd_1[0].flags = F_PRESENT | F_WRITEABLE;
+	kernel_pd_1[0].address = (uint64_t)(&paging_pt) >> 12;
+
 	memsetv(&paging_pt, 0, 4096);
-	memsetv(&bootstrap_pt, 0, 4096);
 
 	// make sure we are using THESE pagetables
 	// EFI doesnt on boot
@@ -550,7 +557,7 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 		return NULL;
 
 	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, aligned_phys,
-				  F_WRITEABLE | flags, pages)) {
+				  F_PRESENT | flags, pages)) {
 		virtaddr_free(ctx->virtctx, virt);
 		return NULL;
 	}

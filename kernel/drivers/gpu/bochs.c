@@ -68,8 +68,9 @@ int bochs_init(struct gpu **gpu_dev)
 	bochs_dev.width = BOCHS_WIDTH;
 	bochs_dev.height = BOCHS_HEIGHT;
 	bochs_dev.bit_depth = BOCHS_BIT_DEPTH;
-	bochs_dev.framebuffer = kmapaddr(
-		addr, NULL, BOCHS_WIDTH * BOCHS_HEIGHT * BOCHS_BIT_DEPTH, F_WRITEABLE);
+	bochs_dev.framebuffer =
+		kmapaddr(addr, NULL, BOCHS_WIDTH * BOCHS_HEIGHT * (BOCHS_BIT_DEPTH / 8),
+				 F_WRITEABLE);
 	*gpu_dev = &bochs_dev;
 
 	return 0;

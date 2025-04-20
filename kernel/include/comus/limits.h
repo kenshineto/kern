@@ -6,6 +6,9 @@
  * Defined kernel limits
  */
 
+/// number of pts to identity map the kernel (1pt = 2MB)
+#define N_IDENT_PTS 4 // max 512 (1G)
+
 /// max number of processes
 #define N_PROCS 256
 
@@ -16,5 +19,5 @@
 #define N_MMAP_ENTRY 256
 
 /// length of terminal buffer
-#define TERM_MAX_WIDTH 480
-#define TERM_MAX_HEIGHT 270
+#define TERM_MAX_WIDTH 1920
+#define TERM_MAX_HEIGHT 1080

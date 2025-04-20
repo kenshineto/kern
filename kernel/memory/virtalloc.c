@@ -81,7 +81,7 @@ static void free_node(struct virt_ctx *ctx, struct virt_addr_node *node)
 void virtaddr_init(struct virt_ctx *ctx)
 {
 	struct virt_addr_node init = {
-		.start = 0x400000, // third page table
+		.start = 0x600000, // third pd
 		.end = 0x1000000000000, // 48bit memory address max
 		.next = NULL,
 		.prev = NULL,

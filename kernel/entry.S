@@ -1,10 +1,12 @@
+#include <comus/limits.h>
+
 	.globl _start
 	.globl kernel_pml4
 	.globl kernel_pdpt_0
 	.globl kernel_pd_0
-	.globl kernel_pt_0
+	.globl kernel_pd_0_ents
+	.globl kernel_pd_1
 	.globl paging_pt
-	.globl bootstrap_pt
 	.extern main
 	.extern GDT
 
@@ -66,17 +68,17 @@ mb_end:
 
 	# kernel page tables
 	.align 4096
-kernel_pml4:            # reserve memory for initial 512 pml4 entires
+kernel_pml4:
 	.skip 4096
-kernel_pdpt_0:          # reserve memory for initial 512 pdpt entires
+kernel_pdpt_0:
 	.skip 4096
-kernel_pd_0:            # reserve memory for initial 512 pd entries
+kernel_pd_0:
 	.skip 4096
-kernel_pt_0:            # reserve memory for initial 512 pt entries
+kernel_pd_0_ents:
+	.skip (4096*N_IDENT_PTS)
+kernel_pd_1:
 	.skip 4096
-paging_pt:              # reserve pages for pager mappings
-	.skip 4096
-bootstrap_pt:           # reserve pages to bootstrap pager
+paging_pt:
 	.skip 4096
 
 	# kernel stack
@@ -171,31 +173,39 @@ _start:
 	pushl	$0
 	push 	%eax
 
-	# zero out kernel page table
-	movl	$kernel_pml4, %edi
+	# setup kernel paging structures
+	movl	$kernel_pml4, %edi             # zero out pml4
 	movl	%edi, %cr3
 	xorl	%eax, %eax
-	movl	$4096, %ecx      # zero 4096 pages
+	movl	$0x1000, %ecx
 	rep		stosl
 	movl	%cr3, %edi
 
-	# identity map kernel
-	movl	$kernel_pdpt_0 + 3, (%edi)      # Set the uint32_t at the desination index to 0x2003.
-	movl	$kernel_pdpt_0, %edi            # Add 0x1000 to the desination index.
-	movl	$kernel_pd_0 + 3, (%edi)        # Set the uint32_t at the desination index to 0x3003.
-	movl	$kernel_pd_0, %edi              # Add 0x1000 to the desination index.
-	movl	$kernel_pt_0 + 3, (%edi)        # Set the uint32_t at the desination index to 0x4003.
-	movl	$kernel_pt_0, %edi              # Add 0x1000 to the desination index.
+	movl	$kernel_pdpt_0 + 3, (%edi)     # map pdpt
+	movl	$kernel_pdpt_0, %edi
 
-	movl	$0x03, %ebx         # Entry value to set
-	movl	$512, %ecx          # Loop count
+	movl	$kernel_pd_0 + 3, (%edi)       # map pd 0
 
-_start.SetEntry:
-	# set entires in mapping
-	movl	%ebx, (%edi)            # Set the uint32_t at the desination index to the B-register
-	addl	$0x1000, %ebx           # Add 0x1000 to the B-register
-	addl	$8, %edi                # Add eight to the desination index
-	loop	_start.SetEntry
+	addl	$8, %edi                       # map pd 1
+	movl	$kernel_pd_1 + 3, (%edi)
+
+	movl	$kernel_pd_0, %edi             # map pd 0 ents
+	movl	$kernel_pd_0_ents + 3, %ebx
+	movl	$N_IDENT_PTS, %ecx
+_start.map_pd_0:
+	movl	%ebx, (%edi)
+	addl	$(8 * 512), %ebx
+	addl	$8, %edi
+	loop	_start.map_pd_0
+
+	movl	$kernel_pd_0_ents, %edi        # identity map kernel
+	movl	$0x03, %ebx
+	movl	$(512 * N_IDENT_PTS), %ecx
+_start.map_pd_0_ents:
+	movl	%ebx, (%edi)
+	addl	$0x1000, %ebx
+	addl	$8, %edi
+	loop	_start.map_pd_0_ents
 
 	# enable page address extension
 	movl	%cr4, %eax
@@ -240,6 +250,9 @@ code64:
 	# set segment registers
 	movw	$GDT.Data, %dx
 	movw	%dx, %ds
+	movw	%dx, %es
+	movw	%dx, %fs
+	movw	%dx, %gs
 	movw	%dx, %ss
 
 	# set ebp to 0 so we know where to end stack traces
