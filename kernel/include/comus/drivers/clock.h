@@ -9,6 +9,6 @@
 #ifndef CLOCK_H_
 #define CLOCK_H_
 
-extern void clock_update(void);
+void clock_update(void);
 
 #endif /* clock.h */

@@ -419,11 +419,13 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
 			ide_channel_write(chan, ATA_REG_HDDEVSEL, 0xA0 | (drive_idx << 4));
 			// This function should be implemented in your OS. which waits for 1 ms.
 			// it is based on System Timer Device Driver.
-			sleep(1); // Wait 1ms for drive select to work.
+			// sleep(1); // Wait 1ms for drive select to work.
+			kspin_sleep_seconds(1); // TODO: sleep 1ms, this is way too long
 
 			// (II) Send ATA Identify Command:
 			ide_channel_write(chan, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
-			sleep(1);
+			// sleep(1);
+			kspin_sleep_seconds(1); // TODO: sleep 1ms
 
 			// (III) Polling:
 			if (ide_channel_read(chan, ATA_REG_STATUS) == 0) {
@@ -465,7 +467,8 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
 
 				ide_channel_write(chan, ATA_REG_COMMAND,
 								  ATA_CMD_IDENTIFY_PACKET);
-				sleep(1);
+				// sleep(1);
+				kspin_sleep_seconds(1); // TODO: sleep one millisecond
 			}
 
 			static uint8_t id_space_buf[2048] = { 0 };
