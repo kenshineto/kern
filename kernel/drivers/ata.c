@@ -119,8 +119,8 @@ static struct ide_channel {
 	uint8_t no_interrupt;
 } channels[2];
 
-volatile static uint8_t ide_irq_invoked = 0;
-static uint8_t atapi_packet[12] = { 0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+static volatile uint8_t ide_irq_invoked = 0;
+// static uint8_t atapi_packet[12] = { 0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 struct ide_device {
 	uint8_t is_reserved; // 0 (Empty) or 1 (This Drive really exists).
@@ -148,11 +148,6 @@ static struct ide_channel *channel(const uint8_t idx)
 	return channels + idx;
 }
 
-static struct ide_channel *device_channel(uint8_t device_idx)
-{
-	return channel(device(device_idx)->channel_idx);
-}
-
 static void ide_channel_write(struct ide_channel *channel, const uint8_t reg,
 							  uint8_t data)
 {
@@ -168,6 +163,9 @@ static void ide_channel_write(struct ide_channel *channel, const uint8_t reg,
 		outb(channel->io_base + reg - 0x06, data);
 	} else if (reg < 0x0E) {
 		outb(channel->control_base + reg - 0x0A, data);
+        // someone on OSdev said this was the correct thing
+        // https://wiki.osdev.org/Talk:PCI_IDE_Controller
+		// outb(channel->control_base + reg - 0x0C, data);
 	} else if (reg < 0x16) {
 		outb(channel->bus_master_ide_base + reg - 0x0E, data);
 	}
@@ -240,7 +238,7 @@ void ide_read_id_space_buffer(struct ide_channel *channel, uint8_t reg,
     *           ESP for all of the code the compiler generates between the inline
     *           assembly blocks. Do not call functions here.
     */
-	__asm__ volatile("pushw %es; movw %ds, %ax; movw %ax, %es");
+	// __asm__ volatile("pushw %es; movw %ds, %ax; movw %ax, %es");
 	// NOTE: can be fixed with this code?
 	// __asm__ volatile("pushw %es; pushw %ax; movw %ds, %ax; movw %ax, %es; popw %ax;");
 
@@ -255,7 +253,7 @@ void ide_read_id_space_buffer(struct ide_channel *channel, uint8_t reg,
 					  quads);
 	}
 
-	__asm__ volatile("popw %es;");
+	// __asm__ volatile("popw %es;");
 
 	if (disable_interrupts) {
 		ide_channel_write(channel, ATA_REG_CONTROL, channel->no_interrupt);
@@ -662,9 +660,9 @@ uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
 				edi += (words * 2);
 			}
 			ide_channel_write(chan, ATA_REG_COMMAND,
-							  (char[]){ ATA_CMD_CACHE_FLUSH,
-										ATA_CMD_CACHE_FLUSH,
-										ATA_CMD_CACHE_FLUSH_EXT }[lba_mode]);
+							  (uint8_t[]){ ATA_CMD_CACHE_FLUSH,
+										   ATA_CMD_CACHE_FLUSH,
+										   ATA_CMD_CACHE_FLUSH_EXT }[lba_mode]);
 			ide_channel_poll(chan, 0); // Polling.
 		}
 	}
