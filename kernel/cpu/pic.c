@@ -25,11 +25,6 @@
 
 void pic_remap(void)
 {
-	uint8_t a1, a2;
-
-	a1 = inb(PIC1_DATA); // save masks
-	a2 = inb(PIC2_DATA);
-
 	outb(PIC1_COMMAND,
 		 ICW1_INIT |
 			 ICW1_ICW4); // starts the initialization sequence (in cascade mode)
@@ -53,8 +48,8 @@ void pic_remap(void)
 	outb(PIC2_DATA, ICW4_8086);
 	io_wait();
 
-	outb(PIC1_DATA, a1); // restore saved masks.
-	outb(PIC2_DATA, a2);
+	outb(PIC1_DATA, 0);
+	outb(PIC2_DATA, 0);
 }
 
 void pic_mask(int irq)
