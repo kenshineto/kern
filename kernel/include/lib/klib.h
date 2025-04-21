@@ -202,40 +202,40 @@ enum log_level {
 // #define __AS_STR_LITERAL_IMPL(x) #x
 
 #if LOG_LEVEL >= LOG_LEVEL_TRACE
-#define TRACE(...)                                                          \
-	do {                                                                    \
+#define TRACE(...)                                                      \
+	do {                                                                \
 		kprintf("[TRACE] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
-		kprintf(__VA_ARGS__);                                               \
+		kprintf(__VA_ARGS__);                                           \
 	} while (0)
 #else
 #define TRACE(...)
 #endif
 
 #if LOG_LEVEL >= LOG_LVL_INFO
-#define INFO(...)                                                          \
-	do {                                                                   \
+#define INFO(...)                                                      \
+	do {                                                               \
 		kprintf("[INFO] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
-		kprintf(__VA_ARGS__);                                              \
+		kprintf(__VA_ARGS__);                                          \
 	} while (0)
 #else
 #define INFO(...)
 #endif
 
 #if LOG_LEVEL >= LOG_LVL_WARN
-#define WARN(...)                                                          \
-	do {                                                                   \
+#define WARN(...)                                                      \
+	do {                                                               \
 		kprintf("[WARN] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
-		kprintf(__VA_ARGS__);                                              \
+		kprintf(__VA_ARGS__);                                          \
 	} while (0)
 #else
 #define WARN(format, ...)
 #endif
 
 #if LOG_LEVEL >= LOG_LVL_ERROR
-#define ERROR(...)                                                          \
-	do {                                                                    \
+#define ERROR(...)                                                      \
+	do {                                                                \
 		kprintf("[ERROR] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
-		kprintf(__VA_ARGS__);                                               \
+		kprintf(__VA_ARGS__);                                           \
 	} while (0)
 #else
 #define ERROR(...)
@@ -310,11 +310,20 @@ void *krealloc(void *ptr, size_t size);
  */
 void kfree(void *ptr);
 
-/*
- * Calls unixtime over and over until a number of seconds have passed
+/**
+ * Assuming the PIT ticks every ms, uses how many ticks to decide when to return.
+ * Returns when n*1000 ticks have passed
  *
  * @param seconds - number of seconds to wait, minimum (may take longer)
  */
-void kspin_sleep_seconds(size_t seconds);
+void kspin_seconds(size_t seconds);
+
+/**
+ * Assuming the PIT ticks every ms, uses how many ticks to decide when to return.
+ * Returns when n ticks have passed
+ *
+ * @param milliseconds - number of milliseconds to wait, minimum (may take longer)
+ */
+void kspin_milliseconds(size_t milliseconds);
 
 #endif /* klib.h */
