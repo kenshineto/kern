@@ -206,6 +206,7 @@ enum log_level {
 	do {                                                                \
 		kprintf("[TRACE] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                           \
+		kprintf("\n");                                                  \
 	} while (0)
 #else
 #define TRACE(...)
@@ -216,6 +217,7 @@ enum log_level {
 	do {                                                               \
 		kprintf("[INFO] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                          \
+		kprintf("\n");                                                 \
 	} while (0)
 #else
 #define INFO(...)
@@ -226,6 +228,7 @@ enum log_level {
 	do {                                                               \
 		kprintf("[WARN] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                          \
+		kprintf("\n");                                                 \
 	} while (0)
 #else
 #define WARN(format, ...)
@@ -236,6 +239,7 @@ enum log_level {
 	do {                                                                \
 		kprintf("[ERROR] [%s:%s:%d] : ", __FILE__, __func__, __LINE__); \
 		kprintf(__VA_ARGS__);                                           \
+		kprintf("\n");                                                  \
 	} while (0)
 #else
 #define ERROR(...)
