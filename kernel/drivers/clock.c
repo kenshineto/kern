@@ -1,7 +1,6 @@
 #include <lib.h>
 #include <comus/asm.h>
 #include <comus/time.h>
-#include <comus/drivers/clock.h>
 
 #define CMOS_WRITE_PORT 0x70
 #define CMOS_READ_PORT 0x71

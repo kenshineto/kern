@@ -6,6 +6,7 @@
 #include <comus/drivers/acpi.h>
 #include <comus/drivers/pci.h>
 #include <comus/drivers/gpu.h>
+#include <comus/drivers/ata.h>
 #include <comus/fs.h>
 #include <lib.h>
 
@@ -15,6 +16,7 @@ void kreport(void)
 	memory_report();
 	acpi_report();
 	pci_report();
+	ata_report();
 	gpu_report();
 }
 

@@ -5,14 +5,21 @@
  * @file ata.h
  *
  * @author Ian McFarlane <i.mcfarlane2002@gmail.com>
+ * @author Freya Murphy <freya@freyacat.org>
  *
  * ATA driver
  */
 
 #include <stdbool.h>
 
-/// Returns true if a PCE IDE device is connected and we will have disk space,
-/// false on no disks found.
-bool ata_init(void);
+/**
+ * @returns 0 on success, 1 on failure
+ */
+int ata_init(void);
+
+/**
+ * report all ata devices to console
+ */
+void ata_report(void);
 
 #endif

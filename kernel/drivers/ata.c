@@ -195,7 +195,7 @@ static uint8_t ide_channel_read(struct ide_channel *channel, const uint8_t reg)
 	} else if (reg < 0x16) {
 		result = inb(channel->bus_master_ide_base + reg - 0x0E);
 	} else {
-		assert(false, "invalid ide channel register %u", reg);
+		panic("invalid ide channel register %u", reg);
 	}
 
 	if (disable_interrupts) {
@@ -204,19 +204,6 @@ static uint8_t ide_channel_read(struct ide_channel *channel, const uint8_t reg)
 
 	return result;
 }
-
-// TODO: fix stack-trashing in ide_read_id_space_buffer() so we can call
-// functions there and dont have to do this garbage. but i dont understand why
-// esp and es need to be overwritten in the first place so I'm afraid i'll break
-// something - Ian
-#define __insl_nocall(reg, buffer_uint32_ptr, quads)       \
-	do {                                                   \
-		for (uint32_t index = 0; index < quads; ++index) { \
-			uint32_t out;                                  \
-			__inl_nocall(reg, out);                        \
-			buffer_uint32_ptr[index] = out;                \
-		}                                                  \
-	} while (0)
 
 void ide_read_id_space_buffer(struct ide_channel *channel, uint8_t reg,
 							  uint32_t *out_buffer,
@@ -243,14 +230,13 @@ void ide_read_id_space_buffer(struct ide_channel *channel, uint8_t reg,
 	// __asm__ volatile("pushw %es; pushw %ax; movw %ds, %ax; movw %ax, %es; popw %ax;");
 
 	if (reg < 0x08) {
-		__insl_nocall(channel->io_base + reg - 0x00, out_buffer, quads);
+		insl(channel->io_base + reg - 0x00, out_buffer, quads);
 	} else if (reg < 0x0C) {
-		__insl_nocall(channel->io_base + reg - 0x06, out_buffer, quads);
+		insl(channel->io_base + reg - 0x06, out_buffer, quads);
 	} else if (reg < 0x0E) {
-		__insl_nocall(channel->control_base + reg - 0x0A, out_buffer, quads);
+		insl(channel->control_base + reg - 0x0A, out_buffer, quads);
 	} else if (reg < 0x16) {
-		__insl_nocall(channel->bus_master_ide_base + reg - 0x0E, out_buffer,
-					  quads);
+		insl(channel->bus_master_ide_base + reg - 0x0E, out_buffer, quads);
 	}
 
 	// __asm__ volatile("popw %es;");
@@ -420,12 +406,12 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
 			// This function should be implemented in your OS. which waits for 1 ms.
 			// it is based on System Timer Device Driver.
 			// sleep(1); // Wait 1ms for drive select to work.
-			kspin_sleep_seconds(1); // TODO: sleep 1ms, this is way too long
+			kspin_milliseconds(1);
 
 			// (II) Send ATA Identify Command:
 			ide_channel_write(chan, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
 			// sleep(1);
-			kspin_sleep_seconds(1); // TODO: sleep 1ms
+			kspin_milliseconds(1);
 
 			// (III) Polling:
 			if (ide_channel_read(chan, ATA_REG_STATUS) == 0) {
@@ -468,7 +454,7 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
 				ide_channel_write(chan, ATA_REG_COMMAND,
 								  ATA_CMD_IDENTIFY_PACKET);
 				// sleep(1);
-				kspin_sleep_seconds(1); // TODO: sleep one millisecond
+				kspin_milliseconds(1);
 			}
 
 			static uint8_t id_space_buf[2048] = { 0 };
@@ -644,22 +630,22 @@ uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
 				if ((err = ide_channel_poll(chan, 1))) {
 					return err; // Polling, set error and exit if there is.
 				}
-				__asm__ volatile("pushw %es");
-				__asm__ volatile("mov %%ax, %%es" : : "a"(selector));
+				//__asm__ volatile("pushw %es");
+				//__asm__ volatile("mov %%ax, %%es" : : "a"(selector));
 				// receive data
 				__asm__ volatile("rep insw" : : "c"(words), "d"(bus), "D"(edi));
-				__asm__ volatile("popw %es");
+				//__asm__ volatile("popw %es");
 				edi += (words * 2);
 			}
 		} else {
 			// PIO Write.
 			for (i = 0; i < numsects; i++) {
 				ide_channel_poll(chan, 0); // Polling.
-				__asm__ volatile("pushw %ds");
-				__asm__ volatile("mov %%ax, %%ds" ::"a"(selector));
+				//__asm__ volatile("pushw %ds");
+				//__asm__ volatile("mov %%ax, %%ds" ::"a"(selector));
 				__asm__ volatile("rep outsw" ::"c"(words), "d"(bus),
 								 "S"(edi)); // Send Data
-				__asm__ volatile("popw %ds");
+				//__asm__ volatile("popw %ds");
 				edi += (words * 2);
 			}
 			ide_channel_write(chan, ATA_REG_COMMAND,
@@ -732,14 +718,14 @@ uint32_t ide_device_write_sectors(struct ide_device *dev, uint8_t numsects,
 	}
 }
 
-bool ata_init(void)
+int ata_init(void)
 {
 	struct pci_device dev;
 
 	if (!pci_findby_class(&dev, CLASS_MASS_STORAGE_CONTROLLER,
 						  SUBCLASS_IDE_CONTROLLER, NULL)) {
 		TRACE("No disks found by PCI class");
-		return false;
+		return 1;
 	}
 
 	// const uint8_t prog_if = pci_rcfg_b(dev, PCI_PROG_IF_B);
@@ -747,7 +733,7 @@ bool ata_init(void)
 
 	if (header_type != 0x0) {
 		TRACE("Wrong header type for IDE_CONTROLLER device, not reading BARs");
-		return false;
+		return 1;
 	}
 
 	// const bool primary_channel_is_pci_native =
@@ -773,5 +759,25 @@ bool ata_init(void)
 
 	ide_initialize(BAR0, BAR1, BAR2, BAR3, BAR4);
 
-	return true;
+	return 0;
+}
+
+void ata_report(void)
+{
+	if (!ide_devices[0].is_reserved)
+		return;
+
+	kprintf("ATA DEVICES\n");
+	for (size_t i = 0; i < 4; i++) {
+		struct ide_device *dev = &ide_devices[i];
+		if (!dev->is_reserved)
+			continue;
+		char size[20];
+		btoa(dev->size_in_sectors * 512, size);
+		kprintf(
+			"[%u:%u] %s\nType: %s\nSignature: %#04x\nFeatures: %#04x\nCommands: %#08x\nSize: %s\n\n",
+			dev->channel_idx, dev->drive_idx, dev->model_str,
+			dev->type ? "ATAPI" : "ATA", dev->drive_signature, dev->features,
+			dev->supported_command_sets, size);
+	}
 }
