@@ -112,27 +112,11 @@
 #include <comus/asm.h>
 #include <lib.h>
 
-static struct ide_channel {
-	uint16_t io_base;
-	uint16_t control_base;
-	uint16_t bus_master_ide_base;
-	uint8_t no_interrupt;
-} channels[2];
+struct ide_channel ide_channels[2];
+struct ide_device ide_devices[4];
 
 static volatile uint8_t ide_irq_invoked = 0;
 // static uint8_t atapi_packet[12] = { 0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-struct ide_device {
-	uint8_t is_reserved; // 0 (Empty) or 1 (This Drive really exists).
-	uint8_t channel_idx; // 0 (Primary Channel) or 1 (Secondary Channel).
-	uint8_t drive_idx; // 0 (Master Drive) or 1 (Slave Drive).
-	uint16_t type; // 0: ATA, 1:ATAPI.
-	uint16_t drive_signature;
-	uint16_t features;
-	uint32_t supported_command_sets;
-	uint32_t size_in_sectors;
-	char model_str[41]; // NOTE: originally uint8_t according to osdev
-} ide_devices[4];
 
 static struct ide_device *device(const uint8_t idx)
 {
@@ -143,9 +127,9 @@ static struct ide_device *device(const uint8_t idx)
 
 static struct ide_channel *channel(const uint8_t idx)
 {
-	assert(idx < (sizeof(channels) / sizeof(struct ide_channel)),
+	assert(idx < (sizeof(ide_channels) / sizeof(struct ide_channel)),
 		   "out of bounds");
-	return channels + idx;
+	return ide_channels + idx;
 }
 
 static void ide_channel_write(struct ide_channel *channel, const uint8_t reg,
@@ -326,12 +310,12 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 						   uint32_t BAR3, uint32_t BAR4)
 {
 	// 1- Detect I/O Ports which interface IDE Controller:
-	channels[ATA_PRIMARY] = (struct ide_channel){
+	ide_channels[ATA_PRIMARY] = (struct ide_channel){
 		.io_base = (BAR0 & 0xFFFFFFFC) + 0x1F0 * (!BAR0),
 		.control_base = (BAR1 & 0xFFFFFFFC) + 0x3F6 * (!BAR1),
 		.bus_master_ide_base = (BAR4 & 0xFFFFFFFC) + 0,
 	};
-	channels[ATA_SECONDARY] = (struct ide_channel){
+	ide_channels[ATA_SECONDARY] = (struct ide_channel){
 		.io_base = (BAR2 & 0xFFFFFFFC) + 0x170 * (!BAR2),
 		.control_base = (BAR3 & 0xFFFFFFFC) + 0x376 * (!BAR3),
 		.bus_master_ide_base = (BAR4 & 0xFFFFFFFC) + 8,
@@ -451,9 +435,9 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 		}
 }
 
-int ide_device_ata_access(struct ide_device *dev, uint8_t direction,
-						  uint32_t lba, uint8_t numsects,
-						  uint16_t buf[numsects * 256])
+static int ide_device_ata_access(struct ide_device *dev, uint8_t direction,
+								 uint32_t lba, uint8_t numsects,
+								 uint16_t buf[numsects * 256])
 {
 	int ret = 0;
 
