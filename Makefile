@@ -26,6 +26,8 @@ SRC=kernel
 BIN=bin
 KERNEL=kernel.bin
 ISO=os.iso
+IMAGE=disk.img
+IMAGE_SIZE=4G
 
 H_SRC = $(shell find $(SRC) -type f -name "*.h")
 A_SRC = $(shell find $(SRC) -type f -name "*.S")
@@ -38,6 +40,7 @@ UNAME := $(shell uname)
 QEMU = qemu-system-x86_64
 QEMUOPTS = -cdrom $(BIN)/$(ISO) \
 		   -no-reboot \
+		   -drive format=raw,file=$(BIN)/$(IMAGE)\
 		   -serial mon:stdio \
 		   -m 4G \
 		   -name kern
@@ -49,22 +52,22 @@ QEMU = qemu-system-x86_64-uefi
 GRUB = grub-mkrescue-uefi
 endif
 
-qemu: $(BIN)/$(ISO)
+qemu: $(BIN)/$(ISO) img
 	$(QEMU) $(QEMUOPTS)
 
-qemu-kvm: $(BIN)/$(ISO)
+qemu-kvm: $(BIN)/$(ISO) img
 	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm
 
-qemu-kvm-nox: $(BIN)/$(ISO)
+qemu-kvm-nox: $(BIN)/$(ISO) img
 	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm -nographic
 
-qemu-nox: $(BIN)/$(ISO)
+qemu-nox: $(BIN)/$(ISO) img
 	$(QEMU) $(QEMUOPTS) -nographic
 
-qemu-gdb: $(BIN)/$(ISO)
+qemu-gdb: $(BIN)/$(ISO) img
 	$(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
 
-qemu-gdb-nox: $(BIN)/$(ISO)
+qemu-gdb-nox: $(BIN)/$(ISO) img
 	$(QEMU) $(QEMUOPTS) -nographic -S -gdb tcp::1337
 
 gdb:
@@ -72,6 +75,9 @@ gdb:
 
 clean:
 	rm -fr $(BIN)
+
+img:
+	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
 
 build: $(BIN)/$(ISO)
 
