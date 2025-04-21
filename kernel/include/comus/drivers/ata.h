@@ -11,49 +11,54 @@
 #define ATA_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
-struct ide_channel {
-	uint16_t io_base;
-	uint16_t control_base;
-	uint16_t bus_master_ide_base;
-	uint8_t no_interrupt;
+// type intended to be opaque- may be made into a struct in the future
+typedef uint8_t ide_device_t;
+
+enum ide_error {
+	IDE_ERROR_OK = 0,
+	IDE_ERROR_NULL_DEVICE, // device doesnt exist
+	IDE_ERROR_INIT_NO_IDE_CONTROLLER,
+	IDE_ERROR_INIT_BAD_HEADER,
+	IDE_ERROR_POLL_DRIVE_REQUEST_NOT_READY,
+	IDE_ERROR_POLL_DEVICE_FAULT,
+	IDE_ERROR_POLL_STATUS_REGISTER_ERROR,
+	IDE_ERROR_POLL_WRITE_PROTECTED,
 };
 
-struct ide_device {
-	uint8_t is_reserved; // 0 (Empty) or 1 (This Drive really exists).
-	uint8_t channel_idx; // 0 (Primary Channel) or 1 (Secondary Channel).
-	uint8_t drive_idx; // 0 (Master Drive) or 1 (Slave Drive).
-	uint16_t type; // 0: ATA, 1:ATAPI.
-	uint16_t drive_signature;
-	uint16_t features;
-	uint32_t supported_command_sets;
-	uint32_t size_in_sectors;
-	uint8_t model_str[41];
+struct ide_devicelist {
+	ide_device_t devices[4];
+	uint8_t num_devices;
 };
-
-extern struct ide_channel ide_channels[2];
-extern struct ide_device ide_devices[4];
 
 /**
  * @returns 0 on success, 1 on failure
  */
-int ata_init(void);
+enum ide_error ata_init(void);
 
 /**
  * reads a number of sectors from the provided IDE/ATA device
  *
- * @returns 0 on success or an error code on failure
+ * @returns IDE_ERROR_OK (0) on success or an error code on failure
  */
-int ide_device_read_sectors(struct ide_device *dev, uint8_t numsects,
-							uint32_t lba, uint16_t buf[numsects * 256]);
+enum ide_error ide_device_read_sectors(ide_device_t, uint8_t numsects,
+									   uint32_t lba,
+									   uint16_t buf[numsects * 256]);
 
 /**
  * writes a number of sectors to the provided IDE/ATA device
  *
  * @returns 0 on success or an error code on failure
  */
-int ide_device_write_sectors(struct ide_device *dev, uint8_t numsects,
-							 uint32_t lba, uint16_t buf[numsects * 256]);
+enum ide_error ide_device_write_sectors(ide_device_t, uint8_t numsects,
+										uint32_t lba,
+										uint16_t buf[numsects * 256]);
+
+/*
+ * Returns a variable number (between 0-4, inclusive)  of ide_devic_t's.
+ */
+struct ide_devicelist ide_devices_enumerate(void);
 
 /**
  * report all ata devices to console
