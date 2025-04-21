@@ -26,6 +26,7 @@ mb_start:
 	.short 1
 	.long 36
 	.long 1 # cmdline
+	.long 3 # module
 	.long 6 # mmap
 	.long 9 # elf section
 	.long 12 # efi64
@@ -46,6 +47,11 @@ mb_start:
 	.long 720 # width
 	.long 480 # height
 	.long 32 # bpp
+	# module align
+	.align 8
+	.short 6
+	.short 0
+	.long 8
 	# efi boot services
 	.align 8
 	.short 7

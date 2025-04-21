@@ -42,4 +42,9 @@ EFI_SYSTEM_TABLE *mboot_get_efi_st(void);
  */
 EFI_HANDLE mboot_get_efi_hdl(void);
 
+/**
+ * Returns the pointer to the loaded init ram disk with size given by len
+ */
+void *mboot_get_initrd(size_t *len);
+
 #endif /* mboot.h */

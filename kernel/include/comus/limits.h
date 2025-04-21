@@ -18,6 +18,10 @@
 /// max memory entires
 #define N_MMAP_ENTRY 256
 
+/// max fs limits
+#define N_FILE_NAME 256
+#define N_DISKS 8
+
 /// length of terminal buffer
 #define TERM_MAX_WIDTH 1920
 #define TERM_MAX_HEIGHT 1080

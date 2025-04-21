@@ -11,10 +11,13 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <comus/limits.h>
+#include <comus/drivers/ata.h>
 
-// FIXME: aaaa
-#define MAX_DISKS 8
-#define MAX_FILE_NAME_LEN 256
+enum disk_type {
+	DISK_TYPE_ATA,
+	DISK_TYPE_RAMDISK,
+};
 
 struct disk {
 	/// set to 1 in array to state that fs is defined
@@ -23,12 +26,16 @@ struct disk {
 	/// index into disks array
 	/// system use only
 	int id;
-	/// TODO: pci? inb/outb?
-	/// we need a structure to access disks and how to define them
-	/// IDE / SATA / .... ???
-	/// we should probable create ide_disk, or sata_disk, and so on
-	/// then convert this part to a union with a tag specifier
-	/// we then need drivers for ide and/or sata, ide is easier
+	/// disk type
+	enum disk_type type;
+	/// internal disk device
+	union {
+		struct {
+			char *start;
+			size_t len;
+		} rd;
+		ide_device_t ide;
+	};
 };
 
 /**
@@ -67,7 +74,7 @@ enum file_type {
 
 struct file {
 	/// name of the file
-	char name[MAX_FILE_NAME_LEN];
+	char name[N_FILE_NAME];
 	/// parent directory of the file
 	struct file_s *parent;
 	/// type of the file
@@ -159,10 +166,10 @@ struct file_system {
 };
 
 // list of all disks on the system
-extern struct disk fs_disks[MAX_DISKS];
+extern struct disk fs_disks[N_DISKS];
 
 // list of all loaded file systems for each disk
-extern struct file_system fs_loaded_file_systems[MAX_DISKS];
+extern struct file_system fs_loaded_file_systems[N_DISKS];
 
 /**
  * Initalize file system structures

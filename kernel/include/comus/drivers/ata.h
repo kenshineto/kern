@@ -10,6 +10,8 @@
 #ifndef ATA_H_
 #define ATA_H_
 
+#define ATA_SECT_SIZE 512
+
 #include <stdint.h>
 #include <stdbool.h>
 
