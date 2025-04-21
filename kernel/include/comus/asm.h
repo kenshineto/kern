@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 
 static inline uint8_t inb(uint16_t port)
 {
@@ -9,9 +10,21 @@ static inline uint8_t inb(uint16_t port)
 	return ret;
 }
 
+static inline void rep_inb(uint16_t port, uint8_t *buffer, size_t count)
+{
+	while (count--)
+		*(buffer++) = inb(port);
+}
+
 static inline void outb(uint16_t port, uint8_t val)
 {
 	__asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static inline void rep_outb(uint16_t port, uint8_t *buffer, size_t count)
+{
+	while (count--)
+		outb(port, *(buffer++));
 }
 
 static inline uint16_t inw(uint16_t port)
@@ -21,9 +34,21 @@ static inline uint16_t inw(uint16_t port)
 	return ret;
 }
 
+static inline void rep_inw(uint16_t port, uint16_t *buffer, size_t count)
+{
+	while (count--)
+		*(buffer++) = inw(port);
+}
+
 static inline void outw(uint16_t port, uint16_t val)
 {
 	__asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static inline void rep_outw(uint16_t port, uint16_t *buffer, size_t count)
+{
+	while (count--)
+		outw(port, *(buffer++));
 }
 
 static inline uint32_t inl(uint16_t port)
@@ -33,17 +58,21 @@ static inline uint32_t inl(uint16_t port)
 	return ret;
 }
 
-static inline void insl(uint16_t port, uint32_t *buffer, uint32_t count)
+static inline void rep_inl(uint16_t port, uint32_t *buffer, size_t count)
 {
-	while (count--) {
-		__asm__ volatile("inl %1, %0" : "=a"(*buffer) : "Nd"(port));
-		buffer++;
-	}
+	while (count--)
+		*(buffer++) = inl(port);
 }
 
 static inline void outl(uint16_t port, uint32_t val)
 {
 	__asm__ volatile("outl %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static inline void rep_outl(uint16_t port, uint32_t *buffer, size_t count)
+{
+	while (count--)
+		outl(port, *(buffer++));
 }
 
 static inline void io_wait(void)
