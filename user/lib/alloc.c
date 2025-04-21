@@ -21,6 +21,19 @@ static const size_t header_len = sizeof(struct page_header);
 static struct page_header *start_header = NULL;
 static struct page_header *end_header = NULL;
 
+static void *alloc_pages(size_t pages)
+{
+	(void)pages;
+	// TODO: impl
+	return NULL;
+}
+
+static void free_pages(struct page_header *header)
+{
+	(void)header;
+	// TODO: impl
+}
+
 static struct page_header *get_header(void *ptr)
 {
 	struct page_header *header =
@@ -39,7 +52,6 @@ static void *alloc_new(size_t size)
 {
 	size_t pages = ((size + header_len) / PAGE_SIZE) + 1;
 
-	// FIXME: use brk/sbrk
 	void *addr = alloc_pages(pages);
 	void *mem = (char *)addr + header_len;
 
@@ -209,7 +221,6 @@ void free(void *ptr)
 			header->next->prev = header->prev;
 		if (header->prev)
 			header->prev->next = header->next;
-		// FIXME: use brk/sbrk
 		free_pages(header);
 	}
 }

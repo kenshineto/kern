@@ -1,0 +1,8 @@
+-c
+-std=c11
+-Iinclude
+-ffreestanding
+-fno-builtin
+-Wall
+-Wextra
+-pedantic

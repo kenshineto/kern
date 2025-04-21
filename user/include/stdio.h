@@ -27,6 +27,47 @@ extern FILE *stdout;
 #define stdout stdout
 
 /**
+ * Get a char from stdin
+ *
+ * @returns the character or EOF on failure
+ */
+extern int getchar(void);
+
+/**
+ * Get a chracter from a stream
+ *
+ * @param stream - the stream to read from
+ * @returns the character or EOF on failure
+ */
+extern int getc(FILE *stream);
+
+/**
+ * Get a chracter from a stream
+ *
+ * @param stream - the stream to read from
+ * @returns the character or EOF on failure
+ */
+extern int fgetc(FILE *stream);
+
+/**
+ * Reads a string from stdin
+ *
+ * @param s - the buffer to read into
+ * @returns s on success, NULL on error or EOF
+ */
+extern char *gets(char *s);
+
+/**
+ * Reads a string from stdin
+ *
+ * @param s - the buffer to read into
+ * @param size - reads at most 1 less then size
+ * @param stream - stream to read from from
+ * @returns s on success, NULL on error or EOF
+ */
+extern char *fgets(char *restrict str, int size, FILE *stream);
+
+/**
  * Prints out a char
  *
  * @param c - the char
@@ -140,7 +181,7 @@ extern int vsnprintf(char *restrict s, size_t maxlen, const char *format,
  * @param format - the format string
  * @param ... - variable args for the format
  */
-__attribute__((format(printf, 2, 3))) extern void
+__attribute__((format(printf, 2, 3))) extern int
 fprintf(FILE *stream, const char *format, ...);
 
 /**
@@ -150,7 +191,7 @@ fprintf(FILE *stream, const char *format, ...);
  * @param format - the format string
  * @param args - variable arg list for the format
  */
-extern void vfprintf(FILE *stream, const char *format, va_list args);
+extern int vfprintf(FILE *stream, const char *format, va_list args);
 
 /**
  * opens a file with a given file name
