@@ -594,7 +594,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 				return ret;
 
 			// receive data
-			rep_outw(chan->io_base, &buf[i * 256], 256);
+			rep_inw(chan->io_base, &buf[i * 256], 256);
 		}
 	} else {
 		// PIO write
