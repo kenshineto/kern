@@ -52,22 +52,22 @@ QEMU = qemu-system-x86_64-uefi
 GRUB = grub-mkrescue-uefi
 endif
 
-qemu: $(BIN)/$(ISO) img
+qemu: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
 	$(QEMU) $(QEMUOPTS)
 
-qemu-kvm: $(BIN)/$(ISO) img
+qemu-kvm: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
 	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm
 
-qemu-kvm-nox: $(BIN)/$(ISO) img
+qemu-kvm-nox: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
 	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm -nographic
 
-qemu-nox: $(BIN)/$(ISO) img
+qemu-nox: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
 	$(QEMU) $(QEMUOPTS) -nographic
 
-qemu-gdb: $(BIN)/$(ISO) img
+qemu-gdb: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
 	$(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
 
-qemu-gdb-nox: $(BIN)/$(ISO) img
+qemu-gdb-nox: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
 	$(QEMU) $(QEMUOPTS) -nographic -S -gdb tcp::1337
 
 gdb:
@@ -75,9 +75,6 @@ gdb:
 
 clean:
 	rm -fr $(BIN)
-
-img:
-	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
 
 build: $(BIN)/$(ISO)
 
@@ -102,6 +99,9 @@ $(BIN)/$(ISO): $(BIN)/$(KERNEL)
 	cp config/grub.cfg $(BIN)/iso/boot/grub
 	cp $(BIN)/$(KERNEL) $(BIN)/iso/boot
 	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
+
+$(BIN)/$(IMAGE):
+	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
 
 fmt:
 	clang-format -i $(shell find -type f -name "*.[ch]" -and -not -path "./kernel/old/*")
