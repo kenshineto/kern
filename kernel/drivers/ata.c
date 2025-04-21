@@ -163,8 +163,8 @@ static void ide_channel_write(struct ide_channel *channel, const uint8_t reg,
 		outb(channel->io_base + reg - 0x06, data);
 	} else if (reg < 0x0E) {
 		outb(channel->control_base + reg - 0x0A, data);
-        // someone on OSdev said this was the correct thing
-        // https://wiki.osdev.org/Talk:PCI_IDE_Controller
+		// someone on OSdev said this was the correct thing
+		// https://wiki.osdev.org/Talk:PCI_IDE_Controller
 		// outb(channel->control_base + reg - 0x0C, data);
 	} else if (reg < 0x16) {
 		outb(channel->bus_master_ide_base + reg - 0x0E, data);
@@ -205,9 +205,9 @@ static uint8_t ide_channel_read(struct ide_channel *channel, const uint8_t reg)
 	return result;
 }
 
-void ide_read_id_space_buffer(struct ide_channel *channel, uint8_t reg,
-							  uint32_t *out_buffer,
-							  size_t out_buffer_size_bytes)
+static void ide_read_id_space_buffer(struct ide_channel *channel, uint8_t reg,
+									 uint32_t *out_buffer,
+									 size_t out_buffer_size_bytes)
 {
 	const bool disable_interrupts = reg > 0x07 && reg < 0x0C;
 
@@ -216,34 +216,21 @@ void ide_read_id_space_buffer(struct ide_channel *channel, uint8_t reg,
 	assert(out_buffer_size_bytes % 4 == 0,
 		   "id space buffer size not divisible by 4");
 
-	if (disable_interrupts) {
+	if (disable_interrupts)
 		ide_channel_write(channel, ATA_REG_CONTROL,
 						  0x80 | channel->no_interrupt);
-	}
 
-	/* WARNING: This code contains a serious bug. The inline assembly trashes ES and
-    *           ESP for all of the code the compiler generates between the inline
-    *           assembly blocks. Do not call functions here.
-    */
-	// __asm__ volatile("pushw %es; movw %ds, %ax; movw %ax, %es");
-	// NOTE: can be fixed with this code?
-	// __asm__ volatile("pushw %es; pushw %ax; movw %ds, %ax; movw %ax, %es; popw %ax;");
+	if (reg < 0x08)
+		rep_inl(channel->io_base + reg - 0x00, out_buffer, quads);
+	else if (reg < 0x0C)
+		rep_inl(channel->io_base + reg - 0x06, out_buffer, quads);
+	else if (reg < 0x0E)
+		rep_inl(channel->control_base + reg - 0x0A, out_buffer, quads);
+	else if (reg < 0x16)
+		rep_inl(channel->bus_master_ide_base + reg - 0x0E, out_buffer, quads);
 
-	if (reg < 0x08) {
-		insl(channel->io_base + reg - 0x00, out_buffer, quads);
-	} else if (reg < 0x0C) {
-		insl(channel->io_base + reg - 0x06, out_buffer, quads);
-	} else if (reg < 0x0E) {
-		insl(channel->control_base + reg - 0x0A, out_buffer, quads);
-	} else if (reg < 0x16) {
-		insl(channel->bus_master_ide_base + reg - 0x0E, out_buffer, quads);
-	}
-
-	// __asm__ volatile("popw %es;");
-
-	if (disable_interrupts) {
+	if (disable_interrupts)
 		ide_channel_write(channel, ATA_REG_CONTROL, channel->no_interrupt);
-	}
 }
 
 enum ide_channel_poll_error {
@@ -254,18 +241,18 @@ enum ide_channel_poll_error {
 	POLL_ERROR_WRITE_PROTECTED,
 };
 
-enum ide_channel_poll_error ide_channel_poll(struct ide_channel *channel,
-											 bool advanced_check)
+static enum ide_channel_poll_error ide_channel_poll(struct ide_channel *channel,
+													bool advanced_check)
 {
-	// (I) Delay 400 nanosecond for BSY to be set:
+	// delay 400 nanosecond for busy to be set
 	for (int i = 0; i < 4; i++) {
 		ide_channel_read(
 			channel,
-			ATA_REG_ALTSTATUS); // Reading the Alternate Status port wastes 100ns; loop four times.
+			ATA_REG_ALTSTATUS); // reading the Alternate Status port wastes 100ns; loop four times.
 	}
 
 	while (ide_channel_read(channel, ATA_REG_STATUS) & ATA_SR_BUSY)
-		; // Wait for BSY to be zero.
+		; // wait for busy to be zero.
 
 	if (advanced_check) {
 		uint8_t state = ide_channel_read(channel, ATA_REG_STATUS);
@@ -287,69 +274,39 @@ enum ide_channel_poll_error ide_channel_poll(struct ide_channel *channel,
 	return POLL_ERROR_OK;
 }
 
-uint8_t ide_device_print_poll_error(struct ide_device *dev,
-									const enum ide_channel_poll_error err)
+static void ide_device_print_poll_error(struct ide_device *dev,
+										const enum ide_channel_poll_error err)
 {
-	uint8_t out_err = err;
-
-	if (err == POLL_ERROR_OK) {
-		return out_err;
-	}
+	if (err == POLL_ERROR_OK)
+		return;
 
 	ERROR("IDE ERROR:");
-	if (err == POLL_ERROR_DEVICE_FAULT) {
+	if (err == POLL_ERROR_DEVICE_FAULT)
 		ERROR("\tDevice fault");
-		out_err = 19;
-	}
 
 	else if (err == POLL_ERROR_STATUS_REGISTER_ERROR) {
 		uint8_t status_reg =
 			ide_channel_read(channel(dev->channel_idx), ATA_REG_ERROR);
-
-		if (status_reg & ATA_ER_NOADDRESSMARK) {
+		if (status_reg & ATA_ER_NOADDRESSMARK)
 			ERROR("\tNo address mark found");
-			out_err = 7;
-		}
-
-		if (status_reg & ATA_ER_TRACK0NOTFOUND) {
+		if (status_reg & ATA_ER_TRACK0NOTFOUND)
 			ERROR("\tNo media or media error");
-			out_err = 3;
-		}
-
-		if (status_reg & ATA_ER_COMMANDABORTED) {
+		if (status_reg & ATA_ER_COMMANDABORTED)
 			ERROR("\tDrive aborted command");
-			out_err = 20;
-		}
-
-		if (status_reg & ATA_ER_MEDIACHANGEREQUEST) {
+		if (status_reg & ATA_ER_MEDIACHANGEREQUEST)
 			ERROR("\tNo media or media error");
-			out_err = 3;
-		}
-
-		if (status_reg & ATA_ER_IDMARKNOTFOUND) {
+		if (status_reg & ATA_ER_IDMARKNOTFOUND)
 			ERROR("\tID mark not found, unable to read ID space");
-			out_err = 21;
-		}
-
-		if (status_reg & ATA_ER_MEDIACHANGED) {
+		if (status_reg & ATA_ER_MEDIACHANGED)
 			ERROR("\tNo media or media error");
-			out_err = 3;
-		}
-
-		if (status_reg & ATA_ER_UNCORRECTABLE) {
+		if (status_reg & ATA_ER_UNCORRECTABLE)
 			ERROR("\tUncorrectable data error");
-			out_err = 22;
-		}
-		if (status_reg & ATA_ER_BADBLOCK) {
+		if (status_reg & ATA_ER_BADBLOCK)
 			ERROR("\tBad sectors");
-			out_err = 13;
-		}
 	} else if (err == POLL_ERROR_DRIVE_REQUEST_NOT_READY) {
 		ERROR("\tRead nothing, drive request not ready");
-		out_err = 23;
 	} else if (err == POLL_ERROR_WRITE_PROTECTED) {
 		ERROR("\tWrite-protected");
-		out_err = 8;
 	}
 
 	static const char *channel_displaynames[] = { "Primary", "Secondary" };
@@ -363,12 +320,10 @@ uint8_t ide_device_print_poll_error(struct ide_device *dev,
 
 	ERROR("\t[%s %s] %s", channel_displayname, device_displayname,
 		  dev->model_str);
-
-	return err;
 }
 
-void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
-					uint32_t BAR4)
+static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
+						   uint32_t BAR3, uint32_t BAR4)
 {
 	// 1- Detect I/O Ports which interface IDE Controller:
 	channels[ATA_PRIMARY] = (struct ide_channel){
@@ -496,10 +451,12 @@ void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
 		}
 }
 
-uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
-							  uint32_t lba, uint8_t numsects, uint16_t selector,
-							  uint32_t edi)
+int ide_device_ata_access(struct ide_device *dev, uint8_t direction,
+						  uint32_t lba, uint8_t numsects,
+						  uint16_t buf[numsects * 256])
 {
+	int ret = 0;
+
 	bool dma = false; // TODO: support DMA
 	bool cmd = false;
 	uint8_t lba_mode /* 0: CHS, 1:LBA28, 2: LBA48 */;
@@ -508,16 +465,14 @@ uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
 	uint32_t slavebit = dev->drive_idx; // Read the Drive [Master/Slave]
 	uint32_t bus =
 		chan->io_base; // Bus Base, like 0x1F0 which is also data port.
-	uint32_t words =
-		256; // Almost every ATA drive has a sector-size of 512-byte.
 	uint16_t cyl, i;
-	uint8_t head, sect, err;
+	uint8_t head, sect;
 
 	// disable irqs because we are using polling
 	ide_channel_write(chan, ATA_REG_CONTROL,
 					  chan->no_interrupt = (ide_irq_invoked = 0x0) + 0x02);
 
-	// (I) Select one from LBA28, LBA48 or CHS;
+	// select one from LBA28, LBA48 or CHS
 	if (lba >=
 		0x10000000) { // Sure Drive should support LBA in this case, or you are
 		// giving a wrong LBA.
@@ -558,20 +513,19 @@ uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
 	// TODO: support DMA
 	dma = 0;
 
-	// (III) Wait if the drive is busy;
-	while (ide_channel_read(chan, ATA_REG_STATUS) & ATA_SR_BUSY) {
-	}
+	// wait if the drive is busy
+	while (ide_channel_read(chan, ATA_REG_STATUS) & ATA_SR_BUSY)
+		;
 
-	// (IV) Select Drive from the controller;
-	if (lba_mode == 0) {
+	// select Drive from the controller
+	if (lba_mode == 0)
 		ide_channel_write(chan, ATA_REG_HDDEVSEL,
 						  0xA0 | (slavebit << 4) | head); // Drive & CHS.
-	} else {
+	else
 		ide_channel_write(chan, ATA_REG_HDDEVSEL,
 						  0xE0 | (slavebit << 4) | head); // Drive & LBA
-	}
 
-	// (V) Write Parameters;
+	// write Parameters
 	if (lba_mode == 2) {
 		ide_channel_write(chan, ATA_REG_SECCOUNT1, 0);
 		ide_channel_write(chan, ATA_REG_LBA3, lba_io[3]);
@@ -583,8 +537,9 @@ uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
 	ide_channel_write(chan, ATA_REG_LBA1, lba_io[1]);
 	ide_channel_write(chan, ATA_REG_LBA2, lba_io[2]);
 
-	// (VI) Select the command and send it;
-	// Routine that is followed:
+	// select the command and send it
+	//
+	// routine that is followed:
 	// If ( DMA & LBA48)   DO_DMA_EXT;
 	// If ( DMA & LBA28)   DO_DMA_LBA;
 	// If ( DMA & LBA28)   DO_DMA_CHS;
@@ -627,26 +582,17 @@ uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
 		if (direction == 0) {
 			// PIO Read.
 			for (i = 0; i < numsects; i++) {
-				if ((err = ide_channel_poll(chan, 1))) {
-					return err; // Polling, set error and exit if there is.
+				if ((ret = ide_channel_poll(chan, 1))) {
+					return ret; // Polling, set error and exit if there is.
 				}
-				//__asm__ volatile("pushw %es");
-				//__asm__ volatile("mov %%ax, %%es" : : "a"(selector));
 				// receive data
-				__asm__ volatile("rep insw" : : "c"(words), "d"(bus), "D"(edi));
-				//__asm__ volatile("popw %es");
-				edi += (words * 2);
+				rep_outw(bus, &buf[i * 256], 256);
 			}
 		} else {
 			// PIO Write.
 			for (i = 0; i < numsects; i++) {
 				ide_channel_poll(chan, 0); // Polling.
-				//__asm__ volatile("pushw %ds");
-				//__asm__ volatile("mov %%ax, %%ds" ::"a"(selector));
-				__asm__ volatile("rep outsw" ::"c"(words), "d"(bus),
-								 "S"(edi)); // Send Data
-				//__asm__ volatile("popw %ds");
-				edi += (words * 2);
+				rep_outw(bus, &buf[i * 256], 256);
 			}
 			ide_channel_write(chan, ATA_REG_COMMAND,
 							  (uint8_t[]){ ATA_CMD_CACHE_FLUSH,
@@ -656,66 +602,62 @@ uint8_t ide_device_ata_access(struct ide_device *dev, uint8_t direction,
 		}
 	}
 
-	return 0; // Easy, isn't it?
+	return ret;
 }
 
-uint32_t ide_device_read_sectors(struct ide_device *dev, uint8_t numsects,
-								 uint32_t lba, uint16_t es, uint32_t edi)
+int ide_device_read_sectors(struct ide_device *dev, uint8_t numsects,
+							uint32_t lba, uint16_t buf[numsects * 256])
 {
-	// 1: Check if the drive presents:
-	// ==================================
-	if (!dev->is_reserved) {
-		return 0x1; // Drive Not Found!
+	int ret = 0;
+
+	// check if the drive present
+	if (!dev->is_reserved)
+		return 1;
+
+	// check if inputs are valid
+	if (((lba + numsects) > dev->size_in_sectors) && (dev->type == IDE_ATA))
+		return 1; // seeking to invalid position.
+
+	// read in PIO Mode through polling & irqs
+	if (dev->type == IDE_ATA) {
+		ret = ide_device_ata_access(dev, ATA_READ, lba, numsects, buf);
+	} else if (dev->type == IDE_ATAPI) {
+		// for (i = 0; i < numsects; i++)
+		//    err = ide_atapi_read(drive, lba + i, 1, es, edi + (i*2048));
+		panic("atapi unimplemented- todo");
 	}
 
-	// 2: Check if inputs are valid:
-	// ==================================
-	else if (((lba + numsects) > dev->size_in_sectors) &&
-			 (dev->type == IDE_ATA)) {
-		return 0x2; // Seeking to invalid position.
-	}
+	if (ret)
+		ide_device_print_poll_error(dev, ret);
 
-	// 3: Read in PIO Mode through Polling & IRQs:
-	// ============================================
-	else {
-		uint8_t err = 0;
-		if (dev->type == IDE_ATA) {
-			err = ide_device_ata_access(dev, ATA_READ, lba, numsects, es, edi);
-		} else if (dev->type == IDE_ATAPI) {
-			// for (i = 0; i < numsects; i++)
-			//    err = ide_atapi_read(drive, lba + i, 1, es, edi + (i*2048));
-			panic("atapi unimplemented- todo");
-		}
-		return ide_device_print_poll_error(dev, err);
-	}
+	return ret;
 }
 
-uint32_t ide_device_write_sectors(struct ide_device *dev, uint8_t numsects,
-								  uint32_t lba, uint16_t es, uint16_t edi)
+int ide_device_write_sectors(struct ide_device *dev, uint8_t numsects,
+							 uint32_t lba, uint16_t buf[numsects * 256])
 {
-	// 1: Check if the drive presents:
-	// ==================================
-	if (!dev->is_reserved) {
-		return 0x1; // Drive Not Found!
+	int ret = 0;
+
+	// check if the drive present
+	if (!dev->is_reserved)
+		return 1;
+
+	// check if inputs are valid
+	if (((lba + numsects) > dev->size_in_sectors) && (dev->type == IDE_ATA))
+		return 1; // seeking to invalid position.
+
+	// read in PIO Mode through polling & irqs
+	if (dev->type == IDE_ATA) {
+		ret = ide_device_ata_access(dev, ATA_WRITE, lba, numsects, buf);
+	} else if (dev->type == IDE_ATAPI) {
+		panic("atapi unimplemented- todo");
+		ret = POLL_ERROR_WRITE_PROTECTED;
 	}
-	// 2: Check if inputs are valid:
-	// ==================================
-	else if (((lba + numsects) > dev->size_in_sectors) &&
-			 (dev->type == IDE_ATA)) {
-		return 0x2; // Seeking to invalid position.
-	}
-	// 3: Read in PIO Mode through Polling & IRQs:
-	// ============================================
-	else {
-		uint8_t err = 0;
-		if (dev->type == IDE_ATA) {
-			err = ide_device_ata_access(dev, ATA_WRITE, lba, numsects, es, edi);
-		} else if (dev->type == IDE_ATAPI) {
-			panic("atapi unimplemented- todo");
-			err = POLL_ERROR_WRITE_PROTECTED;
-		}
-		return ide_device_print_poll_error(dev, err);
-	}
+
+	if (ret)
+		ide_device_print_poll_error(dev, ret);
+
+	return ret;
 }
 
 int ata_init(void)
