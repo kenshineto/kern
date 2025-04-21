@@ -63,6 +63,19 @@ struct gas {
 	uint64_t address;
 };
 
+struct mcfg {
+	struct acpi_header h;
+	uint8_t reserved[8];
+
+	struct mcfg_entry {
+		uint64_t base_address; // of enhanced configuration memory
+		uint16_t pci_segment_group_number;
+		uint8_t start_pci_number;
+		uint8_t end_pci_number;
+		uint8_t reserved[4];
+	} __attribute__((packed)) entries[];
+} __attribute__((packed));
+
 // differentiated system description table
 struct dsdt {
 	struct acpi_header h;
@@ -162,6 +175,7 @@ struct acpi_state {
 	struct apic *apic;
 	struct hept *hept;
 	struct waet *waet;
+	struct mcfg *mcfg;
 	uint8_t version;
 
 	uint16_t SLP_TYPa;
@@ -249,6 +263,7 @@ static void acpi_load_xsdt_tables(struct xsdt *xsdt)
 #define SIG_APIC 0x43495041
 #define SIG_HEPT 0x54455048
 #define SIG_WAET 0x54454157
+#define SIG_MCFG 0x4746434d
 
 static void acpi_handle_table(struct acpi_header *header)
 {
@@ -277,6 +292,9 @@ static void acpi_handle_table(struct acpi_header *header)
 		break;
 	case SIG_WAET:
 		state.waet = (struct waet *)header;
+		break;
+	case SIG_MCFG:
+		state.mcfg = (struct mcfg *)header;
 		break;
 	default:
 		break;
@@ -349,6 +367,9 @@ void acpi_report(void)
 	if (state.waet)
 		kprintf("%.*s: %#016lx\n", 4, (char *)&state.waet->h.signature,
 				(uintptr_t)state.waet);
+	if (state.mcfg)
+		kprintf("%.*s: %#016lx\n", 4, (char *)&state.mcfg->h.signature,
+				(uintptr_t)state.mcfg);
 
 	kprintf("\n");
 }
