@@ -237,7 +237,7 @@ struct pcb *pcb_queue_peek(const pcb_queue_t queue);
  * @param pcb[out]       Pointer to where the PCB pointer will be saved
  * @return status of the removal request
  */
-int pcb_queue_remove(pcb_queue_t queue, struct pcb **pcb);
+int pcb_queue_pop(pcb_queue_t queue, struct pcb **pcb);
 
 /**
  * Remove the specified PCB from the indicated queue.
@@ -246,7 +246,7 @@ int pcb_queue_remove(pcb_queue_t queue, struct pcb **pcb);
  * @param pcb[in]        Pointer to the PCB to be removed
  * @return status of the removal request
  */
-int pcb_queue_remove_this(pcb_queue_t queue, struct pcb *pcb);
+int pcb_queue_remove(pcb_queue_t queue, struct pcb *pcb);
 
 /**
  * Schedule the supplied process

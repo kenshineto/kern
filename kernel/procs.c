@@ -174,7 +174,7 @@ int pcb_alloc(struct pcb **pcb)
 
 	// remove the first PCB from the free list
 	struct pcb *tmp;
-	if (pcb_queue_remove(pcb_freelist, &tmp) != SUCCESS)
+	if (pcb_queue_pop(pcb_freelist, &tmp) != SUCCESS)
 		return E_NO_PCBS;
 
 	*pcb = tmp;
@@ -261,10 +261,10 @@ void pcb_zombify(register struct pcb *victim)
 
 	if (zchild != NULL && init_pcb->state == PROC_STATE_WAITING) {
 		// dequeue the zombie
-		assert(pcb_queue_remove_this(zombie, zchild) == SUCCESS,
+		assert(pcb_queue_remove(zombie, zchild) == SUCCESS,
 			   "pcb_zombify: cannot remove zombie process from queue");
 
-		assert(pcb_queue_remove_this(waiting, init_pcb) == SUCCESS,
+		assert(pcb_queue_remove(waiting, init_pcb) == SUCCESS,
 			   "pcb_zombify: cannot remove waiting process from queue");
 
 		// intrinsic return value is the PID
@@ -436,12 +436,6 @@ bool pcb_queue_empty(pcb_queue_t queue)
 	return PCB_QUEUE_EMPTY(queue);
 }
 
-/**
- * Return the count of elements in the specified queue.
- *
- * @param[in] queue  The queue to check
- * @return the count (0 if the queue is empty)
- */
 size_t pcb_queue_length(const pcb_queue_t queue)
 {
 	// sanity check
@@ -526,11 +520,11 @@ int pcb_queue_insert(pcb_queue_t queue, struct pcb *pcb)
 	return SUCCESS;
 }
 
-int pcb_queue_remove(pcb_queue_t queue, struct pcb **pcb)
+int pcb_queue_pop(pcb_queue_t queue, struct pcb **pcb)
 {
 	//sanity checks
-	assert(queue != NULL, "pcb_queue_remove: queue is null");
-	assert(pcb != NULL, "pcb_queue_remove: pcb is null");
+	assert(queue != NULL, "pcb_queue_pop: queue is null");
+	assert(pcb != NULL, "pcb_queue_pop: pcb is null");
 
 	// can't get anything if there's nothing to get!
 	if (PCB_QUEUE_EMPTY(queue)) {
@@ -556,11 +550,11 @@ int pcb_queue_remove(pcb_queue_t queue, struct pcb **pcb)
 	return SUCCESS;
 }
 
-int pcb_queue_remove_this(pcb_queue_t queue, struct pcb *pcb)
+int pcb_queue_remove(pcb_queue_t queue, struct pcb *pcb)
 {
 	//sanity checks
-	assert(queue != NULL, "pcb_queue_remove_this: queue is null");
-	assert(pcb != NULL, "pcb_queue_remove_this: pcb is null");
+	assert(queue != NULL, "pcb_queue_remove: queue is null");
+	assert(pcb != NULL, "pcb_queue_remove: pcb is null");
 
 	// can't get anything if there's nothing to get!
 	if (PCB_QUEUE_EMPTY(queue)) {
@@ -587,8 +581,7 @@ int pcb_queue_remove_this(pcb_queue_t queue, struct pcb *pcb)
 
 	if (curr == NULL) {
 		// case 1
-		assert(prev != NULL,
-			   "pcb_queue_remove_this: prev element in queue is null");
+		assert(prev != NULL, "pcb_queue_remove: prev element in queue is null");
 		// case 4
 		return E_NOT_FOUND;
 	}
@@ -621,7 +614,7 @@ int pcb_queue_remove_this(pcb_queue_t queue, struct pcb *pcb)
 
 	assert((queue->head == NULL && queue->tail == NULL) ||
 			   (queue->head != NULL && queue->tail != NULL),
-		   "pcb_queue_remove_this: queue consistancy problem");
+		   "pcb_queue_remove: queue consistancy problem");
 
 	return SUCCESS;
 }
@@ -663,7 +656,7 @@ void dispatch(void)
 	assert(current == NULL, "dispatch: current process is not null");
 
 	// grab whoever is at the head of the queue
-	int status = pcb_queue_remove(ready, &current);
+	int status = pcb_queue_pop(ready, &current);
 	if (status != SUCCESS) {
 		panic("dispatch queue remove failed, code %d", status);
 	}

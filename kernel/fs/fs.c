@@ -18,7 +18,7 @@ void fs_init(void)
 	void *rd = mboot_get_initrd(&rd_len);
 	if (rd != NULL) {
 		assert(idx < N_DISKS, "Too many disks, limit is: %d\n", N_DISKS);
-		fs_disks[idx] = (struct disk) {
+		fs_disks[idx] = (struct disk){
 			.present = 1,
 			.id = idx,
 			.type = DISK_TYPE_RAMDISK,
@@ -32,7 +32,7 @@ void fs_init(void)
 	struct ide_devicelist ide_list = ide_devices_enumerate();
 	for (size_t i = 0; i < ide_list.num_devices; i++) {
 		assert(idx < N_DISKS, "Too many disks, limit is: %d\n", N_DISKS);
-		fs_disks[idx] = (struct disk) {
+		fs_disks[idx] = (struct disk){
 			.present = 1,
 			.id = idx,
 			.type = DISK_TYPE_ATA,
@@ -92,7 +92,8 @@ int fs_find_file_rel(struct file *rel, char *rel_path, struct file *res)
 	panic("fs_find_file_rel NOT YET IMPLEMENTED");
 }
 
-static int disk_read_rd(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+static int disk_read_rd(struct disk *disk, size_t offset, size_t len,
+						uint8_t *buffer)
 {
 	if (offset + len >= disk->rd.len) {
 		WARN("attempted to read past length of ramdisk");
@@ -103,7 +104,8 @@ static int disk_read_rd(struct disk *disk, size_t offset, size_t len, uint8_t *b
 	return 0;
 }
 
-static int disk_read_ata(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+static int disk_read_ata(struct disk *disk, size_t offset, size_t len,
+						 uint8_t *buffer)
 {
 	static size_t atabuf_len = 0;
 	static uint16_t *atabuf = NULL;
@@ -112,14 +114,15 @@ static int disk_read_ata(struct disk *disk, size_t offset, size_t len, uint8_t *
 	uint32_t err = offset % ATA_SECT_SIZE;
 	int ret = 0;
 
-	if (atabuf == NULL || atabuf_len < numsects*ATA_SECT_SIZE) {
-		if ((atabuf = krealloc(atabuf, numsects*ATA_SECT_SIZE)) == NULL)
+	if (atabuf == NULL || atabuf_len < numsects * ATA_SECT_SIZE) {
+		if ((atabuf = krealloc(atabuf, numsects * ATA_SECT_SIZE)) == NULL)
 			return 1;
-		atabuf_len = numsects*ATA_SECT_SIZE;
+		atabuf_len = numsects * ATA_SECT_SIZE;
 	}
 
 	// read sectors
-	if ((ret = ide_device_read_sectors(disk->ide, numsects, offset / ATA_SECT_SIZE, atabuf)))
+	if ((ret = ide_device_read_sectors(disk->ide, numsects,
+									   offset / ATA_SECT_SIZE, atabuf)))
 		return 1;
 
 	// copy over to buffer
@@ -128,12 +131,11 @@ static int disk_read_ata(struct disk *disk, size_t offset, size_t len, uint8_t *
 	return ret;
 }
 
-
 int disk_read(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
 {
 	int ret = 0;
 
-	switch(disk->type) {
+	switch (disk->type) {
 	case DISK_TYPE_RAMDISK:
 		ret = disk_read_rd(disk, offset, len, buffer);
 		break;
@@ -141,14 +143,16 @@ int disk_read(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
 		ret = disk_read_ata(disk, offset, len, buffer);
 		break;
 	default:
-		ERROR("attempted to read from disk with invalid type: %d\n", disk->type);
+		ERROR("attempted to read from disk with invalid type: %d\n",
+			  disk->type);
 		ret = 1;
 	}
 
 	return ret;
 }
 
-static int disk_write_rd(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+static int disk_write_rd(struct disk *disk, size_t offset, size_t len,
+						 uint8_t *buffer)
 {
 	if (offset + len >= disk->rd.len) {
 		WARN("attempted to write past length of ramdisk");
@@ -159,7 +163,8 @@ static int disk_write_rd(struct disk *disk, size_t offset, size_t len, uint8_t *
 	return 0;
 }
 
-static int disk_write_ata(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+static int disk_write_ata(struct disk *disk, size_t offset, size_t len,
+						  uint8_t *buffer)
 {
 	static size_t atabuf_len = 0;
 	static uint16_t *atabuf = NULL;
@@ -168,21 +173,23 @@ static int disk_write_ata(struct disk *disk, size_t offset, size_t len, uint8_t 
 	uint32_t err = offset % ATA_SECT_SIZE;
 	int ret = 0;
 
-	if (atabuf == NULL || atabuf_len < numsects*ATA_SECT_SIZE) {
-		if ((atabuf = krealloc(atabuf, numsects*ATA_SECT_SIZE)) == NULL)
+	if (atabuf == NULL || atabuf_len < numsects * ATA_SECT_SIZE) {
+		if ((atabuf = krealloc(atabuf, numsects * ATA_SECT_SIZE)) == NULL)
 			return 1;
-		atabuf_len = numsects*ATA_SECT_SIZE;
+		atabuf_len = numsects * ATA_SECT_SIZE;
 	}
 
 	// read sectors what will be overwritten
-	if ((ret = ide_device_read_sectors(disk->ide, numsects, offset / ATA_SECT_SIZE, atabuf)))
+	if ((ret = ide_device_read_sectors(disk->ide, numsects,
+									   offset / ATA_SECT_SIZE, atabuf)))
 		return 1;
 
 	// copy custom data over
 	memcpy(atabuf + err, buffer, len);
 
 	// write back sectors
-	if ((ret = ide_device_write_sectors(disk->ide, numsects, offset / ATA_SECT_SIZE, atabuf)))
+	if ((ret = ide_device_write_sectors(disk->ide, numsects,
+										offset / ATA_SECT_SIZE, atabuf)))
 		return 1;
 
 	return ret;
@@ -192,7 +199,7 @@ int disk_write(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
 {
 	int ret = 0;
 
-	switch(disk->type) {
+	switch (disk->type) {
 	case DISK_TYPE_RAMDISK:
 		ret = disk_write_rd(disk, offset, len, buffer);
 		break;

@@ -97,11 +97,11 @@ mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow);
 void mem_ctx_free(mem_ctx_t ctx);
 
 /**
- * Free a memory context
+ * Switch into a different memory context
  *
- * @param ctx - pointer to the memory context
+ * @param ctx - the memory context
  */
-void free_mem_ctx(mem_ctx_t ctx);
+void mem_ctx_switch(mem_ctx_t ctx);
 
 /**
  * Allocates at least len bytes of memory starting at

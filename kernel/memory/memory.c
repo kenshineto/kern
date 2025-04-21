@@ -10,7 +10,7 @@
 #include "physalloc.h"
 
 mem_ctx_t kernel_mem_ctx;
-struct mem_ctx_s _kernel_mem_ctx;
+static struct mem_ctx_s _kernel_mem_ctx;
 extern volatile char kernel_pml4[];
 extern struct virt_ctx kernel_virt_ctx;
 
@@ -62,6 +62,11 @@ void mem_ctx_free(mem_ctx_t ctx)
 	(void)ctx;
 
 	panic("not yet implemented");
+}
+
+void mem_ctx_switch(mem_ctx_t ctx)
+{
+	__asm__ volatile("mov %0, %%cr3" ::"r"(ctx->pml4) : "memory");
 }
 
 void memory_init(void)
