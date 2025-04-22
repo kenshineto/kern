@@ -41,13 +41,13 @@ build: $(USER_PROJ)
 clean:
 	rm -fr $(BIN)
 
-$(LIBA_OBJ): $(BIN)/%.S.o : %.S
+$(LIBA_OBJ): $(BIN)/%.S.o : %.S $(H_SRC)
 	mkdir -p $(@D)
 	printf "\033[33m  AS  \033[0m%s\n" user/$<
 	$(CPP) $(CPPFLAGS) -o $@.cpp $<
 	$(AS) -o $@ $@.cpp
 
-$(LIBC_OBJ): $(BIN)/%.o : %.c
+$(LIBC_OBJ): $(BIN)/%.o : %.c $(H_SRC)
 	mkdir -p $(@D)
 	printf "\033[34m  CC  \033[0m%s\n" user/$<
 	$(CC) -c $(CFLAGS) -o $@ $<
@@ -57,7 +57,7 @@ $(BIN)/libc.a: $(LIBA_OBJ) $(LIBC_OBJ)
 	printf "\033[35m  AR  \033[0m%s\n" $(shell echo $@ | cut -c 4-)
 	$(AR) rcs $@ $(LIBA_OBJ) $(LIBC_OBJ)
 
-$(USER_OBJ): $(BIN)/%.o : %.c
+$(USER_OBJ): $(BIN)/%.o : %.c $(H_SRC)
 	mkdir -p $(@D)
 	printf "\033[34m  CC  \033[0m%s\n" user/$<
 	$(CC) -c $(CFLAGS) -o $@ $<
