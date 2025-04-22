@@ -40,7 +40,7 @@ UNAME := $(shell uname)
 QEMU = qemu-system-x86_64
 QEMUOPTS = -cdrom $(BIN)/$(ISO) \
 		   -no-reboot \
-		   -drive format=raw,file=$(BIN)/$(IMAGE)\
+		   -drive format=raw,file=$(BIN)/user/hello\
 		   -serial mon:stdio \
 		   -m 4G \
 		   -name kern

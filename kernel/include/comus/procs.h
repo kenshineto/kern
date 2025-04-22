@@ -14,6 +14,16 @@
 #include <comus/memory.h>
 #include <lib.h>
 
+#define PCB_REG(pcb, x) ((pcb)->regs->x)
+#define PCB_RET(pcb) ((pcb)->regs->rax)
+#define PCB_ARG1(pcb) PCB_REG((pcb), rdi)
+#define PCB_ARG2(pcb) PCB_REG((pcb), rsi)
+#define PCB_ARG3(pcb) PCB_REG((pcb), rdx)
+#define PCB_ARG4(pcb) PCB_REG((pcb), rcx)
+
+/// process id
+typedef unsigned short pid_t;
+
 /// process states
 enum proc_state {
 	// pre-viable
@@ -33,70 +43,26 @@ enum proc_state {
 	N_PROC_STATES,
 };
 
-/// process priority
-enum proc_priority {
-	PROC_PRIO_HIGH,
-	PROC_PRIO_STD,
-	PROC_PRIO_LOW,
-	PROC_PRIO_DEFERRED,
-	// sentinel
-	N_PROC_PRIOS,
-};
-
-/// process quantum length
-/// values are number of clock ticks
-enum proc_quantum {
-	PROC_QUANTUM_SHORT = 1,
-	PROC_QUANTUM_STANDARD = 3,
-	PROC_QUANTUM_LONG = 5,
-};
-
-/// program section information
-struct proc_section {
-	uint64_t length;
-	uint64_t addr;
-};
-
-#define SECT_L1 0
-#define SECT_L2 1
-#define SECT_L3 2
-#define SECT_STACK 3
-#define N_SECTS 4
-#define N_LOADABLE 3
-
-/// pid type
-typedef unsigned short pid_t;
-
 /// process control block
 struct pcb {
-	// process context
+	// metadata
+	pid_t pid;
+	struct pcb *parent;
+	enum proc_state state;
+	size_t priority;
+	size_t ticks;
+
+	// context
 	mem_ctx_t memctx;
 	struct cpu_regs *regs;
-
-	// vm information
-	struct proc_section sects[N_SECTS];
 
 	// queue linkage
 	struct pcb *next; // next PDB in queue
 
 	// process state information
-	struct pcb *parent; // pointer to PCB of our parent process
-	uint64_t wakeup; // wakeup time, for sleeping processes
-	uint8_t exit_status; // termination status, for parent's use
-
-	// process metadata
-	pid_t pid; // pid of this process
-	enum proc_state state; // process' current state
-	enum proc_priority priority; // process priority level
-	size_t ticks; // remaining ticks in this time slice
+	uint64_t wakeup;
+	uint8_t exit_status;
 };
-
-#define PCB_REG(pcb, x) ((pcb)->regs->x)
-#define PCB_RET(pcb) ((pcb)->regs->rax)
-#define PCB_ARG(pcb, n) (((uint64_t *)(((pcb)->regs) + 1))[(n)])
-
-/// pcb queue structure
-typedef struct pcb_queue_s *pcb_queue_t;
 
 /// ordering of pcb queues
 enum pcb_queue_order {
@@ -108,6 +74,9 @@ enum pcb_queue_order {
 	N_PCB_ORDERINGS,
 };
 
+/// pcb queue structure
+typedef struct pcb_queue_s *pcb_queue_t;
+
 /// public facing pcb queues
 extern pcb_queue_t pcb_freelist;
 extern pcb_queue_t ready;
@@ -116,25 +85,14 @@ extern pcb_queue_t sleeping;
 extern pcb_queue_t zombie;
 
 /// pointer to the currently-running process
-extern struct pcb *current;
-
+extern struct pcb *current_pcb;
+/// pointer to the pcb for the 'init' process
+extern struct pcb *init_pcb;
 /// the process table
 extern struct pcb ptable[N_PROCS];
 
 /// next avaliable pid
 extern pid_t next_pid;
-
-/// pointer to the pcb for the 'init' process
-extern struct pcb *init_pcb;
-
-/// table of state name strings
-extern const char *proc_state_str[N_PROC_STATES];
-
-/// table of priority name strings
-extern const char *proc_prio_str[N_PROC_PRIOS];
-
-/// table of queue ordering name strings
-extern const char *pcb_ord_str[N_PCB_ORDERINGS];
 
 /**
  * Initialization for the process module
@@ -142,25 +100,25 @@ extern const char *pcb_ord_str[N_PCB_ORDERINGS];
 void pcb_init(void);
 
 /**
- * Allocate a PCB from the list of free PCBs
+ * allocate a PCB from the free list
+ *
+ * @returns 0 on success or non zero error code
  */
 int pcb_alloc(struct pcb **pcb);
 
 /**
- * Return a PCB to the list of free PCBs.
+ * free an allocted PCB back to the free list
  *
- * @param pcb   Pointer to the PCB to be deallocated.
+ * @param pcb - pointer to the PCB to be deallocated
  */
 void pcb_free(struct pcb *pcb);
 
 /**
- * Turn the indicated process into a Zombie. This function
- * does most of the real work for exit() and kill() calls.
- * Is also called from the scheduler and dispatcher.
+ * turn the indicated process into a zombie
  *
  * @param pcb - pointer to the newly-undead PCB
  */
-void pcb_zombify(register struct pcb *victim);
+void pcb_zombify(struct pcb *victim);
 
 /**
  * Reclaim a process' data structures
@@ -259,52 +217,5 @@ void schedule(struct pcb *pcb);
  * Select the next process to receive the CPU
  */
 void dispatch(void);
-
-/**
- * Dumps the contents of this process context to the console
- *
- * @param msg[in]   An optional message to print before the dump
- * @param c[in]     The context to dump out
- */
-void ctx_dump(const char *msg, register struct cpu_regs *c);
-
-/**
- * dump the process context for all active processes
- *
- * @param msg[in]  Optional message to print
- */
-void ctx_dump_all(const char *msg);
-
-/**
- * Dumps the contents of this PCB to the console
- *
- * @param msg[in]  An optional message to print before the dump
- * @param p[in]    The PCB to dump
- * @param all[in]  Dump all the contents?
- */
-void pcb_dump(const char *msg, register struct pcb *p, bool all);
-
-/**
- * Dump the contents of the specified queue to the console
- *
- * @param msg[in]       An optional message to print before the dump
- * @param queue[in]     The queue to dump
- * @param contents[in]  Also dump (some) contents?
- */
-void pcb_queue_dump(const char *msg, pcb_queue_t queue, bool contents);
-
-/**
- * dump the contents of the "active processes" table
- *
- * @param msg[in]  Optional message to print
- * @param all[in]  Dump all or only part of the relevant data
- */
-void ptable_dump(const char *msg, bool all);
-
-/**
- * Prints basic information about the process table (number of
- * entries, number with each process state, etc.).
- */
-void ptable_dump_counts(void);
 
 #endif /* procs.h */
