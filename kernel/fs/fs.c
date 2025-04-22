@@ -131,7 +131,7 @@ static int disk_read_ata(struct disk *disk, size_t offset, size_t len,
 	return ret;
 }
 
-int disk_read(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer)
 {
 	int ret = 0;
 
@@ -195,7 +195,7 @@ static int disk_write_ata(struct disk *disk, size_t offset, size_t len,
 	return ret;
 }
 
-int disk_write(struct disk *disk, size_t offset, size_t len, uint8_t *buffer)
+int disk_write(struct disk *disk, size_t offset, size_t len, void *buffer)
 {
 	int ret = 0;
 

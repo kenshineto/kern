@@ -47,7 +47,7 @@ struct disk {
  * @param buffer - the buffer to save data into
  * @returns bytes read on success, negative fs error code in failure
  */
-int disk_read(struct disk *disk, size_t offset, size_t len, uint8_t *buffer);
+int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer);
 
 /**
  * write data from a disk into a buffer
@@ -58,7 +58,7 @@ int disk_read(struct disk *disk, size_t offset, size_t len, uint8_t *buffer);
  * @param buffer - the buffer to read from
  * @returns bytes written on success, negative fs error code in failure
  */
-int disk_write(struct disk *disk, size_t offset, size_t len, uint8_t *buffer);
+int disk_write(struct disk *disk, size_t offset, size_t len, void *buffer);
 
 enum file_type {
 	// regular file
