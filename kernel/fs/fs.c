@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/fs.h>
 #include <comus/mboot.h>
@@ -126,7 +127,7 @@ static int disk_read_ata(struct disk *disk, size_t offset, size_t len,
 		return 1;
 
 	// copy over to buffer
-	memcpy(buffer, atabuf + err, len);
+	memcpy(buffer, (char*)atabuf + err, len);
 
 	return ret;
 }
@@ -185,7 +186,7 @@ static int disk_write_ata(struct disk *disk, size_t offset, size_t len,
 		return 1;
 
 	// copy custom data over
-	memcpy(atabuf + err, buffer, len);
+	memcpy((char*)atabuf + err, buffer, len);
 
 	// write back sectors
 	if ((ret = ide_device_write_sectors(disk->ide, numsects,
