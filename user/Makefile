@@ -43,25 +43,26 @@ clean:
 
 $(LIBA_OBJ): $(BIN)/%.S.o : %.S
 	mkdir -p $(@D)
-	printf "\033[33m  AS  \033[0m%s\n" $<
+	printf "\033[33m  AS  \033[0m%s\n" user/$<
 	$(CPP) $(CPPFLAGS) -o $@.cpp $<
 	$(AS) -o $@ $@.cpp
 
 $(LIBC_OBJ): $(BIN)/%.o : %.c
 	mkdir -p $(@D)
-	printf "\033[34m  CC  \033[0m%s\n" $<
+	printf "\033[34m  CC  \033[0m%s\n" user/$<
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(BIN)/libc.a: $(LIBA_OBJ) $(LIBC_OBJ)
 	@mkdir -p $(@D)
+	printf "\033[35m  AR  \033[0m%s\n" $(shell echo $@ | cut -c 4-)
 	$(AR) rcs $@ $(LIBA_OBJ) $(LIBC_OBJ)
 
 $(USER_OBJ): $(BIN)/%.o : %.c
 	mkdir -p $(@D)
-	printf "\033[34m  CC  \033[0m%s\n" $<
+	printf "\033[34m  CC  \033[0m%s\n" user/$<
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(USER_PROJ): % : %.o $(BIN)/libc.a
 	mkdir -p $(@D)
-	printf "\033[32m  LD  \033[0m%s\n" $@
+	printf "\033[32m  LD  \033[0m%s\n" $(shell echo $@ | cut -c 4-)
 	$(LD) $(LDFLAGS) -T ../config/user.ld -o $@ $< $(BIN)/libc.a
