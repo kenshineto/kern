@@ -6,7 +6,7 @@
 #define CHAN_2 0x42
 #define CMD 0x43
 
-uint64_t ticks = 0;
+volatile uint64_t ticks = 0;
 
 uint16_t pit_read_divider(void)
 {
@@ -21,8 +21,9 @@ uint16_t pit_read_divider(void)
 
 void pit_set_divider(uint16_t count)
 {
-	cli();
-	outb(CHAN_0, count & 0xFF); // low byte
-	outb(CHAN_0, (count & 0xFF00) >> 8); // high byte
-	sti();
+	// FIXME: broken on -O0
+	// cli();
+	// outb(CHAN_0, count & 0xFF); // low byte
+	// outb(CHAN_0, (count & 0xFF00) >> 8); // high byte
+	// sti();
 }
