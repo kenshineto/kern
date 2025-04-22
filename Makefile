@@ -101,6 +101,7 @@ $(BIN)/$(ISO): $(BIN)/$(KERNEL)
 	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
 
 $(BIN)/$(IMAGE):
+	make -s -C user
 	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
 
 fmt:
