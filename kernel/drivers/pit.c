@@ -21,6 +21,7 @@ uint16_t pit_read_divider(void)
 
 void pit_set_divider(uint16_t count)
 {
+	(void) count;
 	// FIXME: broken on -O0
 	// cli();
 	// outb(CHAN_0, count & 0xFF); // low byte
