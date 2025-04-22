@@ -7,6 +7,7 @@
 #include <stdarg.h>
 
 #define PRINTF_NUMERIC_BUF_LEN 50
+#define PRINTF_BUFFER_LEN 256
 
 typedef union {
 	unsigned long long int u;
@@ -619,43 +620,4 @@ int vfprintf(FILE *stream, const char *format, va_list args)
 
 	do_printf(&ctx, args);
 	return ctx.written_len;
-}
-
-int putchar(int c)
-{
-	return putc(c, stdout);
-}
-
-int putc(int c, FILE *stream)
-{
-	return fputc(c, stream);
-}
-
-int fputc(int c, FILE *stream)
-{
-	// TODO: a
-	return c;
-}
-
-int puts(const char *str)
-{
-	int res;
-	res = fputs(str, stdout);
-	if (res == EOF)
-		return res;
-	res = fputc('\n', stdout);
-	if (res == EOF)
-		return res;
-	return 0;
-}
-
-int fputs(const char *str, FILE *stream)
-{
-	int res;
-	while (*str) {
-		res = fputc(*str++, stream);
-		if (res == EOF)
-			return res;
-	}
-	return 0;
 }

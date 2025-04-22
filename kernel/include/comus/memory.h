@@ -97,11 +97,11 @@ mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow);
 void mem_ctx_free(mem_ctx_t ctx);
 
 /**
- * Free a memory context
+ * Switch into a different memory context
  *
- * @param ctx - pointer to the memory context
+ * @param ctx - the memory context
  */
-void free_mem_ctx(mem_ctx_t ctx);
+void mem_ctx_switch(mem_ctx_t ctx);
 
 /**
  * Allocates at least len bytes of memory starting at
@@ -126,17 +126,42 @@ void mem_unmapaddr(mem_ctx_t ctx, void *virt);
 /**
  * Allocate a single page of memory with the given paging structure
  *
+ * @param ctx - the memory context
+ * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the vitural address aloocated or NULL on failure
  */
-void *mem_alloc_page(mem_ctx_t ctx);
+void *mem_alloc_page(mem_ctx_t ctx, bool lazy);
+
+/**
+ * Allocate a single page of memory at the given vitural address with the given paging structure
+ *
+ * @param ctx - the memory context
+ * @param virt - the vitural address to allocate at
+ * @param lazy - if to lazy allocate pages (alloc on fault)
+ * @returns the vitural address aloocated or NULL on failure
+ */
+void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, bool lazy);
 
 /**
  * Allocate size_t amount of contiguous virtual pages with the given paging structure
  *
+ * @param ctx - the memory context
  * @param count - the number of pages to allocate
+ * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the address allocated or NULL on failure
  */
-void *mem_alloc_pages(mem_ctx_t ctx, size_t count);
+void *mem_alloc_pages(mem_ctx_t ctx, size_t count, bool lazy);
+
+/**
+ * Allocate size_t amount of contiguous virtual pages at a given virtural address with the given paging structure
+ *
+ * @param ctx - the memory context
+ * @param count - the number of pages to allocate
+ * @param virt - the vitural address to allocate at
+ * @param lazy - if to lazy allocate pages (alloc on fault)
+ * @returns the address allocated or NULL on failure
+ */
+void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt, bool lazy);
 
 /**
  * Free allocated pages with the given paging structure.

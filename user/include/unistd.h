@@ -147,33 +147,18 @@ extern int kill(pid_t pid);
 extern int sleep(unsigned long ms);
 
 /**
- * Wait for any child to exit
+ * Set the heap break to addr
  *
- * @param status - pointer to int32_t into which the child's status is placed,
- *                 or NULL
- * @return  The pid of the terminated child, or an error code
- *
- * Analogous to waitpid(0,status)
+ * @param addr - sets the programs break to addr
+ * @return the previos program break on success, or NULL on failure
  */
-extern int wait(int *status);
-
-/**
- * Spawn a new process running a different program
- *
- * @param prog - program table index of the program to spawn
- * @param args - the command-line argument vector for the process
- * @return the pid of the child, or an error code
- *
- * Analogous to calling fork and exec
- */
-extern int spawn(pid_t prog, char **args);
+extern void *brk(const void *addr);
 
 /**
  * Increment the program's data space by increment bytes.
  *
  * @param increment - the amount in bytes to increment the heap
  * @return the previos program break on success, or NULL on failure
- *
  */
 extern void *sbrk(intptr_t increment);
 

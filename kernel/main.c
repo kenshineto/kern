@@ -8,6 +8,7 @@
 #include <comus/drivers/gpu.h>
 #include <comus/drivers/ata.h>
 #include <comus/fs.h>
+#include <comus/procs.h>
 #include <lib.h>
 
 void kreport(void)
@@ -39,6 +40,9 @@ void main(long magic, volatile void *mboot)
 
 	// load file systems
 	fs_init();
+
+	// initalize processes
+	pcb_init();
 
 	// report system state
 	kreport();

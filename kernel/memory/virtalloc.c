@@ -3,8 +3,6 @@
 
 #include "virtalloc.h"
 
-struct virt_ctx kernel_virt_ctx;
-
 static struct virt_addr_node *get_node_idx(struct virt_ctx *ctx, int idx)
 {
 	if (idx < BOOTSTRAP_VIRT_ALLOC_NODES) {
@@ -88,7 +86,7 @@ void virtaddr_init(struct virt_ctx *ctx)
 		.is_alloc = false,
 		.is_used = true,
 	};
-	memsetv(ctx->bootstrap_nodes, 0, sizeof(ctx->bootstrap_nodes));
+	memset(ctx, 0, sizeof(struct virt_ctx));
 	ctx->bootstrap_nodes[0] = init;
 	ctx->alloc_nodes = NULL;
 	ctx->start_node = &ctx->bootstrap_nodes[0];
@@ -169,6 +167,9 @@ void *virtaddr_alloc(struct virt_ctx *ctx, int n_pages)
 
 long virtaddr_free(struct virt_ctx *ctx, void *virtaddr)
 {
+	if (virtaddr == NULL)
+		return -1;
+
 	uintptr_t virt = (uintptr_t)virtaddr;
 
 	if (virt % PAGE_SIZE)
@@ -187,4 +188,9 @@ long virtaddr_free(struct virt_ctx *ctx, void *virtaddr)
 	}
 
 	return -1;
+}
+
+void virtaddr_cleanup(struct virt_ctx *ctx)
+{
+	kfree(ctx->alloc_nodes);
 }

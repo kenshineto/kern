@@ -2,6 +2,7 @@
 #include <comus/asm.h>
 #include <comus/mboot.h>
 #include <comus/efi.h>
+#include <comus/limits.h>
 #include <lib.h>
 
 #include "memory.h"
@@ -9,10 +10,16 @@
 #include "virtalloc.h"
 #include "physalloc.h"
 
+// kernel memory context
 mem_ctx_t kernel_mem_ctx;
-struct mem_ctx_s _kernel_mem_ctx;
+static struct mem_ctx_s _kernel_mem_ctx;
+
+// kernel page tables
 extern volatile char kernel_pml4[];
-extern struct virt_ctx kernel_virt_ctx;
+
+// user space memory contexts
+static struct mem_ctx_s user_mem_ctx[N_PROCS];
+static struct mem_ctx_s *user_mem_ctx_next = NULL;
 
 void *kmapaddr(void *phys, void *virt, size_t len, unsigned int flags)
 {
@@ -26,12 +33,12 @@ void kunmapaddr(void *virt)
 
 void *kalloc_page(void)
 {
-	return mem_alloc_page(kernel_mem_ctx);
+	return mem_alloc_page(kernel_mem_ctx, false);
 }
 
 void *kalloc_pages(size_t count)
 {
-	return mem_alloc_pages(kernel_mem_ctx, count);
+	return mem_alloc_pages(kernel_mem_ctx, count, false);
 }
 
 void kfree_pages(void *ptr)
@@ -46,7 +53,20 @@ int kload_page(void *virt)
 
 mem_ctx_t mem_ctx_alloc(void)
 {
-	panic("not yet implemented");
+	mem_ctx_t ctx = user_mem_ctx_next;
+	if (ctx == NULL)
+		return NULL;
+
+	if ((ctx->pml4 = pml4_alloc()) == NULL)
+		return NULL;
+	virtaddr_init(&ctx->virtctx);
+
+	user_mem_ctx_next = ctx->prev;
+	if (ctx->prev)
+		ctx->prev->next = NULL;
+	ctx->prev = NULL;
+
+	return ctx;
 }
 
 mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow)
@@ -59,9 +79,21 @@ mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow)
 
 void mem_ctx_free(mem_ctx_t ctx)
 {
-	(void)ctx;
+	pml4_free(ctx->pml4);
+	virtaddr_cleanup(&ctx->virtctx);
 
-	panic("not yet implemented");
+	if (user_mem_ctx_next == NULL) {
+		user_mem_ctx_next = ctx;
+	} else {
+		user_mem_ctx_next->next = ctx;
+		ctx->prev = user_mem_ctx_next;
+		user_mem_ctx_next = ctx;
+	}
+}
+
+void mem_ctx_switch(mem_ctx_t ctx)
+{
+	__asm__ volatile("mov %0, %%cr3" ::"r"(ctx->pml4) : "memory");
 }
 
 void memory_init(void)
@@ -73,11 +105,10 @@ void memory_init(void)
 
 	kernel_mem_ctx = &_kernel_mem_ctx;
 	kernel_mem_ctx->pml4 = kernel_pml4;
-	kernel_mem_ctx->virtctx = &kernel_virt_ctx;
 
 	cli();
 	paging_init();
-	virtaddr_init(kernel_mem_ctx->virtctx);
+	virtaddr_init(&kernel_mem_ctx->virtctx);
 	physalloc_init(&mmap);
 	sti();
 
@@ -87,5 +118,21 @@ void memory_init(void)
 		if (seg->type != SEG_TYPE_EFI)
 			continue;
 		kmapaddr((void *)seg->addr, (void *)seg->addr, seg->len, F_WRITEABLE);
+	}
+
+	// setup user mem ctx linked list
+	for (size_t i = 0; i < N_PROCS; i++) {
+		struct mem_ctx_s *ctx = &user_mem_ctx[i];
+		ctx->next = NULL;
+		ctx->prev = NULL;
+
+		if (user_mem_ctx_next == NULL) {
+			user_mem_ctx_next = ctx;
+			continue;
+		}
+
+		user_mem_ctx_next->next = ctx;
+		ctx->prev = user_mem_ctx_next;
+		user_mem_ctx_next = ctx;
 	}
 }

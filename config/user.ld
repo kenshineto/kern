@@ -1,51 +1,58 @@
-/*
-** Simple linker script for user-level programs.
-*/
-
-OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
-OUTPUT_ARCH(i386)
 ENTRY(_start)
+
+PHDRS
+{
+   text PT_LOAD;
+   rodata PT_LOAD;
+   data PT_LOAD;
+}
 
 SECTIONS
 {
-	/* user text begins at the second page of the address space */
-	. = 0x1000;
+	. = 1024M;
+
+	user_start = .;
 
 	.text : {
-		KEEP(*(.text .stub .text.* .gnu.linkonce.t.*))
-	}
+		text_start = .;
+		*(.text)
+		*(.text.*)
+		*(.gnu.linkonce.t.*)
+		text_end = .;
+	} : text
 
-	/* define some standard symbols */
-	PROVIDE(etext = .);
-	PROVIDE(_etext = .);
+	. = ALIGN(0x1000);
 
-	/* read-only data will go at the end of the text section */
 	.rodata : {
-		KEEP(*(.rodata .rodata.* .gnu.linkonce.r.*))
-	}
+		rodata_start = .;
+		*(.rodata)
+		*(.rodata.*)
+		*(.gnu.linkonce.r.*)
+		rodata_end = .;
+	} : rodata
 
-	/* Align the data segment at the next page boundary */
 	. = ALIGN(0x1000);
 
 	.data : {
-		KEEP(*(.data))
-	}
+		data_start = .;
+		*(.data)
+		*(.data.*)
+		data_end = .;
+	} : data
 
-	PROVIDE(edata = .);
-	PROVIDE(_edata = .);
-
-	/* Page-align the BSS segment */
 	. = ALIGN(0x1000);
 
-	PROVIDE(__bss_start = .);
-
 	.bss : {
-		KEEP(*(.bss))
-	}
+		bss_start = .;
+		*(COMMON)
+		*(.bss)
+		*(.bss.*)
+		bss_end = .;
+	} : data
 
-	PROVIDE(_end = .);
+	user_end = .;
 
 	/DISCARD/ : {
-		*(.stab .stab_info .stabstr .eh_frame .note.GNU-stack .note.gnu.property .comment)
+		*(.eh_frame .note.GNU-stack .note.gnu.property .comment)
 	}
 }

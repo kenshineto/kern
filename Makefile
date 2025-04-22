@@ -78,13 +78,13 @@ clean:
 
 build: $(BIN)/$(ISO)
 
-$(A_OBJ): $(BIN)/%.S.o : %.S
+$(A_OBJ): $(BIN)/%.S.o : %.S $(H_SRC)
 	mkdir -p $(@D)
 	printf "\033[33m  AS  \033[0m%s\n" $<
 	$(CPP) $(CPPFLAGS) -o $@.cpp $<
 	$(AS) -o $@ $@.cpp
 
-$(C_OBJ): $(BIN)/%.o : %.c
+$(C_OBJ): $(BIN)/%.o : %.c $(H_SRC)
 	mkdir -p $(@D)
 	printf "\033[34m  CC  \033[0m%s\n" $<
 	$(CC) -c $(CFLAGS) -o $@ $<
@@ -101,6 +101,7 @@ $(BIN)/$(ISO): $(BIN)/$(KERNEL)
 	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
 
 $(BIN)/$(IMAGE):
+	make -s -C user
 	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
 
 fmt:

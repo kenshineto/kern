@@ -20,5 +20,5 @@ void *mboot_get_initrd(size_t *len)
 
 	struct multiboot_tag_module *mod = (struct multiboot_tag_module *)tag;
 	*len = mod->mod_end - mod->mod_start;
-	return (void*) (uintptr_t) mod->mod_start;
+	return (void *)(uintptr_t)mod->mod_start;
 }

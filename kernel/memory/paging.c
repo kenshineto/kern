@@ -63,63 +63,72 @@ extern volatile struct pte
 // paged address to read page tables
 // the structures are not gurenteed to be ident mapped
 // map them here with map_<type>(phys_addr) before useing structures
-void volatile *addr_mapped = (void *)(uintptr_t)0x40004000;
 static volatile struct pml4e *pml4_mapped = (void *)(uintptr_t)0x40000000;
 static volatile struct pdpte *pdpt_mapped = (void *)(uintptr_t)0x40001000;
 static volatile struct pde *pd_mapped = (void *)(uintptr_t)0x40002000;
 static volatile struct pte *pt_mapped = (void *)(uintptr_t)0x40003000;
+static volatile void *addr_mapped = (void *)(uintptr_t)0x40004000;
+
+// kernel start/end
+extern char kernel_start[];
+extern char kernel_end[];
 
 static inline void invlpg(volatile void *addr)
 {
 	__asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory");
 }
 
-static void load_addr(volatile void *phys_addr)
+static volatile struct pml4e *load_pml4(volatile void *phys)
+{
+	static volatile struct pte *pt = &paging_pt[0];
+	if ((uint64_t)phys >> 12 == pt->address)
+		return pml4_mapped;
+	pt->address = (uint64_t)phys >> 12;
+	pt->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(pml4_mapped);
+	return pml4_mapped;
+}
+
+static volatile struct pdpte *load_pdpt(volatile void *phys)
+{
+	static volatile struct pte *pt = &paging_pt[1];
+	if ((uint64_t)phys >> 12 == pt->address)
+		return pdpt_mapped;
+	pt->address = (uint64_t)phys >> 12;
+	pt->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(pdpt_mapped);
+	return pdpt_mapped;
+}
+
+static volatile struct pde *load_pd(volatile void *phys)
+{
+	static volatile struct pte *pt = &paging_pt[2];
+	if ((uint64_t)phys >> 12 == pt->address)
+		return pd_mapped;
+	pt->address = (uint64_t)phys >> 12;
+	pt->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(pd_mapped);
+	return pd_mapped;
+}
+
+static volatile struct pte *load_pt(volatile void *phys)
+{
+	static volatile struct pte *pt = &paging_pt[3];
+	if ((uint64_t)phys >> 12 == pt->address)
+		return pt_mapped;
+	pt->address = (uint64_t)phys >> 12;
+	pt->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(pt_mapped);
+	return pt_mapped;
+}
+
+static volatile void *load_addr(volatile void *phys_addr)
 {
 	static volatile struct pte *pt = &paging_pt[4];
 	pt->address = (uint64_t)phys_addr >> 12;
 	pt->flags = F_PRESENT | F_WRITEABLE;
 	invlpg(addr_mapped);
-}
-
-static void load_pml4(volatile void *phys)
-{
-	static volatile struct pte *pt = &paging_pt[0];
-	if ((uint64_t)phys >> 12 == pt->address)
-		return;
-	pt->address = (uint64_t)phys >> 12;
-	pt->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pml4_mapped);
-}
-
-static void load_pdpt(volatile void *phys)
-{
-	static volatile struct pte *pt = &paging_pt[1];
-	if ((uint64_t)phys >> 12 == pt->address)
-		return;
-	pt->address = (uint64_t)phys >> 12;
-	pt->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pdpt_mapped);
-}
-
-static void load_pd(volatile void *phys)
-{
-	static volatile struct pte *pt = &paging_pt[2];
-	if ((uint64_t)phys >> 12 == pt->address)
-		return;
-	pt->address = (uint64_t)phys >> 12;
-	pt->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pd_mapped);
-}
-
-static void load_pt(volatile void *phys)
-{
-	static volatile struct pte *pt = &paging_pt[3];
-	if ((uint64_t)phys >> 12 == pt->address)
-		return;
-	pt->address = (uint64_t)phys >> 12;
-	pt->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pt_mapped);
+	return addr_mapped;
 }
 
 #define PAG_SUCCESS 0
@@ -488,7 +497,6 @@ static int map_pages(volatile struct pml4e *root, void *virt_start,
 	return 0;
 
 failed:
-
 	unmap_pages(root, virt, i);
 
 	return 1;
@@ -498,18 +506,18 @@ void paging_init(void)
 {
 	// map pdpt
 	kernel_pml4[0].flags = F_PRESENT | F_WRITEABLE;
-	kernel_pml4[0].address = (uint64_t)(&kernel_pdpt_0) >> 12;
+	kernel_pml4[0].address = (uint64_t)(kernel_pdpt_0) >> 12;
 
 	// map pd0 & pd1
 	kernel_pdpt_0[0].flags = F_PRESENT | F_WRITEABLE;
-	kernel_pdpt_0[0].address = (uint64_t)(&kernel_pd_0) >> 12;
+	kernel_pdpt_0[0].address = (uint64_t)(kernel_pd_0) >> 12;
 	kernel_pdpt_0[1].flags = F_PRESENT | F_WRITEABLE;
-	kernel_pdpt_0[1].address = (uint64_t)(&kernel_pd_1) >> 12;
+	kernel_pdpt_0[1].address = (uint64_t)(kernel_pd_1) >> 12;
 
 	// map pd0 entires (length N_IDENT_PTS)
 	for (int i = 0; i < N_IDENT_PTS; i++) {
 		kernel_pd_0[i].flags = F_PRESENT | F_WRITEABLE;
-		kernel_pd_0[i].address = (uint64_t)(&kernel_pd_0_ents[512 * i]) >> 12;
+		kernel_pd_0[i].address = (uint64_t)(kernel_pd_0_ents + 512 * i) >> 12;
 	}
 
 	// identity map kernel
@@ -520,13 +528,37 @@ void paging_init(void)
 
 	// map paging_pt
 	kernel_pd_1[0].flags = F_PRESENT | F_WRITEABLE;
-	kernel_pd_1[0].address = (uint64_t)(&paging_pt) >> 12;
+	kernel_pd_1[0].address = (uint64_t)(paging_pt) >> 12;
 
-	memsetv(&paging_pt, 0, 4096);
+	memsetv(paging_pt, 0, 4096);
 
 	// make sure we are using THESE pagetables
 	// EFI doesnt on boot
 	__asm__ volatile("mov %0, %%cr3" ::"r"(kernel_pml4) : "memory");
+}
+
+volatile void *pml4_alloc(void)
+{
+	struct pml4e *pml4_phys = alloc_phys_page();
+	struct pml4e *pml4 = kmapaddr(pml4_phys, NULL, PAGE_SIZE, F_WRITEABLE);
+	memset(pml4, 0, PAGE_SIZE);
+
+	if (map_pages(pml4_phys, kernel_start, kernel_start,
+				  F_PRESENT | F_WRITEABLE,
+				  (kernel_end - kernel_start) / PAGE_SIZE)) {
+		free_phys_page(pml4_phys);
+		kunmapaddr(pml4);
+		return NULL;
+	}
+
+	kunmapaddr(pml4);
+	return pml4_phys;
+}
+
+void pml4_free(volatile void *pml4)
+{
+	(void)pml4;
+	// TODD: free structures
 }
 
 static inline void *page_align(void *addr)
@@ -552,13 +584,13 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 
 	// get page aligned (or allocate) vitural address
 	if (virt == NULL)
-		virt = virtaddr_alloc(ctx->virtctx, pages);
+		virt = virtaddr_alloc(&ctx->virtctx, pages);
 	if (virt == NULL)
 		return NULL;
 
 	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, aligned_phys,
 				  F_PRESENT | flags, pages)) {
-		virtaddr_free(ctx->virtctx, virt);
+		virtaddr_free(&ctx->virtctx, virt);
 		return NULL;
 	}
 
@@ -567,32 +599,72 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 
 void mem_unmapaddr(mem_ctx_t ctx, void *virt)
 {
-	long pages = virtaddr_free(ctx->virtctx, virt);
+	if (virt == NULL)
+		return;
+
+	long pages = virtaddr_free(&ctx->virtctx, virt);
 	if (pages < 1)
 		return;
 	unmap_pages(kernel_pml4, virt, pages);
 }
 
-void *mem_alloc_page(mem_ctx_t ctx)
+void *mem_alloc_page(mem_ctx_t ctx, bool lazy)
 {
-	void *virt = virtaddr_alloc(ctx->virtctx, 1);
+	void *virt = virtaddr_alloc(&ctx->virtctx, 1);
 	if (virt == NULL)
 		return NULL;
-	if (map_page((volatile struct pml4e *)ctx->pml4, virt, NULL, F_WRITEABLE)) {
-		virtaddr_free(ctx->virtctx, virt);
+
+	if (mem_alloc_page_at(ctx, virt, lazy) == NULL) {
+		virtaddr_free(&ctx->virtctx, virt);
 		return NULL;
 	}
+
 	return virt;
 }
 
-void *mem_alloc_pages(mem_ctx_t ctx, size_t count)
+void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, bool lazy)
 {
-	void *virt = virtaddr_alloc(ctx->virtctx, count);
+	void *phys = NULL;
+	if (!lazy) {
+		if ((phys = alloc_phys_page()) == NULL)
+			return NULL;
+	}
+
+	if (map_page((volatile struct pml4e *)ctx->pml4, virt, phys, F_WRITEABLE)) {
+		if (phys)
+			free_phys_page(phys);
+		return NULL;
+	}
+
+	return virt;
+}
+
+void *mem_alloc_pages(mem_ctx_t ctx, size_t count, bool lazy)
+{
+	void *virt = virtaddr_alloc(&ctx->virtctx, count);
 	if (virt == NULL)
 		return NULL;
-	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, NULL, F_WRITEABLE,
+
+	if (mem_alloc_pages_at(ctx, count, virt, lazy) == NULL) {
+		virtaddr_free(&ctx->virtctx, virt);
+		return NULL;
+	}
+
+	return virt;
+}
+
+void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt, bool lazy)
+{
+	void *phys = NULL;
+	if (!lazy) {
+		if ((phys = alloc_phys_pages(count)) == NULL)
+			return NULL;
+	}
+
+	if (map_pages((volatile struct pml4e *)ctx->pml4, virt, phys, F_WRITEABLE,
 				  count)) {
-		virtaddr_free(ctx->virtctx, virt);
+		if (phys)
+			free_phys_pages(phys, count);
 		return NULL;
 	}
 	return virt;
@@ -600,7 +672,10 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count)
 
 void mem_free_pages(mem_ctx_t ctx, void *virt)
 {
-	long pages = virtaddr_free(ctx->virtctx, virt);
+	if (virt == NULL)
+		return;
+
+	long pages = virtaddr_free(&ctx->virtctx, virt);
 	if (pages == 1)
 		unmap_page((volatile struct pml4e *)ctx->pml4, virt);
 	else if (pages > 1)

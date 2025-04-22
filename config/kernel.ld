@@ -1,5 +1,12 @@
 ENTRY(_start)
 
+PHDRS
+{
+   text PT_LOAD;
+   rodata PT_LOAD;
+   data PT_LOAD;
+}
+
 SECTIONS
 {
 	. = 1M;
@@ -14,7 +21,7 @@ SECTIONS
 		*(.text)
 		*(.text.*)
 		text_end = .;
-	}
+	} : text
 
 	. = ALIGN(0x1000);
 
@@ -23,7 +30,7 @@ SECTIONS
 		*(.rodata)
 		*(.rodata.*)
 		rodata_end = .;
-	}
+	} : rodata
 
 	. = ALIGN(0x1000);
 
@@ -32,7 +39,7 @@ SECTIONS
 		*(.data)
 		*(.data.*)
 		data_end = .;
-	}
+	} : data
 
 	. = ALIGN(0x1000);
 
@@ -42,7 +49,7 @@ SECTIONS
 		*(.bss)
 		*(.bss.*)
 		bss_end = .;
-	}
+	} : data
 
 	kernel_end = .;
 
