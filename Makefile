@@ -52,6 +52,11 @@ QEMU = qemu-system-x86_64-uefi
 GRUB = grub-mkrescue-uefi
 endif
 
+ifeq ($(UNAME),Darwin)
+QEMU = qemu-system-x86_64 -smbios type=0,uefi=on -bios config/OVMF.fd
+GRUB = x86_64-elf-grub-mkrescue
+endif
+
 qemu: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
 	$(QEMU) $(QEMUOPTS)
 
