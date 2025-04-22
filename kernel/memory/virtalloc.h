@@ -66,4 +66,9 @@ void *virtaddr_alloc(struct virt_ctx *ctx, int pages);
  */
 long virtaddr_free(struct virt_ctx *ctx, void *virtaddr);
 
+/**
+ * Cleans up heap allocations and frees the virtalloc context
+ */
+void virtaddr_cleanup(struct virt_ctx *ctx);
+
 #endif /* virtalloc.h */

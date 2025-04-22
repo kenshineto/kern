@@ -112,6 +112,9 @@ void free_phys_page(void *ptr)
 
 void free_phys_pages(void *ptr, int pages)
 {
+	if (ptr == NULL)
+		return;
+
 	long idx = page_idx(ptr);
 	if (idx == -1)
 		return;
