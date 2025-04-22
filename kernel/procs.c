@@ -1,4 +1,3 @@
-#include "lib/klib.h"
 #include <comus/procs.h>
 #include <comus/error.h>
 #include <comus/cpu.h>

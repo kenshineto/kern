@@ -1,4 +1,3 @@
-#include "lib/kio.h"
 #include <lib.h>
 #include <comus/fs.h>
 #include <comus/mboot.h>
