@@ -128,10 +128,9 @@ void mem_unmapaddr(mem_ctx_t ctx, void *virt);
  *
  * @param ctx - the memory context
  * @param flags - memory flags (F_PRESENT will always be set)
- * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the vitural address aloocated or NULL on failure
  */
-void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags, bool lazy);
+void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags);
 
 /**
  * Allocate a single page of memory at the given vitural address with the given paging structure
@@ -139,11 +138,9 @@ void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags, bool lazy);
  * @param ctx - the memory context
  * @param virt - the vitural address to allocate at
  * @param flags - memory flags (F_PRESENT will always be set)
- * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the vitural address aloocated or NULL on failure
  */
-void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, unsigned int flags,
-						bool lazy);
+void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, unsigned int flags);
 
 /**
  * Allocate size_t amount of contiguous virtual pages with the given paging structure
@@ -151,11 +148,9 @@ void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, unsigned int flags,
  * @param ctx - the memory context
  * @param count - the number of pages to allocate
  * @param flags - memory flags (F_PRESENT will always be set)
- * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the address allocated or NULL on failure
  */
-void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags,
-					  bool lazy);
+void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags);
 
 /**
  * Allocate size_t amount of contiguous virtual pages at a given virtural address with the given paging structure
@@ -164,11 +159,10 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags,
  * @param count - the number of pages to allocate
  * @param virt - the vitural address to allocate at
  * @param flags - memory flags (F_PRESENT will always be set)
- * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the address allocated or NULL on failure
  */
 void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
-						 unsigned int flags, bool lazy);
+						 unsigned int flags);
 
 /**
  * Free allocated pages with the given paging structure.
@@ -176,13 +170,6 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
  * @param ptr - the pointer provided by alloc_page or alloc_pages
  */
 void mem_free_pages(mem_ctx_t ctx, void *ptr);
-
-/**
- * Load a not allocated but properly mapped page
- *
- * @returns 0 on success, negative error code on failure
- */
-int mem_load_page(mem_ctx_t ctx, void *virt);
 
 /**
  * Allocates at least len bytes of memory starting at
@@ -224,12 +211,5 @@ void *kalloc_pages(size_t count);
  * @param ptr - the pointer provided by alloc_page or alloc_pages
  */
 void kfree_pages(void *ptr);
-
-/**
- * Load a not allocated but properly mapped page
- *
- * @returns 0 on success, negative error code on failure
- */
-int kload_page(void *virt);
 
 #endif /* memory.h */

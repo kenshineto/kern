@@ -11,7 +11,7 @@
 
 void paging_init(void);
 
-volatile void *pml4_alloc(void);
-void pml4_free(volatile void *pml4);
+volatile void *paging_alloc(void);
+void paging_free(volatile void *addr);
 
 #endif /* paging.h */

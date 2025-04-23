@@ -120,8 +120,7 @@ void idt_exception_handler(uint64_t exception, uint64_t code,
 	case EX_PAGE_FAULT:
 		// page faults store the offending address in cr2
 		__asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
-		if (!kload_page((void *)cr2))
-			return;
+		break;
 	}
 
 	kputs("\n\n!!! EXCEPTION !!!\n");

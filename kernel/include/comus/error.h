@@ -23,8 +23,6 @@
 // kernel error codes
 #define E_EMPTY_QUEUE (-100)
 #define E_NO_PCBS (-101)
-#define E_NO_PTE (-102)
-#define E_LOAD_LIMIT (-103)
 
 // exit status values
 #define EXIT_SUCCESS (0)

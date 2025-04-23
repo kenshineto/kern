@@ -33,23 +33,17 @@ void kunmapaddr(void *virt)
 
 void *kalloc_page(void)
 {
-	return mem_alloc_page(kernel_mem_ctx, F_PRESENT | F_WRITEABLE, false);
+	return mem_alloc_page(kernel_mem_ctx, F_PRESENT | F_WRITEABLE);
 }
 
 void *kalloc_pages(size_t count)
 {
-	return mem_alloc_pages(kernel_mem_ctx, count, F_PRESENT | F_WRITEABLE,
-						   false);
+	return mem_alloc_pages(kernel_mem_ctx, count, F_PRESENT | F_WRITEABLE);
 }
 
 void kfree_pages(void *ptr)
 {
 	mem_free_pages(kernel_mem_ctx, ptr);
-}
-
-int kload_page(void *virt)
-{
-	return mem_load_page(kernel_mem_ctx, virt);
 }
 
 mem_ctx_t mem_ctx_alloc(void)
@@ -58,7 +52,7 @@ mem_ctx_t mem_ctx_alloc(void)
 	if (ctx == NULL)
 		return NULL;
 
-	if ((ctx->pml4 = pml4_alloc()) == NULL)
+	if ((ctx->pml4 = paging_alloc()) == NULL)
 		return NULL;
 	virtaddr_init(&ctx->virtctx);
 
@@ -80,7 +74,7 @@ mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow)
 
 void mem_ctx_free(mem_ctx_t ctx)
 {
-	pml4_free(ctx->pml4);
+	paging_free(ctx->pml4);
 	virtaddr_cleanup(&ctx->virtctx);
 
 	if (user_mem_ctx_next == NULL) {

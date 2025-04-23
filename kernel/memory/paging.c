@@ -1,9 +1,6 @@
 #include <lib.h>
 #include <comus/memory.h>
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "virtalloc.h"
 #include "physalloc.h"
 #include "paging.h"
@@ -102,8 +99,7 @@ struct pd {
 // PAGE TABLE ENTRY
 struct pte {
 	uint64_t flags : 9;
-	uint64_t loaded : 1; // ignored
-	uint64_t : 2; // ignored
+	uint64_t : 3; // ignored
 	uint64_t address : 40;
 	uint64_t : 7; // ignored
 	uint64_t protection_key : 4;
@@ -116,7 +112,7 @@ struct pt {
 		// pt metadata
 		struct {
 			uint64_t : 9; // flags
-			uint64_t : 1; // (loaded) ignored
+			uint64_t : 1; // ignored
 			uint64_t count_low : 2; // ignored
 			uint64_t : 40; // address
 			uint64_t count_high : 7; // ignored
@@ -137,490 +133,495 @@ extern volatile struct pd kernel_pd_1;
 extern volatile struct pt
 	paging_pt; // paging_pt should NEVER be outside of this file, NEVER i say
 
-// paged address to read page tables
-// the structures are not gurenteed to be ident mapped
-// map them here with load_<type>(phys_addr) before useing structures
-static volatile struct pml4 *pml4_mapped = (void *)(uintptr_t)0x40000000;
-static volatile struct pdpt *pdpt_mapped = (void *)(uintptr_t)0x40001000;
-static volatile struct pd *pd_mapped = (void *)(uintptr_t)0x40002000;
-static volatile struct pt *pt_mapped = (void *)(uintptr_t)0x40003000;
-static volatile void *addr_mapped = (void *)(uintptr_t)0x40004000;
-
 // kernel start/end
 extern char kernel_start[];
 extern char kernel_end[];
 
-static inline void invlpg(volatile void *addr)
+// invalidate page cache at a vitural address
+static inline void invlpg(volatile void *vADDR)
 {
-	__asm__ volatile("invlpg (%0)" ::"r"(addr) : "memory");
+	__asm__ volatile("invlpg (%0)" ::"r"(vADDR) : "memory");
 }
 
-static volatile struct pml4 *load_pml4(volatile void *phys)
+/* map */
+
+// map a physical pml4 address to access
+// @returns VIRTUAL ADDRESS
+static volatile struct pml4 *pml4_map(volatile struct pml4 *pPML4)
 {
-	static volatile struct pte *pte = &paging_pt.entries[0];
-	if ((uint64_t)phys >> 12 == pte->address)
-		return pml4_mapped;
-	pte->address = (uint64_t)phys >> 12;
-	pte->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pml4_mapped);
-	return pml4_mapped;
+	static struct pml4 *vPML4 = (void *)(uintptr_t)0x40000000;
+	static volatile struct pte *vPTE = &paging_pt.entries[0];
+
+	if ((uint64_t)pPML4 >> 12 == vPTE->address)
+		return vPML4;
+
+	vPTE->address = (uint64_t)pPML4 >> 12;
+	vPTE->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(vPML4);
+	return vPML4;
 }
 
-static volatile struct pdpt *load_pdpt(volatile void *phys)
+// map a physical pdpt address to access
+// @returns VIRTUAL ADDRESS
+static volatile struct pdpt *pdpt_map(volatile struct pdpt *pPDPT)
 {
-	static volatile struct pte *pte = &paging_pt.entries[1];
-	if ((uint64_t)phys >> 12 == pte->address)
-		return pdpt_mapped;
-	pte->address = (uint64_t)phys >> 12;
-	pte->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pdpt_mapped);
-	return pdpt_mapped;
+	static struct pdpt *vPDPT = (void *)(uintptr_t)0x40001000;
+	static volatile struct pte *vPTE = &paging_pt.entries[1];
+
+	if ((uint64_t)pPDPT >> 12 == vPTE->address)
+		return vPDPT;
+
+	vPTE->address = (uint64_t)pPDPT >> 12;
+	vPTE->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(vPDPT);
+	return vPDPT;
 }
 
-static volatile struct pd *load_pd(volatile void *phys)
+// map a physical pd address to access
+// @returns VIRTUAL ADDRESS
+static volatile struct pd *pd_map(volatile struct pd *pPD)
 {
-	static volatile struct pte *pte = &paging_pt.entries[2];
-	if ((uint64_t)phys >> 12 == pte->address)
-		return pd_mapped;
-	pte->address = (uint64_t)phys >> 12;
-	pte->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pd_mapped);
-	return pd_mapped;
+	static struct pd *vPD = (void *)(uintptr_t)0x40002000;
+	static volatile struct pte *vPTE = &paging_pt.entries[2];
+
+	if ((uint64_t)pPD >> 12 == vPTE->address)
+		return vPD;
+
+	vPTE->address = (uint64_t)pPD >> 12;
+	vPTE->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(vPD);
+	return vPD;
 }
 
-static volatile struct pt *load_pt(volatile void *phys)
+// map a physical pt address to access
+// @returns VIRTUAL ADDRESS
+static volatile struct pt *pt_map(volatile struct pt *pPT)
 {
-	static volatile struct pte *pte = &paging_pt.entries[3];
-	if ((uint64_t)phys >> 12 == pte->address)
-		return pt_mapped;
-	pte->address = (uint64_t)phys >> 12;
-	pte->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(pt_mapped);
-	return pt_mapped;
+	static struct pt *vPT = (void *)(uintptr_t)0x40003000;
+	static volatile struct pte *vPTE = &paging_pt.entries[3];
+
+	if ((uint64_t)pPT >> 12 == vPTE->address)
+		return vPT;
+
+	vPTE->address = (uint64_t)pPT >> 12;
+	vPTE->flags = F_PRESENT | F_WRITEABLE;
+	invlpg(vPT);
+	return vPT;
 }
 
-static volatile void *load_addr(volatile void *phys_addr)
-{
-	static volatile struct pte *pte = &paging_pt.entries[4];
-	pte->address = (uint64_t)phys_addr >> 12;
-	pte->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(addr_mapped);
-	return addr_mapped;
-}
+/* locate */
 
-#define PAG_SUCCESS 0
-#define PAG_CANNOT_ALLOC 1
-#define PAG_NOT_PRESENT 2
-
-static int select_pdpt(void *virt, unsigned int flags,
-					   volatile struct pml4 *pml4, volatile struct pdpt **res,
-					   bool create)
+// locate a pdpt for a vitural address
+// @returns PHYSICAL ADDRESS
+static volatile struct pdpt *pdpt_locate(volatile struct pml4 *pPML4,
+										 void *vADDR)
 {
-	load_pml4(pml4);
-	uint64_t offset = (uint64_t)virt >> 39;
-	volatile struct pml4e *pml4e = &pml4_mapped->entries[offset];
-	if (!(pml4e->flags & F_PRESENT)) {
-		if (!create)
-			return PAG_NOT_PRESENT;
-		void *new_page = alloc_phys_page();
-		if (new_page == NULL)
-			return PAG_CANNOT_ALLOC;
-		load_addr(new_page);
-		memsetv(addr_mapped, 0, PAGE_SIZE);
-		pml4e->address = ((uint64_t)new_page) >> 12;
-		pml4e->flags = F_PRESENT;
-		// update count
-		pml4_mapped->count++;
+	volatile struct pml4 *vPML4;
+	volatile struct pml4e *vPML4E;
+	volatile struct pdpt *pPDPT;
+	uint64_t offset;
+
+	offset = (uint64_t)vADDR >> 39;
+	vPML4 = pml4_map(pPML4);
+	vPML4E = &vPML4->entries[offset];
+
+	if (vPML4E->flags & F_PRESENT) {
+		pPDPT = (volatile struct pdpt *)((uintptr_t)vPML4E->address << 12);
+		return pPDPT;
 	}
-	if (flags)
-		pml4e->flags = F_PRESENT | flags;
-	*res = (volatile struct pdpt *)(uintptr_t)(pml4e->address << 12);
-	return PAG_SUCCESS;
+
+	return NULL;
 }
 
-static int select_pd(void *virt, unsigned int flags, volatile struct pdpt *pdpt,
-					 volatile struct pd **res, bool create)
+// locate a pd for a vitural address
+// @returns PHYSICAL ADDRESS
+static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, void *vADDR)
 {
-	load_pdpt(pdpt);
-	uint64_t offset = ((uint64_t)virt >> 30) & 0x1ff;
-	volatile struct pdpte *pdpte = &pdpt_mapped->entries[offset];
-	if (!(pdpte->flags & F_PRESENT)) {
-		if (!create)
-			return PAG_NOT_PRESENT;
-		void *new_page = alloc_phys_page();
-		if (new_page == NULL)
-			return PAG_CANNOT_ALLOC;
-		load_addr(new_page);
-		memsetv(addr_mapped, 0, PAGE_SIZE);
-		pdpte->address = ((uint64_t)new_page) >> 12;
-		pdpte->flags = F_PRESENT;
-		// update count
-		pdpt_mapped->count++;
+	volatile struct pdpt *vPDPT;
+	volatile struct pdpte *vPDPTE;
+	volatile struct pd *pPD;
+	uint64_t offset;
+
+	offset = ((uint64_t)vADDR >> 30) & 0x1ff;
+	vPDPT = pdpt_map(pPDPT);
+	vPDPTE = &vPDPT->entries[offset];
+
+	if (vPDPTE->flags & F_PRESENT) {
+		pPD = (volatile struct pd *)((uintptr_t)vPDPTE->address << 12);
+		return pPD;
 	}
-	if (flags)
-		pdpte->flags = F_PRESENT | flags;
-	*res = (volatile struct pd *)(uintptr_t)(pdpte->address << 12);
-	return PAG_SUCCESS;
+
+	return NULL;
 }
 
-static int select_pt(void *virt, unsigned int flags, volatile struct pd *pd,
-					 volatile struct pt **res, bool create)
+// locate a pt for a vitural address
+// @returns PHYSICAL ADDRESS
+static volatile struct pt *pt_locate(volatile struct pd *pPD, void *vADDR)
 {
-	load_pd(pd);
-	uint64_t offset = ((uint64_t)virt >> 21) & 0x1ff;
-	volatile struct pde *pde = &pd_mapped->entries[offset];
-	if (!(pde->flags & F_PRESENT)) {
-		if (!create)
-			return PAG_NOT_PRESENT;
-		void *new_page = alloc_phys_page();
-		if (new_page == NULL)
-			return PAG_CANNOT_ALLOC;
-		load_addr(new_page);
-		memsetv(addr_mapped, 0, PAGE_SIZE);
-		pde->address = ((uint64_t)new_page) >> 12;
-		pde->flags = F_PRESENT;
-		// update count
-		pd_mapped->count++;
+	volatile struct pd *vPD;
+	volatile struct pde *vPDE;
+	volatile struct pt *pPT;
+	uint64_t offset;
+
+	offset = ((uint64_t)vADDR >> 21) & 0x1ff;
+	vPD = pd_map(pPD);
+	vPDE = &vPD->entries[offset];
+
+	if (vPDE->flags & F_PRESENT) {
+		pPT = (volatile struct pt *)((uintptr_t)vPDE->address << 12);
+		return pPT;
 	}
-	if (flags)
-		pde->flags = F_PRESENT | flags;
-	*res = (volatile struct pt *)(uintptr_t)(pde->address << 12);
-	return PAG_SUCCESS;
+
+	return NULL;
 }
 
-static void select_page(void *virt, volatile struct pt *pt,
-						volatile struct pte **res)
+/* alloc */
+
+// allocate a pml4
+// @returns PHYSICAL ADDRESS
+static volatile struct pml4 *pml4_alloc(void)
 {
-	load_pt(pt);
-	uint64_t offset = ((uint64_t)virt >> 12) & 0x1ff;
-	volatile struct pte *page = &pt_mapped->entries[offset];
-	*res = page;
-	return;
+	volatile struct pml4 *pPML4, *vPML4;
+
+	pPML4 = alloc_phys_page();
+	if (pPML4 == NULL)
+		return NULL;
+
+	vPML4 = pml4_map(pPML4);
+	memsetv(vPML4, 0, sizeof(struct pml4));
+	return pPML4;
 }
 
-static void pte_free(volatile struct pte *vPTE)
+// allocate a pdpt for a vitural address (if not exists)
+// @returns PHYSICAL ADDRESS
+static volatile struct pdpt *pdpt_alloc(volatile struct pml4 *pPML4,
+										void *vADDR, unsigned int flags)
 {
-	volatile struct pte *pPTE;
+	volatile struct pml4 *vPML4;
+	volatile struct pml4e *vPML4E;
+	volatile struct pdpt *pPDPT, *vPDPT;
+	uint64_t offset;
 
-	if (!(vPTE->flags & F_PRESENT))
-		return;
+	offset = (uint64_t)vADDR >> 39;
+	vPML4 = pml4_map(pPML4);
+	vPML4E = &vPML4->entries[offset];
 
-	pPTE = (volatile struct pte *)((uintptr_t)vPTE->address << 12);
+	pPDPT = pdpt_locate(pPML4, vADDR);
+	if (pPDPT) {
+		vPML4E->flags |= flags;
+		return pPDPT;
+	}
 
-	// allocated, free phys page
-	free_phys_page((void*)(uintptr_t)pPTE);
+	pPDPT = alloc_phys_page();
+	if (pPML4 == NULL)
+		return NULL;
+
+	vPDPT = pdpt_map(pPDPT);
+	memsetv(vPDPT, 0, sizeof(struct pdpt));
+	vPML4E->address = (uintptr_t)pPDPT >> 12;
+	vPML4E->flags = F_PRESENT | flags;
+	vPML4->count++;
+
+	return pPDPT;
 }
 
-static void pt_free(volatile struct pde *vPDE)
+// allocate a pd for a vitural address (if not exists)
+// @returns PHYSICAL ADDRESS
+static volatile struct pd *pd_alloc(volatile struct pdpt *pPDPT, void *vADDR,
+									unsigned int flags)
 {
+	volatile struct pdpt *vPDPT;
+	volatile struct pdpte *vPDPTE;
+	volatile struct pd *pPD, *vPD;
+	uint64_t offset;
+
+	offset = ((uint64_t)vADDR >> 30) & 0x1ff;
+	vPDPT = pdpt_map(pPDPT);
+	vPDPTE = &vPDPT->entries[offset];
+
+	pPD = pd_locate(pPDPT, vADDR);
+	if (pPD) {
+		vPDPTE->flags |= flags;
+		return pPD;
+	}
+
+	pPD = alloc_phys_page();
+	if (pPDPT == NULL)
+		return NULL;
+
+	vPD = pd_map(pPD);
+	memsetv(vPD, 0, sizeof(struct pd));
+	vPDPTE->address = (uintptr_t)pPD >> 12;
+	vPDPTE->flags = F_PRESENT | flags;
+	vPDPT->count++;
+
+	return pPD;
+}
+
+// allocate a pd for a vitural address (if not exists)
+// @returns PHYSICAL ADDRESS
+static volatile struct pt *pt_alloc(volatile struct pd *pPD, void *vADDR,
+									unsigned int flags)
+{
+	volatile struct pd *vPD;
+	volatile struct pde *vPDE;
 	volatile struct pt *pPT, *vPT;
+	uint64_t offset;
+
+	offset = ((uint64_t)vADDR >> 21) & 0x1ff;
+	vPD = pd_map(pPD);
+	vPDE = &vPD->entries[offset];
+
+	pPT = pt_locate(pPD, vADDR);
+	if (pPT) {
+		vPDE->flags |= flags;
+		return pPT;
+	}
+
+	pPT = alloc_phys_page();
+	if (pPD == NULL)
+		return NULL;
+
+	vPT = pt_map(pPT);
+	memsetv(vPT, 0, sizeof(struct pt));
+	vPDE->address = (uintptr_t)pPT >> 12;
+	vPDE->flags = F_PRESENT | flags;
+	vPD->count++;
+
+	return pPT;
+}
+
+/* free */
+
+static void pt_free(volatile struct pt *pPT, bool force)
+{
+	volatile struct pt *vPT;
 	uint64_t count;
 
-	if (!(vPDE->flags & F_PRESENT))
-		return;
-
-	pPT = (volatile struct pt *)((uintptr_t)vPDE->address << 12);
-	vPT = load_pt(pPT);
+	vPT = pt_map(pPT);
 	count = (vPT->count_high << 2) | vPT->count_low;
 
-	if (count)
-		for (uint64_t i = 0; i < 512; i++)
-			pte_free(&vPT->entries[i]);
-	free_phys_page((void*)(uintptr_t)pPT);
+	if (!count)
+		goto free;
+
+	for (uint64_t i = 0; i < 512; i++) {
+		volatile struct pte *vPTE;
+		void *pADDR;
+
+		vPTE = &vPT->entries[i];
+		if (!force && !(vPTE->flags & F_PRESENT))
+			continue;
+
+		pADDR = (void *)((uintptr_t)vPTE->address << 12);
+		free_phys_page(pADDR);
+	}
+
+free:
+	free_phys_page((void *)(uintptr_t)pPT);
 }
 
-static void pd_free(volatile struct pdpte *vPDPTE)
+static void pd_free(volatile struct pd *pPD, bool force)
 {
-	volatile struct pd *pPD, *vPD;
+	volatile struct pd *vPD;
 	uint64_t count;
 
-	if (!(vPDPTE->flags & F_PRESENT))
-		return;
-
-	pPD = (volatile struct pd *)((uintptr_t)vPDPTE->address << 12);
-	vPD = load_pd(pPD);
+	vPD = pd_map(pPD);
 	count = vPD->count;
 
-	if (count)
-		for (uint64_t i = 0; i < 512; i++)
-			pt_free(&vPD->entries[i]);
-	free_phys_page((void*)(uintptr_t)pPD);
+	if (!count)
+		goto free;
+
+	for (uint64_t i = 0; i < 512; i++) {
+		volatile struct pde *vPDE;
+		volatile struct pt *pPT;
+
+		vPDE = &vPD->entries[i];
+		if (!force && !(vPDE->flags & F_PRESENT))
+			continue;
+
+		pPT = (volatile struct pt *)((uintptr_t)vPDE->address << 12);
+		pt_free(pPT, force);
+	}
+
+free:
+	free_phys_page((void *)(uintptr_t)pPD);
 }
 
-static void pdpt_free(volatile struct pml4e *vPML4E)
+static void pdpt_free(volatile struct pdpt *pPDPT, bool force)
 {
-	volatile struct pdpt *pPDPT, *vPDPT;
+	volatile struct pdpt *vPDPT;
 	uint64_t count;
 
-	if (!(vPML4E->flags & F_PRESENT))
-		return;
-
-	pPDPT = (volatile struct pdpt *)((uintptr_t)vPML4E->address << 12);
-	vPDPT = load_pdpt(pPDPT);
+	vPDPT = pdpt_map(pPDPT);
 	count = vPDPT->count;
 
-	if (count)
-		for (uint64_t i = 0; i < 512; i++)
-			pd_free(&vPDPT->entries[i]);
-	free_phys_page((void*)(uintptr_t)pPDPT);
+	if (!count)
+		goto free;
+
+	for (uint64_t i = 0; i < 512; i++) {
+		volatile struct pdpte *vPDPTE;
+		volatile struct pd *pPD;
+
+		vPDPTE = &vPDPT->entries[i];
+		if (!force && !(vPDPTE->flags & F_PRESENT))
+			continue;
+
+		pPD = (volatile struct pd *)((uintptr_t)vPDPTE->address << 12);
+		pd_free(pPD, force);
+	}
+
+free:
+	free_phys_page((void *)(uintptr_t)pPDPT);
 }
 
-void pml4_free(volatile void *pPML4)
+static void pml4_free(volatile struct pml4 *pPML4, bool force)
 {
 	volatile struct pml4 *vPML4;
 	uint64_t count;
 
-	vPML4 = load_pml4(pPML4);
+	vPML4 = pml4_map(pPML4);
 	count = vPML4->count;
 
-	if (count)
-		for (uint64_t i = 0; i < 512; i++)
-			pdpt_free(&vPML4->entries[i]);
-	free_phys_page((void*)(uintptr_t)pPML4);
-}
+	if (!count)
+		goto free;
 
-static void unmap_page(volatile struct pml4 *pPML4, void *virt)
-{
-	volatile struct pdpt *pPDPT;
-	volatile struct pd *pPD;
-	volatile struct pt *pPT;
-	volatile struct pte *vPTE;
+	for (uint64_t i = 0; i < 512; i++) {
+		volatile struct pml4e *vPML4E;
+		volatile struct pdpt *pPDPT;
 
-	unsigned int df = 0;
+		vPML4E = &vPML4->entries[i];
+		if (!force && !(vPML4E->flags & F_PRESENT))
+			continue;
 
-	if (select_pdpt(virt, df, pPML4, &pPDPT, false))
-		return;
-
-	if (select_pd(virt, df, pPDPT, &pPD, false))
-		return;
-
-	if (select_pt(virt, df, pPD, &pPT, false))
-		return;
-
-	select_page(virt, pPT, &vPTE);
-
-	// update counts in parent structures
-	pml4_mapped->count--;
-	pdpt_mapped->count--;
-	pd_mapped->count--;
-
-	// unmap page
-	vPTE->address = 0;
-	vPTE->flags = 0;
-	vPTE->loaded = 0;
-
-	invlpg(virt);
-
-	return;
-}
-
-static void unmap_pages(volatile struct pml4 *pPML4, void *virt_start,
-						long page_count)
-{
-	uint64_t pml4_o = -1, pdpt_o = -1, pd_o = -1;
-
-	uint64_t pml4_n, pdpt_n, pd_n;
-
-	volatile struct pdpt *pPDPT = NULL;
-	volatile struct pd *pPD = NULL;
-	volatile struct pt *pPT = NULL;
-	volatile struct pte *vPTE = NULL;
-
-	unsigned int df = 0;
-
-	void *virt;
-
-	for (long i = 0; i < page_count; i++) {
-		virt = (char *)virt_start + (i * PAGE_SIZE);
-
-		pml4_n = (uint64_t)virt >> 39;
-		pdpt_n = ((uint64_t)virt >> 30) & 0x1ff;
-		pd_n = ((uint64_t)virt >> 21) & 0x1ff;
-
-		if (pPDPT == NULL || pml4_o != pml4_n) {
-			if (select_pdpt(virt, df, pPML4, &pPDPT, false))
-				continue;
-			pml4_o = pml4_n;
-		}
-
-		if (pPD == NULL || pdpt_o != pdpt_n) {
-			if (select_pd(virt, df, pPDPT, &pPD, false))
-				continue;
-			pdpt_o = pdpt_n;
-		}
-
-		if (pPT == NULL || pd_o != pd_n) {
-			if (pPT) {
-				//pt_try_free();
-			}
-			if (select_pt(virt, df, pPD, &pPT, false))
-				continue;
-			pd_o = pd_n;
-		}
-
-		select_page(virt, pPT, &vPTE);
-
-		// update counts in parent structures
-		pml4_mapped->count--;
-		pdpt_mapped->count--;
-		pd_mapped->count--;
-
-		// unmap page
-		vPTE->address = 0;
-		vPTE->flags = 0;
-		vPTE->loaded = 0;
+		pPDPT = (volatile struct pdpt *)((uintptr_t)vPML4E->address << 12);
+		pdpt_free(pPDPT, force);
 	}
 
-	//if (pt != NULL)
-	//	pt_try_free();
-
-	return;
+free:
+	free_phys_page((void *)(uintptr_t)pPML4);
 }
 
-static volatile struct pte *get_page(volatile struct pml4 *pPML4, void *virt)
+/* page specific */
+
+// locate a pte for a vitural address
+// @returns VIRTUAL ADDRESS
+static volatile struct pte *page_locate(volatile struct pml4 *pPML4,
+										void *vADDR)
 {
 	volatile struct pdpt *pPDPT;
 	volatile struct pd *pPD;
-	volatile struct pt *pPT;
+	volatile struct pt *pPT, *vPT;
 	volatile struct pte *vPTE;
+	uint64_t offset;
 
-	unsigned int df = 0;
-
-	if (select_pdpt(virt, df, pPML4, &pPDPT, false))
+	pPDPT = pdpt_locate(pPML4, vADDR);
+	if (pPDPT == NULL)
 		return NULL;
 
-	if (select_pd(virt, df, pPDPT, &pPD, false))
+	pPD = pd_locate(pPDPT, vADDR);
+	if (pPD == NULL)
 		return NULL;
 
-	if (select_pt(virt, df, pPD, &pPT, false))
+	pPT = pt_locate(pPD, vADDR);
+	if (pPT == NULL)
 		return NULL;
 
-	select_page(virt, pPT, &vPTE);
+	offset = ((uint64_t)vADDR >> 12) & 0x1ff;
+	vPT = pt_map(pPT);
+	vPTE = &vPT->entries[offset];
+
+	if (vPTE->flags & F_PRESENT)
+		return vPTE;
+
+	return NULL;
+}
+
+// allocate a pte for a vitural address
+// @returns VIRTUAL ADDRESS
+static volatile struct pte *page_alloc(volatile struct pml4 *pPML4, void *vADDR,
+									   unsigned int flags)
+{
+	volatile struct pdpt *pPDPT;
+	volatile struct pd *pPD;
+	volatile struct pt *pPT, *vPT;
+	volatile struct pte *vPTE;
+	uint64_t offset, count;
+
+	pPDPT = pdpt_alloc(pPML4, vADDR, flags);
+	if (pPDPT == NULL)
+		return NULL;
+
+	pPD = pd_alloc(pPDPT, vADDR, flags);
+	if (pPD == NULL)
+		return NULL;
+
+	pPT = pt_alloc(pPD, vADDR, flags);
+	if (pPT == NULL)
+		return NULL;
+
+	offset = ((uint64_t)vADDR >> 12) & 0x1ff;
+	vPT = pt_map(pPT);
+	vPTE = &vPT->entries[offset];
+
+	memsetv(vPTE, 0, sizeof(struct pte));
+	count = (vPT->count_high << 2) | vPT->count_low;
+	count++;
+	vPT->count_low = count & 0x3;
+	vPT->count_high = (count >> 2) & 0x7f;
 
 	return vPTE;
 }
 
-static int map_page(volatile struct pml4 *pPML4, void *virt, void *phys,
-					unsigned int flags)
+// free a pte (page) for a vitural address
+static void page_free(volatile struct pml4 *pPML4, void *vADDR)
 {
-	volatile struct pdpt *pPDPT;
-	volatile struct pd *pPD;
-	volatile struct pt *pPT;
 	volatile struct pte *vPTE;
+	void *pADDR;
 
-	unsigned int df = F_WRITEABLE;
+	vPTE = page_locate(pPML4, vADDR);
+	if (vPTE == NULL)
+		return;
 
-	if (phys == NULL)
-		df = 0; // alloc page on fault
+	vPTE->flags = 0;
+	vPTE->address = 0;
 
-	if (select_pdpt(virt, df, pPML4, &pPDPT, true))
-		return 1;
-
-	if (select_pd(virt, df, pPDPT, &pPD, true))
-		return 1;
-
-	if (select_pt(virt, df, pPD, &pPT, true))
-		return 1;
-
-	select_page(virt, pPT, &vPTE);
-
-	// update counts in parent structures
-	pml4_mapped->count++;
-	pdpt_mapped->count++;
-	pd_mapped->count++;
-
-	// map page
-	if (phys) {
-		vPTE->flags = F_PRESENT | flags;
-		vPTE->address = (uint64_t)phys >> 12;
-		vPTE->loaded = 1;
-		invlpg(virt);
-	} else {
-		vPTE->flags = flags;
-		vPTE->address = 0;
-		vPTE->loaded = 0;
-	}
-
-	return 0;
+	pADDR = (void *)((uintptr_t)vPTE->address << 12);
+	free_phys_page(pADDR);
 }
 
-static int map_pages(volatile struct pml4 *pPMl4, void *virt_start,
-					 void *phys_start, unsigned int flags, long page_count)
+/* map & unmap pages */
+
+static void unmap_pages(volatile struct pml4 *pPML4, void *vADDR,
+						long page_count)
 {
-	uint64_t pml4_o = -1, pdpt_o = -1, pd_o = -1;
-
-	uint64_t pml4_n, pdpt_n, pd_n;
-
-	volatile struct pdpt *pPDPT = NULL;
-	volatile struct pd *pPD = NULL;
-	volatile struct pt *pPT = NULL;
-	volatile struct pte *vPTE = NULL;
-
-	void *virt, *phys;
-
-	unsigned int df = F_WRITEABLE;
-
-	if (phys_start == NULL)
-		df = 0; // alloc page on fault
-
-	long i;
-	for (i = 0; i < page_count; i++) {
-		virt = (char *)virt_start + (i * PAGE_SIZE);
-		phys = (char *)phys_start + (i * PAGE_SIZE);
-
-		pml4_n = (uint64_t)virt >> 39;
-		pdpt_n = ((uint64_t)virt >> 30) & 0x1ff;
-		pd_n = ((uint64_t)virt >> 21) & 0x1ff;
-
-		if (pPDPT == NULL || pml4_o != pml4_n) {
-			if (select_pdpt(virt, df, pPMl4, &pPDPT, true))
-				goto failed;
-			pml4_o = pml4_n;
-		}
-
-		if (pPD == NULL || pdpt_o != pdpt_n) {
-			if (select_pd(virt, df, pPDPT, &pPD, true))
-				goto failed;
-			pdpt_o = pdpt_n;
-		}
-
-		if (pPT == NULL || pd_o != pd_n) {
-			if (select_pt(virt, df, pPD, &pPT, true))
-				goto failed;
-			pd_o = pd_n;
-		}
-
-		select_page(virt, pPT, &vPTE);
-
-		// update counts in parent structures
-		pml4_mapped->count++;
-		pdpt_mapped->count++;
-		pd_mapped->count++;
-
-		// map page
-		if (phys_start) {
-			vPTE->flags = F_PRESENT | flags;
-			vPTE->address = (uint64_t)phys >> 12;
-			vPTE->loaded = 1;
-		} else {
-			vPTE->flags = flags;
-			vPTE->address = 0;
-			vPTE->loaded = 0;
-		}
-
-		if (flags & F_GLOBAL)
-			invlpg(virt);
+	for (long i = 0; i < page_count; i++) {
+		page_free(pPML4, vADDR);
+		vADDR = (char *)vADDR + PAGE_SIZE;
 	}
+}
 
-	__asm__ volatile("mov %cr3, %rax; mov %rax, %cr3;");
+static int map_pages(volatile struct pml4 *pPML4, void *vADDR, void *pADDR,
+					 unsigned int flags, long page_count)
+{
+	volatile struct pte *vPTE;
+	for (long i = 0; i < page_count; i++) {
+		vPTE = page_alloc(pPML4, vADDR, flags);
+		if (vPTE == NULL)
+			goto fail;
+		vPTE->address = (uint64_t)pADDR >> 12;
+		vPTE->flags = F_PRESENT | flags;
 
+		pADDR = (char *)pADDR + PAGE_SIZE;
+		vADDR = (char *)vADDR + PAGE_SIZE;
+	}
 	return 0;
 
-failed:
-	unmap_pages(pPMl4, virt, i);
-
+fail:
+	unmap_pages(pPML4, vADDR, page_count);
 	return 1;
 }
+
+/* other fns */
 
 void paging_init(void)
 {
@@ -637,13 +638,14 @@ void paging_init(void)
 	// map pd0 entires (length N_IDENT_PTS)
 	for (int i = 0; i < N_IDENT_PTS; i++) {
 		kernel_pd_0.entries[i].flags = F_PRESENT | F_WRITEABLE;
-		kernel_pd_0.entries[i].address = (uint64_t)(kernel_pd_0_ents[i].entries) >> 12;
+		kernel_pd_0.entries[i].address =
+			(uint64_t)(kernel_pd_0_ents[i].entries) >> 12;
 		for (size_t j = 0; j < 512; j++) {
 			kernel_pd_0_ents[i].entries[j].flags = F_PRESENT | F_WRITEABLE;
-			kernel_pd_0_ents[i].entries[j].address = ((i*512+j) * PAGE_SIZE) >> 12;
+			kernel_pd_0_ents[i].entries[j].address =
+				((i * 512 + j) * PAGE_SIZE) >> 12;
 		}
 	}
-
 
 	// map paging_pt
 	kernel_pd_1.entries[0].flags = F_PRESENT | F_WRITEABLE;
@@ -656,22 +658,27 @@ void paging_init(void)
 	__asm__ volatile("mov %0, %%cr3" ::"r"(kernel_pml4.entries) : "memory");
 }
 
-volatile void *pml4_alloc(void)
+volatile void *paging_alloc(void)
 {
-	struct pml4 *pml4_phys = alloc_phys_page();
-	struct pml4 *pml4 = kmapaddr(pml4_phys, NULL, PAGE_SIZE, F_WRITEABLE);
-	memset(pml4, 0, PAGE_SIZE);
+	volatile struct pml4 *pPML4;
 
-	if (map_pages(pml4_phys, kernel_start, kernel_start,
+	pPML4 = pml4_alloc();
+	if (pPML4 == NULL)
+		return NULL;
+
+	if (map_pages(pPML4, kernel_start, kernel_start,
 				  F_PRESENT | F_WRITEABLE,
 				  (kernel_end - kernel_start) / PAGE_SIZE)) {
-		free_phys_page(pml4_phys);
-		kunmapaddr(pml4);
+		pml4_free(pPML4, false);
 		return NULL;
 	}
 
-	kunmapaddr(pml4);
-	return pml4_phys;
+	return pPML4;
+}
+
+void paging_free(volatile void *addr)
+{
+	pml4_free(addr, true);
 }
 
 static inline void *page_align(void *addr)
@@ -721,46 +728,23 @@ void mem_unmapaddr(mem_ctx_t ctx, void *virt)
 	unmap_pages(&kernel_pml4, virt, pages);
 }
 
-void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags, bool lazy)
+void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags)
 {
-	void *virt = virtaddr_alloc(&ctx->virtctx, 1);
-	if (virt == NULL)
-		return NULL;
-
-	if (mem_alloc_page_at(ctx, virt, flags, lazy) == NULL) {
-		virtaddr_free(&ctx->virtctx, virt);
-		return NULL;
-	}
-
-	return virt;
+	return mem_alloc_pages(ctx, 1, flags);
 }
 
-void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, unsigned int flags,
-						bool lazy)
+void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, unsigned int flags)
 {
-	void *phys = NULL;
-	if (!lazy) {
-		if ((phys = alloc_phys_page()) == NULL)
-			return NULL;
-	}
-
-	if (map_page((volatile struct pml4 *)ctx->pml4, virt, phys, flags)) {
-		if (phys)
-			free_phys_page(phys);
-		return NULL;
-	}
-
-	return virt;
+	return mem_alloc_pages_at(ctx, 1, virt, flags);
 }
 
-void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags,
-					  bool lazy)
+void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags)
 {
 	void *virt = virtaddr_alloc(&ctx->virtctx, count);
 	if (virt == NULL)
 		return NULL;
 
-	if (mem_alloc_pages_at(ctx, count, virt, flags, lazy) == NULL) {
+	if (mem_alloc_pages_at(ctx, count, virt, flags) == NULL) {
 		virtaddr_free(&ctx->virtctx, virt);
 		return NULL;
 	}
@@ -769,13 +753,11 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags,
 }
 
 void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
-						 unsigned int flags, bool lazy)
+						 unsigned int flags)
 {
-	void *phys = NULL;
-	if (!lazy) {
-		if ((phys = alloc_phys_pages(count)) == NULL)
-			return NULL;
-	}
+	void *phys = alloc_phys_pages(count);
+	if (phys == NULL)
+		return NULL;
 
 	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, phys, flags,
 				  count)) {
@@ -792,26 +774,5 @@ void mem_free_pages(mem_ctx_t ctx, void *virt)
 		return;
 
 	long pages = virtaddr_free(&ctx->virtctx, virt);
-	if (pages == 1)
-		unmap_page((volatile struct pml4 *)ctx->pml4, virt);
-	else if (pages > 1)
-		unmap_pages((volatile struct pml4 *)ctx->pml4, virt, pages);
-}
-
-int mem_load_page(mem_ctx_t ctx, void *virt_addr)
-{
-	volatile struct pte *page =
-		get_page((volatile struct pml4 *)ctx->pml4, virt_addr);
-	if (page == NULL)
-		return -1;
-	if (page->loaded)
-		return -1;
-	void *phys = alloc_phys_page();
-	if (phys == NULL)
-		return -2;
-	page->loaded = 1;
-	page->address = (uint64_t)phys >> 12;
-	page->flags |= F_PRESENT;
-	invlpg(virt_addr);
-	return 0;
+	unmap_pages((volatile struct pml4 *)ctx->pml4, virt, pages);
 }
