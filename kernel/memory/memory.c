@@ -33,12 +33,13 @@ void kunmapaddr(void *virt)
 
 void *kalloc_page(void)
 {
-	return mem_alloc_page(kernel_mem_ctx, false);
+	return mem_alloc_page(kernel_mem_ctx, F_PRESENT | F_WRITEABLE, false);
 }
 
 void *kalloc_pages(size_t count)
 {
-	return mem_alloc_pages(kernel_mem_ctx, count, false);
+	return mem_alloc_pages(kernel_mem_ctx, count, F_PRESENT | F_WRITEABLE,
+						   false);
 }
 
 void kfree_pages(void *ptr)

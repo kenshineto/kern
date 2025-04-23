@@ -127,30 +127,35 @@ void mem_unmapaddr(mem_ctx_t ctx, void *virt);
  * Allocate a single page of memory with the given paging structure
  *
  * @param ctx - the memory context
+ * @param flags - memory flags (F_PRESENT will always be set)
  * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the vitural address aloocated or NULL on failure
  */
-void *mem_alloc_page(mem_ctx_t ctx, bool lazy);
+void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags, bool lazy);
 
 /**
  * Allocate a single page of memory at the given vitural address with the given paging structure
  *
  * @param ctx - the memory context
  * @param virt - the vitural address to allocate at
+ * @param flags - memory flags (F_PRESENT will always be set)
  * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the vitural address aloocated or NULL on failure
  */
-void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, bool lazy);
+void *mem_alloc_page_at(mem_ctx_t ctx, void *virt, unsigned int flags,
+						bool lazy);
 
 /**
  * Allocate size_t amount of contiguous virtual pages with the given paging structure
  *
  * @param ctx - the memory context
  * @param count - the number of pages to allocate
+ * @param flags - memory flags (F_PRESENT will always be set)
  * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the address allocated or NULL on failure
  */
-void *mem_alloc_pages(mem_ctx_t ctx, size_t count, bool lazy);
+void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags,
+					  bool lazy);
 
 /**
  * Allocate size_t amount of contiguous virtual pages at a given virtural address with the given paging structure
@@ -158,10 +163,12 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count, bool lazy);
  * @param ctx - the memory context
  * @param count - the number of pages to allocate
  * @param virt - the vitural address to allocate at
+ * @param flags - memory flags (F_PRESENT will always be set)
  * @param lazy - if to lazy allocate pages (alloc on fault)
  * @returns the address allocated or NULL on failure
  */
-void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt, bool lazy);
+void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
+						 unsigned int flags, bool lazy);
 
 /**
  * Free allocated pages with the given paging structure.
