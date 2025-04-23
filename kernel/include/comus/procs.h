@@ -45,16 +45,16 @@ enum proc_state {
 
 /// process control block
 struct pcb {
+	// context
+	struct cpu_regs *regs;
+	mem_ctx_t memctx;
+
 	// metadata
 	pid_t pid;
 	struct pcb *parent;
 	enum proc_state state;
 	size_t priority;
 	size_t ticks;
-
-	// context
-	mem_ctx_t memctx;
-	struct cpu_regs *regs;
 
 	// queue linkage
 	struct pcb *next; // next PDB in queue
