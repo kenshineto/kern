@@ -13,6 +13,7 @@
 #include <comus/limits.h>
 #include <comus/memory.h>
 #include <lib.h>
+#include <elf.h>
 
 #define PCB_REG(pcb, x) ((pcb)->regs->x)
 #define PCB_RET(pcb) ((pcb)->regs->rax)
@@ -55,6 +56,11 @@ struct pcb {
 	enum proc_state state;
 	size_t priority;
 	size_t ticks;
+
+	// elf metadata
+	Elf64_Ehdr elf_header;
+	Elf64_Phdr elf_segments[N_ELF_SEGMENTS];
+	Elf64_Half n_elf_segments;
 
 	// queue linkage
 	struct pcb *next; // next PDB in queue

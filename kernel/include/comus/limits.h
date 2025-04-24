@@ -22,6 +22,9 @@
 #define N_FILE_NAME 256
 #define N_DISKS 8
 
+/// elf limits
+#define N_ELF_SEGMENTS 16
+
 /// length of terminal buffer
 #define TERM_MAX_WIDTH 1920
 #define TERM_MAX_HEIGHT 1080
