@@ -26,7 +26,7 @@ void *alloc_phys_page(void);
  * Allocates count physical pages in memory
  * @returns the physical address of the first page
  */
-void *alloc_phys_pages(int count);
+void *alloc_phys_pages(size_t count);
 
 /**
 * Frees a single physical page in memory
@@ -39,6 +39,6 @@ void free_phys_page(void *ptr);
  * @param ptr - the physical address of the first page
  * @param count - the number of pages in the list
  */
-void free_phys_pages(void *ptr, int count);
+void free_phys_pages(void *ptr, size_t count);
 
 #endif /* physalloc.h */

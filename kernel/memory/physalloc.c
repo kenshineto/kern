@@ -79,12 +79,12 @@ void *alloc_phys_page(void)
 	return alloc_phys_pages(1);
 }
 
-void *alloc_phys_pages(int pages)
+void *alloc_phys_pages(size_t pages)
 {
 	if (pages < 1)
 		return NULL;
 
-	int n_contiguous = 0;
+	size_t n_contiguous = 0;
 	int free_region_start = 0;
 	for (uint64_t i = 0; i < page_count; i++) {
 		bool free = !bitmap_get(i);
@@ -94,7 +94,7 @@ void *alloc_phys_pages(int pages)
 				free_region_start = i;
 			n_contiguous++;
 			if (n_contiguous == pages) {
-				for (int j = 0; j < pages; j++)
+				for (size_t j = 0; j < pages; j++)
 					bitmap_set(free_region_start + j, true);
 				return page_at(free_region_start);
 			}
@@ -110,7 +110,7 @@ void free_phys_page(void *ptr)
 	free_phys_pages(ptr, 1);
 }
 
-void free_phys_pages(void *ptr, int pages)
+void free_phys_pages(void *ptr, size_t pages)
 {
 	if (ptr == NULL)
 		return;
@@ -119,7 +119,7 @@ void free_phys_pages(void *ptr, int pages)
 	if (idx == -1)
 		return;
 
-	for (int i = 0; i < pages; i++)
+	for (size_t i = 0; i < pages; i++)
 		bitmap_set(idx + pages, false);
 }
 
