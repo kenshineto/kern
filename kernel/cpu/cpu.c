@@ -3,6 +3,7 @@
 
 #include "pic.h"
 #include "idt.h"
+#include "tss.h"
 
 static inline void fpu_init(void)
 {
@@ -73,6 +74,8 @@ void cpu_init(void)
 		if (feats.avx)
 			avx_init();
 	}
+
+	tss_init();
 }
 
 void cpu_report(void)
