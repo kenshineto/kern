@@ -1,10 +1,13 @@
 	.global isr_stub_table
+	.global isr_restore
+	.global awd
 
 	.extern idt_exception_handler
 	.extern idt_pic_timer
 	.extern idt_pic_keyboard
 	.extern idt_pic_mouse
 	.extern idt_pic_eoi
+	.extern syscall_handler
 
 .macro PUSHALL
 	pushq	%rax
@@ -76,6 +79,16 @@ isr_stub_\num:
 	callq	idt_exception_handler
 	POPALL
 	iretq
+.endm
+
+.macro SYSCALL num
+	.align 8
+isr_stub_\num:
+	PUSHALL
+	cld
+	movq	%rsp, %rdi				# top of stack
+	callq	syscall_handler
+	jmp		isr_restore
 .endm
 
 .macro PICGeneric num
@@ -402,10 +415,21 @@ isr_stub_table:
 	.quad isr_stub_254
 	.quad isr_stub_255
 
-# isr stubs
 	.section .text
 	.code64
 
+# isr restore
+isr_restore:
+	movw $(0x20 | 3), %ax
+	movw %ax, %ds
+	movw %ax, %es
+	movw %ax, %fs
+	movw %ax, %gs
+
+	POPALL
+	iretq
+
+# isr stubs
 ISRException 0
 ISRException 1
 ISRException 2
@@ -536,7 +560,7 @@ ISRIgnore 124
 ISRIgnore 125
 ISRIgnore 126
 ISRIgnore 127
-ISRIgnore 128
+SYSCALL 128
 ISRIgnore 129
 ISRIgnore 130
 ISRIgnore 131

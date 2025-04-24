@@ -29,7 +29,7 @@
 #define SYS_sbrk 16
 
 // UPDATE THIS DEFINITION IF MORE SYSCALLS ARE ADDED!
-#define N_SYSCALLS 13
+#define N_SYSCALLS 17
 
 // interrupt vector entry for system calls
 #define VEC_SYSCALL 0x80
