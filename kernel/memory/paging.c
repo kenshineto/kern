@@ -5,6 +5,7 @@
 #include "physalloc.h"
 #include "paging.h"
 #include "memory.h"
+#include <stdint.h>
 
 // PAGE MAP LEVEL 4 ENTRY
 struct pml4e {
@@ -214,7 +215,7 @@ static volatile struct pt *pt_map(volatile struct pt *pPT)
 // locate a pdpt for a vitural address
 // @returns PHYSICAL ADDRESS
 static volatile struct pdpt *pdpt_locate(volatile struct pml4 *pPML4,
-										 void *vADDR)
+										 const void *vADDR)
 {
 	volatile struct pml4 *vPML4;
 	volatile struct pml4e *vPML4E;
@@ -235,7 +236,7 @@ static volatile struct pdpt *pdpt_locate(volatile struct pml4 *pPML4,
 
 // locate a pd for a vitural address
 // @returns PHYSICAL ADDRESS
-static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, void *vADDR)
+static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, const void *vADDR)
 {
 	volatile struct pdpt *vPDPT;
 	volatile struct pdpte *vPDPTE;
@@ -256,7 +257,7 @@ static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, void *vADDR)
 
 // locate a pt for a vitural address
 // @returns PHYSICAL ADDRESS
-static volatile struct pt *pt_locate(volatile struct pd *pPD, void *vADDR)
+static volatile struct pt *pt_locate(volatile struct pd *pPD, const void *vADDR)
 {
 	volatile struct pd *vPD;
 	volatile struct pde *vPDE;
@@ -506,7 +507,7 @@ free:
 // locate a pte for a vitural address
 // @returns VIRTUAL ADDRESS
 static volatile struct pte *page_locate(volatile struct pml4 *pPML4,
-										void *vADDR)
+										const void *vADDR)
 {
 	volatile struct pdpt *pPDPT;
 	volatile struct pd *pPD;
@@ -573,7 +574,7 @@ static volatile struct pte *page_alloc(volatile struct pml4 *pPML4, void *vADDR,
 }
 
 // free a pte (page) for a vitural address
-static void page_free(volatile struct pml4 *pPML4, void *vADDR)
+static void page_free(volatile struct pml4 *pPML4, const void *vADDR)
 {
 	volatile struct pte *vPTE;
 	void *pADDR;
@@ -591,7 +592,7 @@ static void page_free(volatile struct pml4 *pPML4, void *vADDR)
 
 /* map & unmap pages */
 
-static void unmap_pages(volatile struct pml4 *pPML4, void *vADDR,
+static void unmap_pages(volatile struct pml4 *pPML4, const void *vADDR,
 						long page_count)
 {
 	for (long i = 0; i < page_count; i++) {
@@ -717,7 +718,22 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	return (char *)virt + error;
 }
 
-void mem_unmapaddr(mem_ctx_t ctx, void *virt)
+void *kmapuseraddr(mem_ctx_t ctx, const void *vADDR, size_t len)
+{
+	char *pADDR;
+	volatile struct pte *vPTE;
+
+	vPTE = page_locate((volatile struct pml4 *)ctx->pml4, vADDR);
+	if (vPTE == NULL)
+		return NULL;
+
+	pADDR = (void *)((uintptr_t)vPTE->address << 12);
+	pADDR += ((uint64_t)vADDR % PAGE_SIZE);
+
+	return kmapaddr(pADDR, NULL, len, F_PRESENT | F_WRITEABLE);
+}
+
+void mem_unmapaddr(mem_ctx_t ctx, const void *virt)
 {
 	if (virt == NULL)
 		return;
@@ -768,7 +784,7 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 	return virt;
 }
 
-void mem_free_pages(mem_ctx_t ctx, void *virt)
+void mem_free_pages(mem_ctx_t ctx, const void *virt)
 {
 	if (virt == NULL)
 		return;

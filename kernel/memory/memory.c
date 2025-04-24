@@ -26,7 +26,7 @@ void *kmapaddr(void *phys, void *virt, size_t len, unsigned int flags)
 	return mem_mapaddr(kernel_mem_ctx, phys, virt, len, flags);
 }
 
-void kunmapaddr(void *virt)
+void kunmapaddr(const void *virt)
 {
 	mem_unmapaddr(kernel_mem_ctx, virt);
 }
@@ -41,7 +41,7 @@ void *kalloc_pages(size_t count)
 	return mem_alloc_pages(kernel_mem_ctx, count, F_PRESENT | F_WRITEABLE);
 }
 
-void kfree_pages(void *ptr)
+void kfree_pages(const void *ptr)
 {
 	mem_free_pages(kernel_mem_ctx, ptr);
 }

@@ -64,7 +64,7 @@ void *virtaddr_alloc(struct virt_ctx *ctx, int pages);
  * @param virtaddr - the addr to free
  * @returns number of pages used for virtaddr
  */
-long virtaddr_free(struct virt_ctx *ctx, void *virtaddr);
+long virtaddr_free(struct virt_ctx *ctx, const void *virtaddr);
 
 /**
  * Cleans up heap allocations and frees the virtalloc context

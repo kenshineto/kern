@@ -165,7 +165,7 @@ void *virtaddr_alloc(struct virt_ctx *ctx, int n_pages)
 	return NULL;
 }
 
-long virtaddr_free(struct virt_ctx *ctx, void *virtaddr)
+long virtaddr_free(struct virt_ctx *ctx, const void *virtaddr)
 {
 	if (virtaddr == NULL)
 		return -1;
