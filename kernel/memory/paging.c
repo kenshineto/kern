@@ -796,16 +796,36 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags)
 void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 						 unsigned int flags)
 {
-	void *phys = alloc_phys_pages(count);
-	if (phys == NULL)
-		return NULL;
+	size_t pages_needed = count;
+	uint8_t *virtual_address = virt;
 
-	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, phys, flags,
-				  count)) {
-		if (phys)
-			free_phys_pages(phys, count);
-		return NULL;
+	void *phys_start = NULL;
+
+	while (pages_needed > 0) {
+		struct phys_page_slice phys_pages =
+			alloc_phys_page_withextra(pages_needed);
+		if (phys_pages.pagestart == NULL) {
+			free_phys_pages(phys_start ? phys_start : phys_pages.pagestart,
+							count - pages_needed);
+			return NULL;
+		}
+
+		if (!phys_start)
+			phys_start = phys_pages.pagestart;
+
+		assert(pages_needed >= phys_pages.num_pages, "overflow");
+		pages_needed -= phys_pages.num_pages;
+		virtual_address += phys_pages.num_pages * PAGE_SIZE;
+
+		if (map_pages((volatile struct pml4 *)ctx->pml4,
+					  (void *)virtual_address, phys_pages.pagestart, flags,
+					  phys_pages.num_pages)) {
+            assert(phys_start, "expected something allocated");
+			free_phys_pages(phys_start, count - pages_needed);
+			return NULL;
+		}
 	}
+
 	return virt;
 }
 

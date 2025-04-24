@@ -58,7 +58,7 @@ static long page_idx(void *page)
 	return -1;
 }
 
-static inline bool bitmap_get(int i)
+static inline bool bitmap_get(size_t i)
 {
 	return (bitmap[i / 64] >> i % 64) & 1;
 }
@@ -76,17 +76,17 @@ static inline void bitmap_set(int i, bool v)
 
 void *alloc_phys_page(void)
 {
-	return alloc_phys_pages(1);
+	return alloc_phys_pages_exact(1);
 }
 
-void *alloc_phys_pages(size_t pages)
+void *alloc_phys_pages_exact(size_t pages)
 {
 	if (pages < 1)
 		return NULL;
 
 	size_t n_contiguous = 0;
-	int free_region_start = 0;
-	for (uint64_t i = 0; i < page_count; i++) {
+	size_t free_region_start = 0;
+	for (size_t i = 0; i < page_count; i++) {
 		bool free = !bitmap_get(i);
 
 		if (free) {
@@ -105,9 +105,51 @@ void *alloc_phys_pages(size_t pages)
 	return NULL;
 }
 
+struct phys_page_slice alloc_phys_page_withextra(size_t max_pages)
+{
+	if (max_pages == 0)
+		return PHYS_PAGE_SLICE_NULL;
+
+	for (size_t i = 0; i < page_count; i++) {
+		const bool free = !bitmap_get(i);
+		if (!free)
+			continue;
+
+		// now allocated
+		bitmap_set(i, true);
+
+		// found at least one page, guaranteed to return valid slice at this
+		// point
+		struct phys_page_slice out = {
+			.pagestart = page_at(i),
+			.num_pages = 1,
+		};
+
+		// add some extra pages if possible
+		for (; out.num_pages < MIN(page_count - i, max_pages);
+			 ++out.num_pages) {
+			// early return if max_pages isn't available
+			if (bitmap_get(i + out.num_pages)) {
+				return out;
+			}
+			bitmap_set(i + out.num_pages, true);
+		}
+
+		return out;
+	}
+
+	// only reachable if there is not a single free page in the bitmap
+	return PHYS_PAGE_SLICE_NULL;
+}
+
 void free_phys_page(void *ptr)
 {
 	free_phys_pages(ptr, 1);
+}
+
+void free_phys_pages_slice(struct phys_page_slice slice)
+{
+	free_phys_pages(slice.pagestart, slice.num_pages);
 }
 
 void free_phys_pages(void *ptr, size_t pages)
