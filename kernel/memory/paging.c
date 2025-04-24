@@ -416,6 +416,13 @@ static void pt_free(volatile struct pt *pPT, bool force)
 
 		pADDR = (void *)((uintptr_t)vPTE->address << 12);
 		free_phys_page(pADDR);
+		count--;
+	}
+
+	if (!force && count) {
+		vPT->count_low = count;
+		vPT->count_high = count >> 2;
+		return;
 	}
 
 free:
@@ -443,6 +450,12 @@ static void pd_free(volatile struct pd *pPD, bool force)
 
 		pPT = (volatile struct pt *)((uintptr_t)vPDE->address << 12);
 		pt_free(pPT, force);
+		count--;
+	}
+
+	if (!force && count) {
+		vPD->count = count;
+		return;
 	}
 
 free:
@@ -470,6 +483,12 @@ static void pdpt_free(volatile struct pdpt *pPDPT, bool force)
 
 		pPD = (volatile struct pd *)((uintptr_t)vPDPTE->address << 12);
 		pd_free(pPD, force);
+		count--;
+	}
+
+	if (!force && count) {
+		vPDPT->count = count;
+		return;
 	}
 
 free:
@@ -497,6 +516,12 @@ static void pml4_free(volatile struct pml4 *pPML4, bool force)
 
 		pPDPT = (volatile struct pdpt *)((uintptr_t)vPML4E->address << 12);
 		pdpt_free(pPDPT, force);
+		count--;
+	}
+
+	if (!force && count) {
+		vPML4->count = count;
+		return;
 	}
 
 free:
