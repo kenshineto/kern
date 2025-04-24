@@ -9,7 +9,9 @@ struct stackframe {
 extern char kern_stack_start[];
 extern char kern_stack_end[];
 
-#define VALID(frame) (frame && (char*)(frame) >= kern_stack_start && ((char*)(frame) <= kern_stack_end))
+#define VALID(frame)                                 \
+	(frame && (char *)(frame) >= kern_stack_start && \
+	 ((char *)(frame) <= kern_stack_end))
 
 size_t backtrace(void **dst, size_t len)
 {

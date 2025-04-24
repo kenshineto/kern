@@ -11,7 +11,7 @@ struct sys_seg_descriptor {
 	uint64_t : 1;
 	uint64_t DPL : 2;
 	uint64_t present : 1;
-	uint64_t limit16_19: 4;
+	uint64_t limit16_19 : 4;
 	uint64_t available : 1;
 	uint64_t : 1;
 	uint64_t : 1;
@@ -49,16 +49,17 @@ static volatile struct sys_seg_descriptor *GDT_TSS;
 // kernel stack pointer
 extern char kern_stack_end[];
 
-void tss_init(void) {
-	uint64_t base = (uint64_t) &tss;
+void tss_init(void)
+{
+	uint64_t base = (uint64_t)&tss;
 	uint64_t limit = sizeof tss - 1;
 
 	// setup tss entry
 	memsetv(&tss, 0, sizeof(struct tss));
-	tss.rsp0 = (uint64_t) kern_stack_end;
+	tss.rsp0 = (uint64_t)kern_stack_end;
 
 	// map tss into gdt
-	GDT_TSS = (volatile struct sys_seg_descriptor *) (GDT + 0x28);
+	GDT_TSS = (volatile struct sys_seg_descriptor *)(GDT + 0x28);
 	memsetv(GDT_TSS, 0, sizeof(struct sys_seg_descriptor));
 	GDT_TSS->limit0_15 = limit & 0xFFFF;
 	GDT_TSS->base0_15 = base & 0xFFFF;
@@ -75,6 +76,7 @@ void tss_init(void) {
 	tss_flush();
 }
 
-void tss_set_stack(uint64_t stack) {
+void tss_set_stack(uint64_t stack)
+{
 	tss.rsp0 = stack;
 }

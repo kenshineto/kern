@@ -236,7 +236,8 @@ static volatile struct pdpt *pdpt_locate(volatile struct pml4 *pPML4,
 
 // locate a pd for a vitural address
 // @returns PHYSICAL ADDRESS
-static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, const void *vADDR)
+static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT,
+									 const void *vADDR)
 {
 	volatile struct pdpt *vPDPT;
 	volatile struct pdpte *vPDPTE;
@@ -667,8 +668,7 @@ volatile void *paging_alloc(void)
 	if (pPML4 == NULL)
 		return NULL;
 
-	if (map_pages(pPML4, kernel_start, kernel_start,
-				  F_PRESENT | F_WRITEABLE,
+	if (map_pages(pPML4, kernel_start, kernel_start, F_PRESENT | F_WRITEABLE,
 				  (kernel_end - kernel_start) / PAGE_SIZE)) {
 		pml4_free(pPML4, false);
 		return NULL;

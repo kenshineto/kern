@@ -12,7 +12,7 @@
 static int sys_exit(void)
 {
 	ARG1(int, status);
-	(void) status;
+	(void)status;
 
 	// FIXME: schedule somthing else
 	while (1)
@@ -53,23 +53,12 @@ static int sys_write(void)
 }
 
 static int (*syscall_tbl[N_SYSCALLS])(void) = {
-	[SYS_exit] = sys_exit,
-	[SYS_waitpid] = NULL,
-	[SYS_fork] = NULL,
-	[SYS_exec] = NULL,
-	[SYS_open] = NULL,
-	[SYS_close] = NULL,
-	[SYS_read] = NULL,
-	[SYS_write] = sys_write,
-	[SYS_getpid] = NULL,
-	[SYS_getppid] = NULL,
-	[SYS_gettime] = NULL,
-	[SYS_getprio] = NULL,
-	[SYS_setprio] = NULL,
-	[SYS_kill] = NULL,
-	[SYS_sleep] = NULL,
-	[SYS_brk] = NULL,
-	[SYS_sbrk] = NULL,
+	[SYS_exit] = sys_exit, [SYS_waitpid] = NULL,	[SYS_fork] = NULL,
+	[SYS_exec] = NULL,	   [SYS_open] = NULL,		[SYS_close] = NULL,
+	[SYS_read] = NULL,	   [SYS_write] = sys_write, [SYS_getpid] = NULL,
+	[SYS_getppid] = NULL,  [SYS_gettime] = NULL,	[SYS_getprio] = NULL,
+	[SYS_setprio] = NULL,  [SYS_kill] = NULL,		[SYS_sleep] = NULL,
+	[SYS_brk] = NULL,	   [SYS_sbrk] = NULL,
 };
 
 void syscall_handler(struct cpu_regs *regs)
@@ -91,7 +80,8 @@ void syscall_handler(struct cpu_regs *regs)
 	if (num >= N_SYSCALLS) {
 		// invalid syscall
 		// FIXME: kill user process
-		while(1);
+		while (1)
+			;
 	}
 
 	// run syscall handler (if exists)
