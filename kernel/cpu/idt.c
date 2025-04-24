@@ -3,6 +3,7 @@
 #include <comus/asm.h>
 #include <comus/cpu.h>
 #include <comus/drivers/pit.h>
+#include <comus/memory.h>
 
 #include "idt.h"
 #include "pic.h"
@@ -66,6 +67,9 @@ void idt_init(void)
 		entry->isr_mid = (isr >> 16) & 0xffff;
 		entry->isr_high = (isr >> 32) & 0xffffffff;
 		entry->reserved = 0;
+
+		if (vector == 0x80)
+			entry->flags |= RING3;
 	}
 
 	__asm__ volatile("lidt %0" : : "m"(idtr));
@@ -115,6 +119,9 @@ void idt_exception_handler(uint64_t exception, uint64_t code,
 						   struct cpu_regs *state)
 {
 	uint64_t cr2;
+
+	// make sure were in the kernel memory context
+	mem_ctx_switch(kernel_mem_ctx);
 
 	switch (exception) {
 	case EX_PAGE_FAULT:
