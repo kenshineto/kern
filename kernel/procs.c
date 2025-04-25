@@ -472,4 +472,6 @@ void dispatch(void)
 	// set the process up for success
 	current_pcb->state = PROC_STATE_RUNNING;
 	current_pcb->ticks = 3; // ticks per process
+
+	syscall_return();
 }
