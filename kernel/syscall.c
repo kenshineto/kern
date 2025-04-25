@@ -91,7 +91,4 @@ void syscall_handler(struct cpu_regs *regs)
 
 	// save return value
 	current_pcb->regs->rax = ret;
-
-	// switch back to process ctx
-	mem_ctx_switch(current_pcb->memctx);
 }

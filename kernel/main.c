@@ -7,6 +7,7 @@
 #include <comus/drivers/pci.h>
 #include <comus/drivers/gpu.h>
 #include <comus/drivers/ata.h>
+#include <comus/user.h>
 #include <comus/fs.h>
 #include <comus/procs.h>
 #include <lib.h>
@@ -21,7 +22,7 @@ void kreport(void)
 	gpu_report();
 }
 
-void main(long magic, volatile void *mboot)
+__attribute__((noreturn)) void main(long magic, volatile void *mboot)
 {
 	// initalize idt and pic
 	cpu_init();
@@ -47,6 +48,12 @@ void main(long magic, volatile void *mboot)
 	// report system state
 	kreport();
 
-	// halt
-	kprintf("halting...\n");
+	// load init process
+	pcb_alloc(&init_pcb);
+	if (user_load(init_pcb, &fs_disks[0]))
+		panic("failed to load init");
+
+	// schedule and dispatch init
+	schedule(init_pcb);
+	dispatch();
 }

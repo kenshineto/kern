@@ -35,7 +35,7 @@ struct pcb *init_pcb = NULL;
 struct pcb ptable[N_PROCS];
 
 /// next avaliable pid
-pid_t next_pid = 0;
+pid_t next_pid = 1;
 
 static struct pcb *find_prev_wakeup(pcb_queue_t queue, struct pcb *pcb)
 {
@@ -119,6 +119,7 @@ int pcb_alloc(struct pcb **pcb)
 	if (pcb_queue_pop(pcb_freelist, &tmp) != SUCCESS)
 		return E_NO_PCBS;
 
+	tmp->pid = next_pid++;
 	*pcb = tmp;
 	return SUCCESS;
 }
