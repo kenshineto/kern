@@ -14,9 +14,9 @@ CPPFLAGS += -Iinclude
 CFLAGS += -O2
 CFLAGS += -std=c11
 CFLAGS += -Wall -Wextra -pedantic
-CFLAGS += -fno-pie -fno-stack-protector
+CFLAGS += -no-pie -fPIC -fno-stack-protector
 CFLAGS += -fno-omit-frame-pointer -ffreestanding
-CFLAGS += -fno-builtin
+CFLAGS += -fno-builtin -mcmodel=large
 CFLAGS += -D DEBUG -g
 CFLAGS += $(CPPFLAGS)
 
