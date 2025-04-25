@@ -704,8 +704,8 @@ volatile void *pgdir_alloc(void)
 volatile void *pgdir_clone(volatile const void *old_pgdir, bool cow)
 {
 	// TODO:
-	(void) old_pgdir;
-	(void) cow;
+	(void)old_pgdir;
+	(void)cow;
 	return NULL;
 }
 
@@ -827,7 +827,7 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 		if (map_pages((volatile struct pml4 *)ctx->pml4,
 					  (void *)virtual_address, phys_pages.pagestart, flags,
 					  phys_pages.num_pages)) {
-            assert(phys_start, "expected something allocated");
+			assert(phys_start, "expected something allocated");
 			free_phys_pages(phys_start, count - pages_needed);
 			return NULL;
 		}

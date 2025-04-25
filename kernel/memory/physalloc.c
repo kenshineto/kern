@@ -87,7 +87,7 @@ void *alloc_phys_pages_exact(size_t pages)
 
 	if (bitmap == NULL || page_start == NULL) {
 		// temporary bump allocator
-		void *addr = (void*)memory_start;
+		void *addr = (void *)memory_start;
 		memory_start += PAGE_SIZE;
 		return addr;
 	}
