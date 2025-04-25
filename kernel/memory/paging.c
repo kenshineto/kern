@@ -804,36 +804,59 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 						 unsigned int flags)
 {
 	size_t pages_needed = count;
-	uint8_t *virtual_address = virt;
 
-	void *phys_start = NULL;
+	struct phys_page_slice prev_phys_block = PHYS_PAGE_SLICE_NULL;
+	struct phys_page_slice phys_pages;
 
 	while (pages_needed > 0) {
-		struct phys_page_slice phys_pages =
-			alloc_phys_page_withextra(pages_needed);
+		phys_pages = alloc_phys_page_withextra(pages_needed);
 		if (phys_pages.pagestart == NULL) {
-			free_phys_pages(phys_start ? phys_start : phys_pages.pagestart,
-							count - pages_needed);
-			return NULL;
+			goto mem_alloc_pages_at_fail;
 		}
 
-		if (!phys_start)
-			phys_start = phys_pages.pagestart;
+		{
+			// allocate the first page and store in it the physical address of the
+			// previous chunk of pages
+			// TODO: skip this if there are already enough pages from first alloc
+			void *pageone = kmapaddr(phys_pages.pagestart, NULL, 1,
+									 F_PRESENT | F_WRITEABLE);
+			if (pageone == NULL) {
+				panic("kernel out of virtual memory");
+			}
+			*((struct phys_page_slice *)pageone) = prev_phys_block;
+			prev_phys_block = phys_pages;
+			kunmapaddr(pageone);
+		}
 
 		assert(pages_needed >= phys_pages.num_pages, "overflow");
 		pages_needed -= phys_pages.num_pages;
-		virtual_address += phys_pages.num_pages * PAGE_SIZE;
 
-		if (map_pages((volatile struct pml4 *)ctx->pml4,
-					  (void *)virtual_address, phys_pages.pagestart, flags,
-					  phys_pages.num_pages)) {
-            assert(phys_start, "expected something allocated");
-			free_phys_pages(phys_start, count - pages_needed);
-			return NULL;
+		// index into virtual page array at index [count - pages_needed]
+		void *vaddr = ((uint8_t *)virt) + ((count - pages_needed) * PAGE_SIZE);
+		if (map_pages((volatile struct pml4 *)ctx->pml4, vaddr,
+					  phys_pages.pagestart, flags, phys_pages.num_pages)) {
+			goto mem_alloc_pages_at_fail;
 		}
 	}
 
 	return virt;
+
+mem_alloc_pages_at_fail:
+	while (prev_phys_block.pagestart) {
+		void *virtpage = kmapaddr(prev_phys_block.pagestart, NULL, 1,
+								  F_PRESENT | F_WRITEABLE);
+		if (!virtpage) {
+			// memory corruption, most likely a bug
+			// could also ERROR here and exit with leak
+			panic("unable to free memory from failed mem_alloc_pages_at call");
+		}
+		struct phys_page_slice prev = *(struct phys_page_slice *)virtpage;
+		prev_phys_block = prev;
+		free_phys_pages_slice(prev);
+		kunmapaddr(virtpage);
+	}
+
+	return NULL;
 }
 
 void mem_free_pages(mem_ctx_t ctx, const void *virt)
