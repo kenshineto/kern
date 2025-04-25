@@ -5,6 +5,7 @@
 #include "physalloc.h"
 #include "paging.h"
 #include "memory.h"
+#include <stdint.h>
 
 // PAGE MAP LEVEL 4 ENTRY
 struct pml4e {
@@ -753,14 +754,10 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 void *kmapuseraddr(mem_ctx_t ctx, const void *vADDR, size_t len)
 {
 	char *pADDR;
-	volatile struct pte *vPTE;
 
-	vPTE = page_locate((volatile struct pml4 *)ctx->pml4, vADDR);
-	if (vPTE == NULL)
+	pADDR = mem_get_phys(ctx, vADDR);
+	if (pADDR == NULL)
 		return NULL;
-
-	pADDR = (void *)((uintptr_t)vPTE->address << 12);
-	pADDR += ((uint64_t)vADDR % PAGE_SIZE);
 
 	return kmapaddr(pADDR, NULL, len, F_PRESENT | F_WRITEABLE);
 }
@@ -774,6 +771,20 @@ void mem_unmapaddr(mem_ctx_t ctx, const void *virt)
 	if (pages < 1)
 		return;
 	unmap_pages(&kernel_pml4, virt, pages);
+}
+
+void *mem_get_phys(mem_ctx_t ctx, const void *vADDR)
+{
+	char *pADDR;
+	volatile struct pte *vPTE;
+
+	vPTE = page_locate((volatile struct pml4 *)ctx->pml4, vADDR);
+	if (vPTE == NULL)
+		return NULL;
+
+	pADDR = (void *)((uintptr_t)vPTE->address << 12);
+	pADDR += ((uint64_t)vADDR % PAGE_SIZE);
+	return pADDR;
 }
 
 void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags)

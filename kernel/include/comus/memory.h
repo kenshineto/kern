@@ -124,6 +124,13 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 void mem_unmapaddr(mem_ctx_t ctx, const void *virt);
 
 /**
+ * Gets the physical address for a given vitural address
+ * @param ctx - the memory context
+ * @param virt - the vitural address
+ */
+void *mem_get_phys(mem_ctx_t ctx, const void *virt);
+
+/**
  * Allocate a single page of memory with the given paging structure
  *
  * @param ctx - the memory context
@@ -193,6 +200,12 @@ void *kmapaddr(void *phys, void *virt, size_t len, unsigned int flags);
  * @returns vitural address mapped in kernel context
  */
 void *kmapuseraddr(mem_ctx_t ctx, const void *virt, size_t len);
+
+/**
+ * Gets the physical address for a given vitural address
+ * @param virt - the vitural address
+ */
+void *kget_phys(const void *virt);
 
 /**
  * Unmaps mapped address from the kmapaddr function

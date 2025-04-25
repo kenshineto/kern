@@ -31,6 +31,11 @@ void kunmapaddr(const void *virt)
 	mem_unmapaddr(kernel_mem_ctx, virt);
 }
 
+void *kget_phys(const void *virt)
+{
+	return mem_get_phys(kernel_mem_ctx, virt);
+}
+
 void *kalloc_page(void)
 {
 	return mem_alloc_page(kernel_mem_ctx, F_PRESENT | F_WRITEABLE);
