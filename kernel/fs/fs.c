@@ -110,8 +110,8 @@ static int disk_read_ata(struct disk *disk, size_t offset, size_t len,
 	static size_t atabuf_len = 0;
 	static uint16_t *atabuf = NULL;
 
-	uint32_t numsects = (len + ATA_SECT_SIZE - 1) / ATA_SECT_SIZE;
 	uint32_t err = offset % ATA_SECT_SIZE;
+	uint32_t numsects = (len + err + ATA_SECT_SIZE - 1) / ATA_SECT_SIZE;
 	int ret = 0;
 
 	if (atabuf == NULL || atabuf_len < numsects * ATA_SECT_SIZE) {
@@ -123,12 +123,12 @@ static int disk_read_ata(struct disk *disk, size_t offset, size_t len,
 	// read sectors
 	if ((ret = ide_device_read_sectors(disk->ide, numsects,
 									   offset / ATA_SECT_SIZE, atabuf)))
-		return 1;
+		return ret;
 
 	// copy over to buffer
 	memcpy(buffer, (char *)atabuf + err, len);
 
-	return ret;
+	return 0;
 }
 
 int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer)

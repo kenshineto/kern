@@ -45,7 +45,7 @@ struct disk {
  * @param offset - the offset into the disk to read
  * @param len - the length of the data to read into `buffer`
  * @param buffer - the buffer to save data into
- * @returns bytes read on success, negative fs error code in failure
+ * @returns 0 on success, error code in failure
  */
 int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer);
 
@@ -56,7 +56,7 @@ int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer);
  * @param offset - the offset into the disk to write
  * @param len - the length of the data to write into `buffer`
  * @param buffer - the buffer to read from
- * @returns bytes written on success, negative fs error code in failure
+ * @returns 0 on success, error code in failure
  */
 int disk_write(struct disk *disk, size_t offset, size_t len, void *buffer);
 
