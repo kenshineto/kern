@@ -54,6 +54,9 @@ static int sys_write(void)
 
 static int sys_poweroff(void)
 {
+	// TODO: we should probably
+	// kill all user processes
+	// and then sync the fs
 	acpi_shutdown();
 	return 1;
 }
