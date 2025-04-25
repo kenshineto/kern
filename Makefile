@@ -76,7 +76,8 @@ gdb:
 clean:
 	rm -fr $(BIN)
 
-build: $(BIN)/$(ISO)
+build: $(BIN)/$(KERNEL)
+	make -s -C user
 
 $(A_OBJ): $(BIN)/%.S.o : %.S $(H_SRC)
 	mkdir -p $(@D)
@@ -100,8 +101,7 @@ $(BIN)/$(ISO): $(BIN)/$(KERNEL)
 	cp $(BIN)/$(KERNEL) $(BIN)/iso/boot
 	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
 
-$(BIN)/$(IMAGE):
-	make -s -C user
+$(BIN)/$(IMAGE): build
 	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
 
 fmt:
