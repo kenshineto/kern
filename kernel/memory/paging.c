@@ -828,11 +828,12 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 			kunmapaddr(pageone);
 		}
 
+		// index into virtual page array at index [count - pages_needed]
+		void *vaddr = ((uint8_t *)virt) + ((count - pages_needed) * PAGE_SIZE);
+
 		assert(pages_needed >= phys_pages.num_pages, "overflow");
 		pages_needed -= phys_pages.num_pages;
 
-		// index into virtual page array at index [count - pages_needed]
-		void *vaddr = ((uint8_t *)virt) + ((count - pages_needed) * PAGE_SIZE);
 		if (map_pages((volatile struct pml4 *)ctx->pml4, vaddr,
 					  phys_pages.pagestart, flags, phys_pages.num_pages)) {
 			goto mem_alloc_pages_at_fail;
