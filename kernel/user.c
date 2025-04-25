@@ -17,11 +17,12 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 {
 	uint8_t buf[PAGE_SIZE];
 	Elf64_Phdr hdr;
-	size_t npages, nbytes;
+	size_t npages, nvpages, nbytes;
 
 	hdr = pcb->elf_segments[idx];
 	nbytes = hdr.p_filesz;
 	npages = (nbytes + PAGE_SIZE - 1) / PAGE_SIZE;
+	nvpages = (hdr.p_memsz + PAGE_SIZE - 1) / PAGE_SIZE;
 
 	if (npages < 1)
 		return 0;
@@ -30,7 +31,7 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 		return 0;
 
 	// allocate memory in user process
-	if (mem_alloc_pages_at(pcb->memctx, npages, (void *)hdr.p_vaddr,
+	if (mem_alloc_pages_at(pcb->memctx, nvpages, (void *)hdr.p_vaddr,
 						   F_WRITEABLE | F_UNPRIVILEGED) == NULL)
 		return 1;
 
@@ -76,7 +77,7 @@ static int validate_elf_hdr(struct pcb *pcb)
 		return 1;
 	}
 
-	if(ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
+	if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
 		ERROR("Unsupported ELF File byte order.\n");
 		return 1;
 	}
@@ -96,7 +97,7 @@ static int validate_elf_hdr(struct pcb *pcb)
 		return 1;
 	}
 
-	if(ehdr->e_type != ET_EXEC) {
+	if (ehdr->e_type != ET_EXEC) {
 		ERROR("Unsupported ELF File type.\n");
 		return 1;
 	}
