@@ -461,6 +461,7 @@ void schedule(struct pcb *pcb)
 		panic("schedule insert fail");
 }
 
+__attribute__((noreturn))
 void dispatch(void)
 {
 	assert(current_pcb == NULL, "dispatch: current process is not null");

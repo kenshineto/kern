@@ -222,6 +222,7 @@ void schedule(struct pcb *pcb);
 /**
  * Select the next process to receive the CPU
  */
+__attribute__((noreturn))
 void dispatch(void);
 
 #endif /* procs.h */
