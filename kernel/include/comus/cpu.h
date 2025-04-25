@@ -89,4 +89,9 @@ void cpu_feats(struct cpu_feat *feats);
  */
 void cpu_print_regs(struct cpu_regs *regs);
 
+/**
+ * Return from a syscall handler back into userspace
+ */
+__attribute__((noreturn)) void syscall_return(void);
+
 #endif /* cpu.h */

@@ -162,4 +162,11 @@ extern void *brk(const void *addr);
  */
 extern void *sbrk(intptr_t increment);
 
+/**
+ * Poweroff the system.
+ *
+ * @return 1 on failure
+ */
+extern int poweroff(void);
+
 #endif /* unistd.h */

@@ -35,7 +35,7 @@ struct pcb *init_pcb = NULL;
 struct pcb ptable[N_PROCS];
 
 /// next avaliable pid
-pid_t next_pid = 0;
+pid_t next_pid = 1;
 
 static struct pcb *find_prev_wakeup(pcb_queue_t queue, struct pcb *pcb)
 {
@@ -119,6 +119,7 @@ int pcb_alloc(struct pcb **pcb)
 	if (pcb_queue_pop(pcb_freelist, &tmp) != SUCCESS)
 		return E_NO_PCBS;
 
+	tmp->pid = next_pid++;
 	*pcb = tmp;
 	return SUCCESS;
 }
@@ -461,7 +462,7 @@ void schedule(struct pcb *pcb)
 		panic("schedule insert fail");
 }
 
-void dispatch(void)
+__attribute__((noreturn)) void dispatch(void)
 {
 	assert(current_pcb == NULL, "dispatch: current process is not null");
 
@@ -472,4 +473,6 @@ void dispatch(void)
 	// set the process up for success
 	current_pcb->state = PROC_STATE_RUNNING;
 	current_pcb->ticks = 3; // ticks per process
+
+	syscall_return();
 }

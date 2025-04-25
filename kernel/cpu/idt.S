@@ -1,5 +1,5 @@
 	.global isr_stub_table
-	.global isr_restore
+	.global syscall_return
 	.global awd
 
 	.extern idt_exception_handler
@@ -8,6 +8,7 @@
 	.extern idt_pic_mouse
 	.extern idt_pic_eoi
 	.extern syscall_handler
+	.extern current_pcb
 
 .macro PUSHALL
 	pushq	%rax
@@ -88,7 +89,7 @@ isr_stub_\num:
 	cld
 	movq	%rsp, %rdi				# top of stack
 	callq	syscall_handler
-	jmp		isr_restore
+	jmp		syscall_return
 .endm
 
 .macro PICGeneric num
@@ -419,12 +420,18 @@ isr_stub_table:
 	.code64
 
 # isr restore
-isr_restore:
-	movw $(0x20 | 3), %ax
-	movw %ax, %ds
-	movw %ax, %es
-	movw %ax, %fs
-	movw %ax, %gs
+syscall_return:
+	movq	current_pcb, %rbx // return user stack
+	movq	0(%rbx), %rsp // esp
+	movq	8(%rbx), %rcx // pml4
+	movq	(%rcx), %rcx
+	movq	%rcx, %cr3
+
+	movw	$(0x20 | 3), %ax
+	movw 	%ax, %ds
+	movw 	%ax, %es
+	movw 	%ax, %fs
+	movw 	%ax, %gs
 
 	POPALL
 	iretq

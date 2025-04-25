@@ -98,6 +98,10 @@ static int user_setup_stack(struct pcb *pcb)
 
 int user_load(struct pcb *pcb, struct disk *disk)
 {
+	// check inputs
+	if (pcb == NULL || disk == NULL)
+		return 1;
+
 	pcb->regs = NULL;
 
 	// allocate memory context

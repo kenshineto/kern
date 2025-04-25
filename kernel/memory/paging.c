@@ -704,8 +704,8 @@ volatile void *pgdir_alloc(void)
 volatile void *pgdir_clone(volatile const void *old_pgdir, bool cow)
 {
 	// TODO:
-	(void) old_pgdir;
-	(void) cow;
+	(void)old_pgdir;
+	(void)cow;
 	return NULL;
 }
 

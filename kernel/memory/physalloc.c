@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
@@ -11,13 +12,13 @@ extern char kernel_end;
 // between memory_start and kernel_start will be the bitmap
 static uintptr_t memory_start = 0;
 
-static uint64_t *bitmap;
+static uint64_t *bitmap = NULL;
 static uint64_t total_memory;
 static uint64_t free_memory;
 static uint64_t page_count;
 static uint64_t segment_count;
 struct memory_map phys_mmap;
-struct memory_segment *page_start;
+struct memory_segment *page_start = NULL;
 
 static const char *segment_type_str[] = {
 	[SEG_TYPE_FREE] = "Free",			[SEG_TYPE_RESERVED] = "Reserved",
@@ -83,6 +84,13 @@ void *alloc_phys_pages_exact(size_t pages)
 {
 	if (pages < 1)
 		return NULL;
+
+	if (bitmap == NULL || page_start == NULL) {
+		// temporary bump allocator
+		void *addr = (void *)memory_start;
+		memory_start += PAGE_SIZE;
+		return addr;
+	}
 
 	size_t n_contiguous = 0;
 	size_t free_region_start = 0;

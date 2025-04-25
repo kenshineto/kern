@@ -1,6 +1,6 @@
 #include <comus/cpu.h>
 #include <comus/syscalls.h>
-#include <comus/drivers/uart.h>
+#include <comus/drivers/acpi.h>
 #include <comus/memory.h>
 #include <comus/procs.h>
 
@@ -52,13 +52,22 @@ static int sys_write(void)
 	return nbytes;
 }
 
+static int sys_poweroff(void)
+{
+	acpi_shutdown();
+	return 1;
+}
+
 static int (*syscall_tbl[N_SYSCALLS])(void) = {
-	[SYS_exit] = sys_exit, [SYS_waitpid] = NULL,	[SYS_fork] = NULL,
-	[SYS_exec] = NULL,	   [SYS_open] = NULL,		[SYS_close] = NULL,
-	[SYS_read] = NULL,	   [SYS_write] = sys_write, [SYS_getpid] = NULL,
-	[SYS_getppid] = NULL,  [SYS_gettime] = NULL,	[SYS_getprio] = NULL,
-	[SYS_setprio] = NULL,  [SYS_kill] = NULL,		[SYS_sleep] = NULL,
-	[SYS_brk] = NULL,	   [SYS_sbrk] = NULL,
+	[SYS_exit] = sys_exit, [SYS_waitpid] = NULL,
+	[SYS_fork] = NULL,	   [SYS_exec] = NULL,
+	[SYS_open] = NULL,	   [SYS_close] = NULL,
+	[SYS_read] = NULL,	   [SYS_write] = sys_write,
+	[SYS_getpid] = NULL,   [SYS_getppid] = NULL,
+	[SYS_gettime] = NULL,  [SYS_getprio] = NULL,
+	[SYS_setprio] = NULL,  [SYS_kill] = NULL,
+	[SYS_sleep] = NULL,	   [SYS_brk] = NULL,
+	[SYS_sbrk] = NULL,	   [SYS_poweroff] = sys_poweroff,
 };
 
 void syscall_handler(struct cpu_regs *regs)
@@ -91,7 +100,4 @@ void syscall_handler(struct cpu_regs *regs)
 
 	// save return value
 	current_pcb->regs->rax = ret;
-
-	// switch back to process ctx
-	mem_ctx_switch(current_pcb->memctx);
 }
