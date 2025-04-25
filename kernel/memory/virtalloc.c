@@ -96,6 +96,40 @@ void virtaddr_init(struct virt_ctx *ctx)
 	ctx->is_allocating = false;
 }
 
+int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new)
+{
+	// copy over data
+	memcpy(new, old, sizeof(struct virt_ctx));
+
+	// allocate new space
+	new->alloc_nodes = kalloc(sizeof(struct virt_addr_node) * new->alloc_node_count);
+	if (new->alloc_nodes == NULL)
+		return 1;
+
+	// update prev/next in new allocation space
+	update_node_ptrs(old->alloc_nodes, new->alloc_nodes, old->alloc_node_count, new->alloc_node_count);
+
+	// update bootstrap nodes
+	for (size_t i = 0; i < new->used_node_count; i++) {
+		struct virt_addr_node *prev, *next;
+
+		if (i >= BOOTSTRAP_VIRT_ALLOC_NODES)
+			break;
+
+		// get prev
+		prev = i > 0 ? &new->bootstrap_nodes[i-1] : NULL;
+		next = i < BOOTSTRAP_VIRT_ALLOC_NODES - 1 ? &new->bootstrap_nodes[i+1] : NULL;
+
+		new->bootstrap_nodes[i].prev = prev;
+		new->bootstrap_nodes[i].next = next;
+	}
+
+	// get starting node
+	new->start_node = &new->bootstrap_nodes[0]; // for now
+
+	return 0;
+}
+
 static void merge_back(struct virt_ctx *ctx, struct virt_addr_node *node)
 {
 	while (node->prev) {

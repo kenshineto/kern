@@ -53,6 +53,11 @@ struct virt_ctx {
 void virtaddr_init(struct virt_ctx *ctx);
 
 /**
+ * Clone the virtual address allocator
+ */
+int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new);
+
+/**
  * Allocate a virtual address of length x pages
  * @param pages - x pages
  * @returns virt addr
