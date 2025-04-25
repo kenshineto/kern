@@ -1,4 +1,3 @@
-#include "lib/kio.h"
 #include <comus/fs.h>
 #include <comus/procs.h>
 #include <comus/memory.h>
@@ -18,11 +17,17 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 {
 	uint8_t buf[PAGE_SIZE];
 	Elf64_Phdr hdr;
-	size_t npages;
-	int ret = 0;
+	size_t npages, nbytes;
 
 	hdr = pcb->elf_segments[idx];
-	npages = (hdr.p_filesz + PAGE_SIZE - 1) / PAGE_SIZE;
+	nbytes = hdr.p_filesz;
+	npages = (nbytes + PAGE_SIZE - 1) / PAGE_SIZE;
+
+	if (npages < 1)
+		return 0;
+
+	if (hdr.p_type != PT_LOAD)
+		return 0;
 
 	// allocate memory in user process
 	if (mem_alloc_pages_at(pcb->memctx, npages, (void *)hdr.p_vaddr,
@@ -30,17 +35,21 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 		return 1;
 
 	// load data
-	for (size_t i = 0; i < npages; i++) {
+	for (size_t i = 0; i < npages && nbytes; i++) {
+		size_t bytes = PAGE_SIZE;
+		if (nbytes < bytes)
+			bytes = nbytes;
 		mem_ctx_switch(kernel_mem_ctx); // disk_read is kernel internal
-		ret = disk_read(disk, hdr.p_offset + i * PAGE_SIZE, PAGE_SIZE, buf);
-		if (ret < 0)
-			break;
+		memset(buf + bytes, 0, PAGE_SIZE - bytes);
+		if (disk_read(disk, hdr.p_offset + i * PAGE_SIZE, bytes, buf))
+			return 1;
 		mem_ctx_switch(pcb->memctx);
-		memcpy((char *)hdr.p_vaddr + i * PAGE_SIZE, buf, PAGE_SIZE);
+		memcpy((char *)hdr.p_vaddr + i * PAGE_SIZE, buf, bytes);
+		nbytes -= bytes;
 	}
 
 	mem_ctx_switch(kernel_mem_ctx);
-	return ret;
+	return 0;
 }
 
 static int user_load_segments(struct pcb *pcb, struct disk *disk)
@@ -53,6 +62,48 @@ static int user_load_segments(struct pcb *pcb, struct disk *disk)
 	return 0;
 }
 
+static int validate_elf_hdr(struct pcb *pcb)
+{
+	Elf64_Ehdr *ehdr = &pcb->elf_header;
+
+	if (strncmp((const char *)ehdr->e_ident, ELFMAG, SELFMAG)) {
+		WARN("Invalid ELF File.\n");
+		return 1;
+	}
+
+	if (ehdr->e_ident[EI_CLASS] != ELFCLASS64) {
+		WARN("Unsupported ELF Class.\n");
+		return 1;
+	}
+
+	if(ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
+		ERROR("Unsupported ELF File byte order.\n");
+		return 1;
+	}
+
+	if (ehdr->e_machine != EM_X86_64) {
+		WARN("Unsupported ELF File target.\n");
+		return 1;
+	}
+
+	if (ehdr->e_ident[EI_VERSION] != EV_CURRENT) {
+		WARN("Unsupported ELF File version.\n");
+		return 1;
+	}
+
+	if (ehdr->e_phnum > N_ELF_SEGMENTS) {
+		WARN("Too many ELF segments.\n");
+		return 1;
+	}
+
+	if(ehdr->e_type != ET_EXEC) {
+		ERROR("Unsupported ELF File type.\n");
+		return 1;
+	}
+
+	return 0;
+}
+
 static int user_load_elf(struct pcb *pcb, struct disk *disk)
 {
 	int ret = 0;
@@ -61,7 +112,7 @@ static int user_load_elf(struct pcb *pcb, struct disk *disk)
 	if (ret < 0)
 		return 1;
 
-	if (pcb->elf_header.e_phnum > N_ELF_SEGMENTS)
+	if (validate_elf_hdr(pcb))
 		return 1;
 
 	pcb->n_elf_segments = pcb->elf_header.e_phnum;
