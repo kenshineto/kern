@@ -5,7 +5,6 @@
 #include "physalloc.h"
 #include "paging.h"
 #include "memory.h"
-#include <stdint.h>
 
 // PAGE MAP LEVEL 4 ENTRY
 struct pml4e {
@@ -139,7 +138,7 @@ extern char kernel_start[];
 extern char kernel_end[];
 
 // invalidate page cache at a vitural address
-static inline void invlpg(volatile void *vADDR)
+static inline void invlpg(volatile const void *vADDR)
 {
 	__asm__ volatile("invlpg (%0)" ::"r"(vADDR) : "memory");
 }
@@ -150,7 +149,7 @@ static inline void invlpg(volatile void *vADDR)
 // @returns VIRTUAL ADDRESS
 static volatile struct pml4 *pml4_map(volatile struct pml4 *pPML4)
 {
-	static struct pml4 *vPML4 = (void *)(uintptr_t)0x40000000;
+	static volatile struct pml4 *vPML4 = (void *)(uintptr_t)0x40000000;
 	static volatile struct pte *vPTE = &paging_pt.entries[0];
 
 	if ((uint64_t)pPML4 >> 12 == vPTE->address)
@@ -166,7 +165,7 @@ static volatile struct pml4 *pml4_map(volatile struct pml4 *pPML4)
 // @returns VIRTUAL ADDRESS
 static volatile struct pdpt *pdpt_map(volatile struct pdpt *pPDPT)
 {
-	static struct pdpt *vPDPT = (void *)(uintptr_t)0x40001000;
+	static volatile struct pdpt *vPDPT = (void *)(uintptr_t)0x40001000;
 	static volatile struct pte *vPTE = &paging_pt.entries[1];
 
 	if ((uint64_t)pPDPT >> 12 == vPTE->address)
@@ -182,7 +181,7 @@ static volatile struct pdpt *pdpt_map(volatile struct pdpt *pPDPT)
 // @returns VIRTUAL ADDRESS
 static volatile struct pd *pd_map(volatile struct pd *pPD)
 {
-	static struct pd *vPD = (void *)(uintptr_t)0x40002000;
+	static volatile struct pd *vPD = (void *)(uintptr_t)0x40002000;
 	static volatile struct pte *vPTE = &paging_pt.entries[2];
 
 	if ((uint64_t)pPD >> 12 == vPTE->address)
@@ -198,7 +197,7 @@ static volatile struct pd *pd_map(volatile struct pd *pPD)
 // @returns VIRTUAL ADDRESS
 static volatile struct pt *pt_map(volatile struct pt *pPT)
 {
-	static struct pt *vPT = (void *)(uintptr_t)0x40003000;
+	static volatile struct pt *vPT = (void *)(uintptr_t)0x40003000;
 	static volatile struct pte *vPTE = &paging_pt.entries[3];
 
 	if ((uint64_t)pPT >> 12 == vPTE->address)
@@ -678,14 +677,14 @@ void paging_init(void)
 	kernel_pd_1.entries[0].flags = F_PRESENT | F_WRITEABLE;
 	kernel_pd_1.entries[0].address = (uint64_t)(paging_pt.entries) >> 12;
 
-	memsetv(paging_pt.entries, 0, 4096);
+	memsetv(paging_pt.entries, 0, PAGE_SIZE);
 
 	// make sure we are using THESE pagetables
 	// EFI doesnt on boot
 	__asm__ volatile("mov %0, %%cr3" ::"r"(kernel_pml4.entries) : "memory");
 }
 
-volatile void *paging_alloc(void)
+volatile void *pgdir_alloc(void)
 {
 	volatile struct pml4 *pPML4;
 
@@ -702,7 +701,15 @@ volatile void *paging_alloc(void)
 	return pPML4;
 }
 
-void paging_free(volatile void *addr)
+volatile void *pgdir_clone(volatile const void *old_pgdir, bool cow)
+{
+	// TODO:
+	(void) old_pgdir;
+	(void) cow;
+	return NULL;
+}
+
+void pgdir_free(volatile void *addr)
 {
 	pml4_free(addr, true);
 }

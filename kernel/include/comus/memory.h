@@ -87,7 +87,7 @@ mem_ctx_t mem_ctx_alloc(void);
  *
  * @returns pointer context or NULL on failure
  */
-mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow);
+mem_ctx_t mem_ctx_clone(const mem_ctx_t ctx, bool cow);
 
 /**
  * Free a memory context into a new one

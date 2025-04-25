@@ -52,7 +52,7 @@ mem_ctx_t mem_ctx_alloc(void)
 	if (ctx == NULL)
 		return NULL;
 
-	if ((ctx->pml4 = paging_alloc()) == NULL)
+	if ((ctx->pml4 = pgdir_alloc()) == NULL)
 		return NULL;
 	virtaddr_init(&ctx->virtctx);
 
@@ -64,17 +64,31 @@ mem_ctx_t mem_ctx_alloc(void)
 	return ctx;
 }
 
-mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow)
+mem_ctx_t mem_ctx_clone(const mem_ctx_t old, bool cow)
 {
-	(void)ctx;
-	(void)cow;
+	mem_ctx_t new = user_mem_ctx_next;
+	if (new == NULL)
+		return NULL;
 
-	panic("not yet implemented");
+	if ((new->pml4 = pgdir_clone(old->pml4, cow)) == NULL)
+		return NULL;
+
+	if (virtaddr_clone(&old->virtctx, &new->virtctx)) {
+		pgdir_free(new->pml4);
+		return NULL;
+	}
+
+	user_mem_ctx_next = new->prev;
+	if (new->prev)
+		new->prev->next = NULL;
+	new->prev = NULL;
+
+	return new;
 }
 
 void mem_ctx_free(mem_ctx_t ctx)
 {
-	paging_free(ctx->pml4);
+	pgdir_free(ctx->pml4);
 	virtaddr_cleanup(&ctx->virtctx);
 
 	if (user_mem_ctx_next == NULL) {
