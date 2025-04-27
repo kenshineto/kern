@@ -172,7 +172,7 @@ void free_phys_pages(void *ptr, size_t pages)
 		return;
 
 	for (size_t i = 0; i < pages; i++)
-		bitmap_set(idx + pages, false);
+		bitmap_set(idx + i, false);
 }
 
 static bool segment_invalid(const struct memory_segment *segment)
