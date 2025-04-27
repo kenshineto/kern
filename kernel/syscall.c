@@ -13,8 +13,7 @@
 #define ARG3(type, name) type name = (type)(current_pcb->regs->rdx)
 #define ARG4(type, name) type name = (type)(current_pcb->regs->rcx)
 
-__attribute__((noreturn))
-static int sys_exit(void)
+__attribute__((noreturn)) static int sys_exit(void)
 {
 	ARG1(int, status);
 
@@ -57,8 +56,7 @@ static int sys_write(void)
 	return nbytes;
 }
 
-__attribute__((noreturn))
-static int sys_poweroff(void)
+__attribute__((noreturn)) static int sys_poweroff(void)
 {
 	// TODO: we should probably
 	// kill all user processes

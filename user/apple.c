@@ -8,7 +8,7 @@ INCBIN(APPLE, "data/apple.bin");
 #define APPLE_WIDTH 256
 #define APPLE_HEIGHT 144
 #define APPLE_FPS 12
-#define APPLE_FRAMES 5259
+#define APPLE_FRAMES 2630
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
@@ -33,7 +33,10 @@ static void draw_frame(void)
 		}
 	}
 
-	frame = ((ticks() - ticks_off) / (1000 / APPLE_FPS)) % APPLE_FRAMES;
+	frame = ((ticks() - ticks_off) / (1000 / APPLE_FPS));
+
+	if (frame >= APPLE_FRAMES)
+		exit(0);
 }
 
 int main(void)

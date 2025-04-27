@@ -569,8 +569,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 		ide_channel_write(chan, ATA_REG_HDDEVSEL,
 						  0xE0 | (dev->drive_idx << 4) | head);
 	} else {
-		ide_channel_write(chan, ATA_REG_HDDEVSEL,
-						  0x40 | (dev->drive_idx << 4));
+		ide_channel_write(chan, ATA_REG_HDDEVSEL, 0x40 | (dev->drive_idx << 4));
 	}
 
 	// write Parameters
