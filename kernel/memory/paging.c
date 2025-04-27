@@ -600,7 +600,8 @@ static volatile struct pte *page_alloc(volatile struct pml4 *pPML4, void *vADDR,
 }
 
 // free a pte (page) for a vitural address
-static void page_free(volatile struct pml4 *pPML4, const void *vADDR)
+static void page_free(volatile struct pml4 *pPML4, const void *vADDR,
+					  bool deallocate)
 {
 	volatile struct pte *vPTE;
 	void *pADDR;
@@ -612,17 +613,19 @@ static void page_free(volatile struct pml4 *pPML4, const void *vADDR)
 	vPTE->flags = 0;
 	vPTE->address = 0;
 
-	pADDR = (void *)((uintptr_t)vPTE->address << 12);
-	free_phys_page(pADDR);
+	if (deallocate) {
+		pADDR = (void *)((uintptr_t)vPTE->address << 12);
+		free_phys_page(pADDR);
+	}
 }
 
 /* map & unmap pages */
 
 static void unmap_pages(volatile struct pml4 *pPML4, const void *vADDR,
-						long page_count)
+						long page_count, bool deallocate)
 {
 	for (long i = 0; i < page_count; i++) {
-		page_free(pPML4, vADDR);
+		page_free(pPML4, vADDR, deallocate);
 		vADDR = (char *)vADDR + PAGE_SIZE;
 	}
 }
@@ -644,7 +647,7 @@ static int map_pages(volatile struct pml4 *pPML4, void *vADDR, void *pADDR,
 	return 0;
 
 fail:
-	unmap_pages(pPML4, vADDR, page_count);
+	unmap_pages(pPML4, vADDR, page_count, true);
 	return 1;
 }
 
@@ -715,32 +718,26 @@ void pgdir_free(volatile void *addr)
 	pml4_free(addr, true);
 }
 
-static inline void *page_align(void *addr)
-{
-	uintptr_t a = (uintptr_t)addr;
-	a /= PAGE_SIZE;
-	a *= PAGE_SIZE;
-	return (void *)a;
-}
-
 void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 				  unsigned int flags)
 {
 	long pages;
-	ptrdiff_t error;
+	size_t error;
 	void *aligned_phys;
 
-	// get length and physical page aligned address
-	aligned_phys = page_align(phys);
-	error = (char *)phys - (char *)aligned_phys;
+	error = (size_t)phys % PAGE_SIZE;
 	len += error;
-	pages = len / PAGE_SIZE + 1;
+	pages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+	aligned_phys = (char *)phys - error;
 
 	// get page aligned (or allocate) vitural address
 	if (virt == NULL)
 		virt = virtaddr_alloc(&ctx->virtctx, pages);
 	if (virt == NULL)
 		return NULL;
+
+	assert((uint64_t)virt % PAGE_SIZE == 0,
+		   "mem_mapaddr: vitural address not page aligned");
 
 	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, aligned_phys,
 				  F_PRESENT | flags, pages)) {
@@ -751,26 +748,57 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	return (char *)virt + error;
 }
 
-void *kmapuseraddr(mem_ctx_t ctx, const void *vADDR, size_t len)
+void *kmapuseraddr(mem_ctx_t ctx, const void *usrADDR, size_t len)
 {
-	char *pADDR;
+	volatile struct pml4 *pml4;
+	char *pADDR, *vADDR;
+	size_t npages, error, i;
 
-	pADDR = mem_get_phys(ctx, vADDR);
-	if (pADDR == NULL)
+	pml4 = (volatile struct pml4 *)kernel_mem_ctx->pml4;
+	npages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+	error = (size_t)usrADDR % PAGE_SIZE;
+	vADDR = virtaddr_alloc(&kernel_mem_ctx->virtctx, npages);
+	if (vADDR == NULL)
 		return NULL;
 
-	return kmapaddr(pADDR, NULL, len, F_PRESENT | F_WRITEABLE);
+	assert((size_t)vADDR % PAGE_SIZE == 0,
+		   "kmapuseraddr: vitural address not page aligned");
+
+	for (i = 0; i < npages; i++) {
+		pADDR = mem_get_phys(ctx, (char *)usrADDR + i * PAGE_SIZE);
+		if (pADDR == NULL)
+			goto fail;
+
+		// page align
+		pADDR = (char *)(((size_t)pADDR / PAGE_SIZE) * PAGE_SIZE);
+
+		if (map_pages(pml4, vADDR + i * PAGE_SIZE, pADDR,
+					  F_PRESENT | F_WRITEABLE, 1))
+			goto fail;
+	}
+
+	return vADDR + error;
+
+fail:
+	unmap_pages(&kernel_pml4, vADDR, i, false);
+	virtaddr_free(&kernel_mem_ctx->virtctx, vADDR);
+	return NULL;
 }
 
 void mem_unmapaddr(mem_ctx_t ctx, const void *virt)
 {
+	long pages;
+
 	if (virt == NULL)
 		return;
 
-	long pages = virtaddr_free(&ctx->virtctx, virt);
+	// page align
+	virt = (void *)(((size_t)virt / PAGE_SIZE) * PAGE_SIZE);
+
+	pages = virtaddr_free(&ctx->virtctx, virt);
 	if (pages < 1)
 		return;
-	unmap_pages(&kernel_pml4, virt, pages);
+	unmap_pages(&kernel_pml4, virt, pages, false);
 }
 
 void *mem_get_phys(mem_ctx_t ctx, const void *vADDR)
@@ -877,5 +905,5 @@ void mem_free_pages(mem_ctx_t ctx, const void *virt)
 		return;
 
 	long pages = virtaddr_free(&ctx->virtctx, virt);
-	unmap_pages((volatile struct pml4 *)ctx->pml4, virt, pages);
+	unmap_pages((volatile struct pml4 *)ctx->pml4, virt, pages, true);
 }
