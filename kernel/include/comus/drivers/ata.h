@@ -44,7 +44,7 @@ enum ide_error ata_init(void);
  *
  * @returns IDE_ERROR_OK (0) on success or an error code on failure
  */
-enum ide_error ide_device_read_sectors(ide_device_t, uint8_t numsects,
+enum ide_error ide_device_read_sectors(ide_device_t, uint16_t numsects,
 									   uint32_t lba,
 									   uint16_t buf[numsects * 256]);
 
@@ -53,7 +53,7 @@ enum ide_error ide_device_read_sectors(ide_device_t, uint8_t numsects,
  *
  * @returns 0 on success or an error code on failure
  */
-enum ide_error ide_device_write_sectors(ide_device_t, uint8_t numsects,
+enum ide_error ide_device_write_sectors(ide_device_t, uint16_t numsects,
 										uint32_t lba,
 										uint16_t buf[numsects * 256]);
 
