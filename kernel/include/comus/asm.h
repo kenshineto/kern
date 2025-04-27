@@ -36,8 +36,7 @@ static inline uint16_t inw(uint16_t port)
 
 static inline void rep_inw(uint16_t port, uint16_t *buffer, size_t count)
 {
-	while (count--)
-		*(buffer++) = inw(port);
+	__asm__ volatile("rep insw" : "+D"(buffer), "+c"(count) : "d"(port) : "memory");
 }
 
 static inline void outw(uint16_t port, uint16_t val)
