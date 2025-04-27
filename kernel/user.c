@@ -13,49 +13,71 @@
 #define USER_STACK_TOP 0x800000000000
 #define USER_STACK_LEN (4 * PAGE_SIZE)
 
+#define BLOCK_SIZE (PAGE_SIZE * 1000)
+static uint8_t *load_buffer = NULL;
+
 static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 {
-	uint8_t buf[PAGE_SIZE];
 	Elf64_Phdr hdr;
-	size_t npages, nvpages, nbytes;
+	size_t mem_bytes, mem_pages;
+	size_t file_bytes, file_pages;
+	uint8_t *mapADDR;
 
 	hdr = pcb->elf_segments[idx];
-	nbytes = hdr.p_filesz;
-	npages = (nbytes + PAGE_SIZE - 1) / PAGE_SIZE;
-	nvpages = (hdr.p_memsz + PAGE_SIZE - 1) / PAGE_SIZE;
 
-	if (npages < 1)
-		return 0;
-
+	// return if this is not a lodable segment
 	if (hdr.p_type != PT_LOAD)
 		return 0;
 
+	mem_bytes = hdr.p_memsz;
+	file_bytes = hdr.p_filesz;
+
+	// we cannot read more data to less memory
+	if (file_bytes > mem_bytes)
+		return 1;
+
+	mem_pages = (mem_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
+	file_pages = (file_bytes + PAGE_SIZE - 1) / PAGE_SIZE;
+
+	// return if were reading no data
+	if (file_pages < 1)
+		return 0;
+
 	// allocate memory in user process
-	if (mem_alloc_pages_at(pcb->memctx, nvpages, (void *)hdr.p_vaddr,
+	if (mem_alloc_pages_at(pcb->memctx, mem_pages, (void *)hdr.p_vaddr,
 						   F_WRITEABLE | F_UNPRIVILEGED) == NULL)
 		return 1;
 
+	mapADDR = kmapuseraddr(pcb->memctx, (void *)hdr.p_vaddr, mem_bytes);
+	if (mapADDR == NULL)
+		return 1;
+
 	// load data
-	for (size_t i = 0; i < npages && nbytes; i++) {
-		size_t bytes = PAGE_SIZE;
-		if (nbytes < bytes)
-			bytes = nbytes;
-		mem_ctx_switch(kernel_mem_ctx); // disk_read is kernel internal
-		memset(buf + bytes, 0, PAGE_SIZE - bytes);
-		if (disk_read(disk, hdr.p_offset + i * PAGE_SIZE, bytes, buf))
+	size_t total_read = 0;
+	while (total_read < file_bytes) {
+		size_t read = BLOCK_SIZE;
+		if (read > file_bytes - total_read)
+			read = file_bytes - total_read;
+		if ((read = disk_read(disk, hdr.p_offset + total_read, read,
+							  load_buffer)) < 1) {
+			kunmapaddr(mapADDR);
 			return 1;
-		mem_ctx_switch(pcb->memctx);
-		memcpy((char *)hdr.p_vaddr + i * PAGE_SIZE, buf, bytes);
-		nbytes -= bytes;
+		}
+		memcpyv(mapADDR + total_read, load_buffer, read);
+		total_read += read;
 	}
 
-	mem_ctx_switch(kernel_mem_ctx);
+	kunmapaddr(mapADDR);
 	return 0;
 }
 
 static int user_load_segments(struct pcb *pcb, struct disk *disk)
 {
 	int ret = 0;
+
+	if (load_buffer == NULL)
+		if ((load_buffer = kalloc(BLOCK_SIZE)) == NULL)
+			return 1;
 
 	for (int i = 0; i < pcb->n_elf_segments; i++)
 		if ((ret = user_load_segment(pcb, disk, i)))
