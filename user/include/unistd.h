@@ -169,4 +169,20 @@ extern void *sbrk(intptr_t increment);
  */
 extern int poweroff(void);
 
+/**
+ * Gets access to the "direct rendering manager" (framebuffer)
+ *
+ * @param fb - address of framebuffer
+ * @param width - returns the width of the framebuffer
+ * @param height - returns the height of the framebuffer
+ * @param bpp - returns the bit depth of the framebuffer
+ * @returns 0 on success, error code on failure
+ */
+extern int drm(void **fb, int *width, int *height, int *bbp);
+
+/**
+ * @returns number of ticks the system has been up for (1ms)
+ */
+extern uint64_t ticks(void);
+
 #endif /* unistd.h */
