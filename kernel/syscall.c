@@ -13,16 +13,17 @@
 #define ARG3(type, name) type name = (type)(current_pcb->regs->rdx)
 #define ARG4(type, name) type name = (type)(current_pcb->regs->rcx)
 
+__attribute__((noreturn))
 static int sys_exit(void)
 {
 	ARG1(int, status);
-	(void)status;
 
-	// FIXME: schedule somthing else
-	while (1)
-		;
+	current_pcb->exit_status = status;
+	pcb_zombify(current_pcb);
+	current_pcb = NULL;
 
-	return 1;
+	// call next process
+	dispatch();
 }
 
 static int sys_write(void)
@@ -56,13 +57,13 @@ static int sys_write(void)
 	return nbytes;
 }
 
+__attribute__((noreturn))
 static int sys_poweroff(void)
 {
 	// TODO: we should probably
 	// kill all user processes
 	// and then sync the fs
 	acpi_shutdown();
-	return 1;
 }
 
 static int sys_drm(void)
@@ -138,14 +139,14 @@ void syscall_handler(struct cpu_regs *regs)
 	num = current_pcb->regs->rax;
 	current_pcb->regs->rax = 0;
 
-	// syscall number
-
 	// check for invalid syscall
 	if (num >= N_SYSCALLS) {
-		// invalid syscall
-		// FIXME: kill user process
-		while (1)
-			;
+		// kill process
+		current_pcb->exit_status = 1;
+		pcb_zombify(current_pcb);
+		current_pcb = NULL;
+		// call next process
+		dispatch();
 	}
 
 	// run syscall handler
@@ -156,4 +157,6 @@ void syscall_handler(struct cpu_regs *regs)
 	// on failure, set rax
 	if (ret)
 		current_pcb->regs->rax = ret;
+
+	// return to current pcb
 }
