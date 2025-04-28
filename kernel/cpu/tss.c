@@ -1,3 +1,4 @@
+#include "comus/memory.h"
 #include "lib/kstring.h"
 #include <stdint.h>
 
@@ -47,7 +48,7 @@ extern volatile uint8_t GDT[];
 static volatile struct sys_seg_descriptor *GDT_TSS;
 
 // kernel stack pointer
-extern char kern_stack_end[];
+static char interrupt_stack[PAGE_SIZE*2];
 
 void tss_init(void)
 {
@@ -56,7 +57,7 @@ void tss_init(void)
 
 	// setup tss entry
 	memsetv(&tss, 0, sizeof(struct tss));
-	tss.rsp0 = (uint64_t)kern_stack_end;
+	tss.rsp0 = (uint64_t)interrupt_stack + sizeof(interrupt_stack);
 
 	// map tss into gdt
 	GDT_TSS = (volatile struct sys_seg_descriptor *)(GDT + 0x28);
