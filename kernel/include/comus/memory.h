@@ -104,6 +104,11 @@ void mem_ctx_free(mem_ctx_t ctx);
 void mem_ctx_switch(mem_ctx_t ctx);
 
 /**
+ * @returns the pgdir pointer in the memory ctx
+ */
+volatile void *mem_ctx_pgdir(mem_ctx_t ctx);
+
+/**
  * Allocates at least len bytes of memory starting at
  * physical address addr. Returned address can be
  * any virtural address.

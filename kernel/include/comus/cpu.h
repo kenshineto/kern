@@ -31,6 +31,13 @@ struct cpu_feat {
 };
 
 struct cpu_regs {
+	// pgdir
+	uint64_t cr3;
+	// segments
+	uint16_t gs;
+	uint16_t fs;
+	uint16_t es;
+	uint16_t ds;
 	// registers
 	uint64_t r15;
 	uint64_t r14;

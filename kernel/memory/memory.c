@@ -71,7 +71,12 @@ mem_ctx_t mem_ctx_alloc(void)
 
 mem_ctx_t mem_ctx_clone(const mem_ctx_t old, bool cow)
 {
-	mem_ctx_t new = user_mem_ctx_next;
+	mem_ctx_t new;
+
+	assert(old != NULL, "memory context is null");
+	assert(old->pml4 != NULL, "pgdir is null");
+
+	new = user_mem_ctx_next;
 	if (new == NULL)
 		return NULL;
 
@@ -93,6 +98,9 @@ mem_ctx_t mem_ctx_clone(const mem_ctx_t old, bool cow)
 
 void mem_ctx_free(mem_ctx_t ctx)
 {
+	assert(ctx != NULL, "memory context is null");
+	assert(ctx->pml4 != NULL, "pgdir is null");
+
 	pgdir_free(ctx->pml4);
 	virtaddr_cleanup(&ctx->virtctx);
 
@@ -107,7 +115,18 @@ void mem_ctx_free(mem_ctx_t ctx)
 
 void mem_ctx_switch(mem_ctx_t ctx)
 {
+	assert(ctx != NULL, "memory context is null");
+	assert(ctx->pml4 != NULL, "pgdir is null");
+
 	__asm__ volatile("mov %0, %%cr3" ::"r"(ctx->pml4) : "memory");
+}
+
+volatile void *mem_ctx_pgdir(mem_ctx_t ctx)
+{
+	assert(ctx != NULL, "memory context is null");
+	assert(ctx->pml4 != NULL, "pgdir is null");
+
+	return ctx->pml4;
 }
 
 void memory_init(void)

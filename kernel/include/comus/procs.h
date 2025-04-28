@@ -15,8 +15,8 @@
 #include <lib.h>
 #include <elf.h>
 
-#define PCB_REG(pcb, x) ((pcb)->regs->x)
-#define PCB_RET(pcb) ((pcb)->regs->rax)
+#define PCB_REG(pcb, x) ((pcb)->regs.x)
+#define PCB_RET(pcb) ((pcb)->regs.rax)
 #define PCB_ARG1(pcb) PCB_REG((pcb), rdi)
 #define PCB_ARG2(pcb) PCB_REG((pcb), rsi)
 #define PCB_ARG3(pcb) PCB_REG((pcb), rdx)
@@ -47,8 +47,8 @@ enum proc_state {
 /// process control block
 struct pcb {
 	// context
-	struct cpu_regs *regs;
 	mem_ctx_t memctx;
+	struct cpu_regs regs;
 
 	// metadata
 	pid_t pid;
@@ -223,5 +223,10 @@ void schedule(struct pcb *pcb);
  * Select the next process to receive the CPU
  */
 __attribute__((noreturn)) void dispatch(void);
+
+/**
+ * Scheduler function called on every system tick
+ */
+void pcb_on_tick(void);
 
 #endif /* procs.h */

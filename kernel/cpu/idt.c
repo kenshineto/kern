@@ -3,6 +3,7 @@
 #include <comus/asm.h>
 #include <comus/cpu.h>
 #include <comus/drivers/pit.h>
+#include <comus/procs.h>
 #include <comus/memory.h>
 
 #include "idt.h"
@@ -42,8 +43,12 @@ struct idtr {
 __attribute__((aligned(0x10))) static struct idt_entry idt[256];
 
 static struct idtr idtr;
-// from idt.S
 extern void *isr_stub_table[];
+extern char kern_stack_start[];
+extern char kern_stack_end[];
+
+// current register state on interrupt
+static struct cpu_regs *state;
 
 // initialize and load the IDT
 void idt_init(void)
@@ -58,11 +63,10 @@ void idt_init(void)
 
 		uint64_t isr = (uint64_t)isr_stub_table[vector];
 		// interrupts before 0x20 are for cpu exceptions
-		uint8_t gate_type = (vector < 0x20) ? GATE_64BIT_TRAP : GATE_64BIT_INT;
 
 		entry->kernel_cs = 0x08; // offset of 1 into GDT
 		entry->ist = 0;
-		entry->flags = PRESENT | RING0 | gate_type;
+		entry->flags = PRESENT | RING0 | GATE_64BIT_INT;
 		entry->isr_low = isr & 0xffff;
 		entry->isr_mid = (isr >> 16) & 0xffff;
 		entry->isr_high = (isr >> 32) & 0xffffffff;
@@ -115,13 +119,10 @@ char *EXCEPTIONS[] = {
 	"Reserved",
 };
 
-void idt_exception_handler(uint64_t exception, uint64_t code,
-						   struct cpu_regs *state)
+__attribute__((noreturn)) void idt_exception_handler(uint64_t exception,
+													 uint64_t code)
 {
 	uint64_t cr2;
-
-	// make sure were in the kernel memory context
-	mem_ctx_switch(kernel_mem_ctx);
 
 	switch (exception) {
 	case EX_PAGE_FAULT:
@@ -151,16 +152,35 @@ void idt_exception_handler(uint64_t exception, uint64_t code,
 	}
 }
 
+void isr_save(struct cpu_regs *regs)
+{
+	// make sure were in the kernel memory context
+	mem_ctx_switch(kernel_mem_ctx);
+
+	// save pointer to registers
+	state = regs;
+
+	// if we have a kernel stack pointer
+	// we should return to not save kernel context
+	// data to userspace
+	if (regs->rsp >= (size_t)kern_stack_start &&
+		regs->rsp <= (size_t)kern_stack_end)
+		return;
+
+	// save registers in current_pcb
+	if (current_pcb != NULL)
+		current_pcb->regs = *regs;
+}
+
 void idt_pic_eoi(uint8_t exception)
 {
 	pic_eoi(exception - PIC_REMAP_OFFSET);
 }
 
-int counter = 0;
-
 void idt_pic_timer(void)
 {
 	ticks++;
+	pcb_on_tick();
 }
 
 void idt_pic_keyboard(void)

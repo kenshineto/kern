@@ -16,6 +16,10 @@
 #define BLOCK_SIZE (PAGE_SIZE * 1000)
 static uint8_t *load_buffer = NULL;
 
+#define USER_CODE 0x18
+#define USER_DATA 0x20
+#define RING3 3
+
 static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 {
 	Elf64_Phdr hdr;
@@ -63,7 +67,7 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 			kunmapaddr(mapADDR);
 			return 1;
 		}
-		memcpyv(mapADDR + total_read, load_buffer, read);
+		memcpy(mapADDR + total_read, load_buffer, read);
 		total_read += read;
 	}
 
@@ -156,16 +160,28 @@ static int user_setup_stack(struct pcb *pcb)
 						   F_WRITEABLE | F_UNPRIVILEGED) == NULL)
 		return 1;
 
-	// setup initial context save area
-	pcb->regs = (struct cpu_regs *)(USER_STACK_TOP - sizeof(struct cpu_regs));
-	mem_ctx_switch(pcb->memctx);
-	memset(pcb->regs, 0, sizeof(struct cpu_regs));
-	pcb->regs->rip = pcb->elf_header.e_entry;
-	pcb->regs->cs = 0x18 | 3;
-	pcb->regs->rflags = (1 << 9);
-	pcb->regs->rsp = USER_STACK_TOP;
-	pcb->regs->ss = 0x20 | 3;
-	mem_ctx_switch(kernel_mem_ctx);
+	memset(&pcb->regs, 0, sizeof(struct cpu_regs));
+
+	// pgdir
+	pcb->regs.cr3 = (uint64_t)mem_ctx_pgdir(pcb->memctx);
+	// segments
+	pcb->regs.gs = USER_DATA | RING3;
+	pcb->regs.fs = USER_DATA | RING3;
+	pcb->regs.es = USER_DATA | RING3;
+	pcb->regs.ds = USER_DATA | RING3;
+	// registers
+	pcb->regs.rdi = 0; // argc
+	pcb->regs.rsi = 0; // argv
+	// intruction pointer
+	pcb->regs.rip = pcb->elf_header.e_entry;
+	// code segment
+	pcb->regs.cs = 0x18 | 3;
+	// rflags
+	pcb->regs.rflags = (1 << 9);
+	// stack pointer
+	pcb->regs.rsp = USER_STACK_TOP;
+	// stack segment
+	pcb->regs.ss = 0x20 | 3;
 
 	return 0;
 }
@@ -175,8 +191,6 @@ int user_load(struct pcb *pcb, struct disk *disk)
 	// check inputs
 	if (pcb == NULL || disk == NULL)
 		return 1;
-
-	pcb->regs = NULL;
 
 	// allocate memory context
 	pcb->memctx = mem_ctx_alloc();

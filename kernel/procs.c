@@ -1,3 +1,4 @@
+#include <comus/drivers/pit.h>
 #include <comus/procs.h>
 #include <comus/error.h>
 #include <comus/cpu.h>
@@ -179,45 +180,47 @@ void pcb_zombify(struct pcb *victim)
 
 	// schedule init if zombie child found
 	if (zchild != NULL && init_pcb->state == PROC_STATE_WAITING) {
+		pid_t pid;
+		int *status;
+
 		assert(pcb_queue_remove(zombie, zchild) == SUCCESS,
 			   "pcb_zombify: cannot remove zombie process from queue");
 		assert(pcb_queue_remove(waiting, init_pcb) == SUCCESS,
 			   "pcb_zombify: cannot remove waiting process from queue");
 
-		// send exited pid to init
-		PCB_RET(init_pcb) = zchild->pid;
-		// set &status in init's waitpid call
-		int *ptr = (int *)PCB_ARG2(init_pcb);
-		if (ptr != NULL) {
-			mem_ctx_switch(init_pcb->memctx);
-			*ptr = zchild->exit_status;
-			mem_ctx_switch(kernel_mem_ctx);
+		pid = (pid_t)PCB_ARG1(init_pcb);
+		status = (int *)PCB_ARG2(init_pcb);
+
+		// set exited pid and exist status in init's waitpid call
+		if (pid == 0 || pid == zchild->pid) {
+			PCB_RET(init_pcb) = zchild->pid;
+			if (status != NULL) {
+				mem_ctx_switch(init_pcb->memctx);
+				*status = zchild->exit_status;
+				mem_ctx_switch(kernel_mem_ctx);
+			}
+			schedule(init_pcb);
 		}
 
-		// schedule init and cleanup child
-		schedule(init_pcb);
 		pcb_cleanup(zchild);
 	}
 
 	// if the parent is waiting, wake it up and clean the victim,
 	// otherwise the victim will become a zombie
 	if (parent->state == PROC_STATE_WAITING) {
-		// verify that the parent is either waiting for this process
-		// or is waiting for any of its children
-		uint64_t target = PCB_ARG1(parent);
+		pid_t pid;
+		int *status;
 
-		if (target != 0 || target == victim->pid) {
-			// send exited pid to parent
-			PCB_RET(parent) = victim->pid;
-			// send &status to parent
-			int *ptr = (int *)PCB_ARG2(parent);
-			if (ptr != NULL) {
+		pid = (pid_t)PCB_ARG1(parent);
+		status = (int *)PCB_ARG2(parent);
+
+		if (pid == 0 || pid == victim->pid) {
+			PCB_RET(parent) = zchild->pid;
+			if (status != NULL) {
 				mem_ctx_switch(parent->memctx);
-				*ptr = victim->exit_status;
+				*status = victim->exit_status;
 				mem_ctx_switch(kernel_mem_ctx);
 			}
-
-			// schedule the parent, and clean up the zombie
 			schedule(parent);
 			pcb_cleanup(victim);
 			return;
@@ -475,4 +478,40 @@ __attribute__((noreturn)) void dispatch(void)
 	current_pcb->ticks = 3; // ticks per process
 
 	syscall_return();
+}
+
+void pcb_on_tick(void)
+{
+	// procs not initalized yet
+	if (init_pcb == NULL)
+		return;
+
+	// update on sleeping
+	do {
+		struct pcb *pcb;
+
+		if (pcb_queue_empty(sleeping))
+			break;
+
+		pcb = pcb_queue_peek(sleeping);
+		assert(pcb != NULL, "sleeping queue should not be empty");
+
+		if (pcb->wakeup >= ticks)
+			break;
+
+		if (pcb_queue_remove(sleeping, pcb))
+			panic("failed to wake sleeping process: %d", pcb->pid);
+
+		schedule(pcb);
+	} while (1);
+
+	if (current_pcb) {
+		current_pcb->ticks--;
+		if (current_pcb->ticks < 1) {
+			// schedule another process
+			schedule(current_pcb);
+			current_pcb = NULL;
+			dispatch();
+		}
+	}
 }

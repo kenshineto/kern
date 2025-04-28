@@ -1,6 +1,5 @@
-#include "comus/memory.h"
-#include "lib/kstring.h"
-#include <stdint.h>
+#include <comus/memory.h>
+#include <lib.h>
 
 #include "tss.h"
 
@@ -48,7 +47,7 @@ extern volatile uint8_t GDT[];
 static volatile struct sys_seg_descriptor *GDT_TSS;
 
 // kernel stack pointer
-static char interrupt_stack[PAGE_SIZE*2];
+static char interrupt_stack[PAGE_SIZE * 2];
 
 void tss_init(void)
 {

@@ -10,11 +10,11 @@
 
 static struct pcb *pcb;
 
-#define RET(type, name) type *name = (type *)(&pcb->regs->rax)
-#define ARG1(type, name) type name = (type)(pcb->regs->rdi)
-#define ARG2(type, name) type name = (type)(pcb->regs->rsi)
-#define ARG3(type, name) type name = (type)(pcb->regs->rdx)
-#define ARG4(type, name) type name = (type)(pcb->regs->rcx)
+#define RET(type, name) type *name = (type *)(&pcb->regs.rax)
+#define ARG1(type, name) type name = (type)(pcb->regs.rdi)
+#define ARG2(type, name) type name = (type)(pcb->regs.rsi)
+#define ARG3(type, name) type name = (type)(pcb->regs.rdx)
+#define ARG4(type, name) type name = (type)(pcb->regs.rcx)
 
 __attribute__((noreturn)) static int sys_exit(void)
 {
@@ -255,20 +255,16 @@ static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_drm] = sys_drm,		 [SYS_ticks] = sys_ticks,
 };
 
-void syscall_handler(struct cpu_regs *regs)
+void syscall_handler(void)
 {
 	uint64_t num;
 	int (*handler)(void);
 	int ret = 1;
 
-	// make sure were in the kernel memory context
-	mem_ctx_switch(kernel_mem_ctx);
-
 	// update data
 	pcb = current_pcb;
-	pcb->regs = regs;
-	num = pcb->regs->rax;
-	pcb->regs->rax = 0;
+	num = pcb->regs.rax;
+	pcb->regs.rax = 0;
 	current_pcb = NULL;
 
 	// check for invalid syscall
@@ -287,7 +283,7 @@ void syscall_handler(struct cpu_regs *regs)
 
 	// on failure, set rax
 	if (ret)
-		pcb->regs->rax = ret;
+		pcb->regs.rax = ret;
 
 	// return to current pcb
 	current_pcb = pcb;
