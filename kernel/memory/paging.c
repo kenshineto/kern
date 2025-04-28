@@ -411,7 +411,7 @@ static void pt_free(volatile struct pt *pPT, bool force)
 		void *pADDR;
 
 		vPTE = &vPT->entries[i];
-		if (!force && !(vPTE->flags & F_PRESENT))
+		if (!(vPTE->flags & F_PRESENT))
 			continue;
 
 		pADDR = (void *)((uintptr_t)vPTE->address << 12);
@@ -445,7 +445,7 @@ static void pd_free(volatile struct pd *pPD, bool force)
 		volatile struct pt *pPT;
 
 		vPDE = &vPD->entries[i];
-		if (!force && !(vPDE->flags & F_PRESENT))
+		if (!(vPDE->flags & F_PRESENT))
 			continue;
 
 		pPT = (volatile struct pt *)((uintptr_t)vPDE->address << 12);
@@ -478,7 +478,7 @@ static void pdpt_free(volatile struct pdpt *pPDPT, bool force)
 		volatile struct pd *pPD;
 
 		vPDPTE = &vPDPT->entries[i];
-		if (!force && !(vPDPTE->flags & F_PRESENT))
+		if (!(vPDPTE->flags & F_PRESENT))
 			continue;
 
 		pPD = (volatile struct pd *)((uintptr_t)vPDPTE->address << 12);
@@ -511,7 +511,7 @@ static void pml4_free(volatile struct pml4 *pPML4, bool force)
 		volatile struct pdpt *pPDPT;
 
 		vPML4E = &vPML4->entries[i];
-		if (!force && !(vPML4E->flags & F_PRESENT))
+		if (!(vPML4E->flags & F_PRESENT))
 			continue;
 
 		pPDPT = (volatile struct pdpt *)((uintptr_t)vPML4E->address << 12);
