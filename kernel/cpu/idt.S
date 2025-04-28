@@ -135,13 +135,15 @@ isr_stub_\num:
 	ISRRestore
 .endm
 
+# we have to send eoi first since
+# idt_pic_timer may not return
 .macro PICTimer num
 	.align 8
 isr_stub_\num:
 	ISRSave
-	callq	idt_pic_timer
-	movq	$\num, %rdi
 	callq	idt_pic_eoi
+	movq	$\num, %rdi
+	callq	idt_pic_timer
 	ISRRestore
 .endm
 
