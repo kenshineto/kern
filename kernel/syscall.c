@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <comus/cpu.h>
 #include <comus/syscalls.h>
 #include <comus/drivers/acpi.h>
@@ -7,6 +8,7 @@
 #include <comus/procs.h>
 #include <comus/time.h>
 #include <lib.h>
+#include <stddef.h>
 
 static struct pcb *pcb;
 
@@ -201,6 +203,68 @@ __attribute__((noreturn)) static int sys_poweroff(void)
 	acpi_shutdown();
 }
 
+static void *pcb_update_heap(intptr_t increment)
+{
+	char *curr_brk;
+	size_t curr_pages, new_pages, new_len;
+
+	new_len = pcb->heap_len + increment;
+	new_pages = (new_len + PAGE_SIZE - 1) / PAGE_SIZE;
+
+	curr_brk = pcb->heap_start + pcb->heap_len;
+	curr_pages = (pcb->heap_len + PAGE_SIZE - 1) / PAGE_SIZE;
+	if (pcb->heap_len == 0)
+		curr_pages = 0;
+
+	// do nothing i guess
+	if (increment == 0 || new_pages == curr_pages)
+		return curr_brk;
+
+	// unmap pages if decreasing
+	if (new_pages < curr_pages) {
+		void *new_end = pcb->heap_start + new_pages * PAGE_SIZE;
+		mem_free_pages(pcb->memctx, new_end);
+		pcb->heap_len = new_pages * PAGE_SIZE;
+	}
+
+	// map pages if increasing
+	else {
+		void *curr_end = pcb->heap_start + curr_pages * PAGE_SIZE;
+		if (mem_alloc_pages_at(pcb->memctx, new_pages - curr_pages, curr_end,
+							   F_PRESENT | F_WRITEABLE | F_UNPRIVILEGED) ==
+			NULL)
+			return NULL;
+		pcb->heap_len = new_pages * PAGE_SIZE;
+	}
+
+	return curr_brk;
+}
+
+static int sys_brk(void)
+{
+	RET(void *, brk);
+	ARG1(const void *, addr);
+
+	// cannot make heap smaller than start
+	if ((const char *)addr < pcb->heap_start) {
+		*brk = NULL;
+		return 0;
+	}
+
+	*brk = pcb_update_heap((intptr_t)addr -
+						   ((intptr_t)pcb->heap_start + pcb->heap_len));
+	return 0;
+}
+
+static int sys_sbrk(void)
+{
+	RET(void *, brk);
+	ARG1(intptr_t, increment);
+
+	*brk = pcb_update_heap(increment);
+	return 0;
+}
+
 static int sys_drm(void)
 {
 	ARG1(void **, res_fb);
@@ -255,8 +319,8 @@ static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_getpid] = sys_getpid,	 [SYS_getppid] = sys_getppid,
 	[SYS_gettime] = sys_gettime, [SYS_getprio] = sys_getprio,
 	[SYS_setprio] = sys_setprio, [SYS_kill] = sys_kill,
-	[SYS_sleep] = sys_sleep,	 [SYS_brk] = NULL,
-	[SYS_sbrk] = NULL,			 [SYS_poweroff] = sys_poweroff,
+	[SYS_sleep] = sys_sleep,	 [SYS_brk] = sys_brk,
+	[SYS_sbrk] = sys_sbrk,		 [SYS_poweroff] = sys_poweroff,
 	[SYS_drm] = sys_drm,		 [SYS_ticks] = sys_ticks,
 };
 

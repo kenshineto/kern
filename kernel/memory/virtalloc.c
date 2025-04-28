@@ -182,7 +182,7 @@ void *virtaddr_alloc(struct virt_ctx *ctx, int n_pages)
 		if (length < n_length)
 			continue;
 
-		return (void*)node->start;
+		return (void *)node->start;
 	}
 
 	return NULL;
@@ -205,12 +205,12 @@ int virtaddr_take(struct virt_ctx *ctx, const void *virt, int n_pages)
 			continue;
 
 		// create new node on left
-		if (node->start < (uintptr_t) virt) {
+		if (node->start < (uintptr_t)virt) {
 			struct virt_addr_node *left = get_node(ctx);
 			left->next = node;
 			left->prev = node->prev;
 			left->start = node->start;
-			left->end = (uintptr_t) virt;
+			left->end = (uintptr_t)virt;
 			left->is_used = true;
 			left->is_alloc = false;
 			node->prev->next = left;
@@ -218,11 +218,11 @@ int virtaddr_take(struct virt_ctx *ctx, const void *virt, int n_pages)
 		}
 
 		// create new node on right
-		if (node->end > (uintptr_t) virt + n_length) {
+		if (node->end > (uintptr_t)virt + n_length) {
 			struct virt_addr_node *right = get_node(ctx);
 			right->prev = node;
 			right->next = node->next;
-			right->start = (uintptr_t) virt + n_length;
+			right->start = (uintptr_t)virt + n_length;
 			right->end = node->end;
 			right->is_used = true;
 			right->is_alloc = false;
@@ -230,7 +230,7 @@ int virtaddr_take(struct virt_ctx *ctx, const void *virt, int n_pages)
 			node->next = right;
 		}
 
-		node->start = (uintptr_t) virt;
+		node->start = (uintptr_t)virt;
 		node->end = node->start + n_length;
 		node->is_alloc = true;
 		node->is_used = true;

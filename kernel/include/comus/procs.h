@@ -57,6 +57,10 @@ struct pcb {
 	size_t priority;
 	size_t ticks;
 
+	// heap
+	char *heap_start;
+	size_t heap_len;
+
 	// elf metadata
 	Elf64_Ehdr elf_header;
 	Elf64_Phdr elf_segments[N_ELF_SEGMENTS];

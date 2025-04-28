@@ -71,6 +71,10 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 		total_read += read;
 	}
 
+	// update heap end
+	if (hdr.p_vaddr + mem_pages * PAGE_SIZE > (uint64_t)pcb->heap_start)
+		pcb->heap_start = (void *)(hdr.p_vaddr + mem_pages * PAGE_SIZE);
+
 	kunmapaddr(mapADDR);
 	return 0;
 }
@@ -79,6 +83,9 @@ static int user_load_segments(struct pcb *pcb, struct disk *disk)
 {
 	int ret = 0;
 
+	pcb->heap_start = NULL;
+	pcb->heap_len = 0;
+
 	if (load_buffer == NULL)
 		if ((load_buffer = kalloc(BLOCK_SIZE)) == NULL)
 			return 1;
@@ -86,6 +93,12 @@ static int user_load_segments(struct pcb *pcb, struct disk *disk)
 	for (int i = 0; i < pcb->n_elf_segments; i++)
 		if ((ret = user_load_segment(pcb, disk, i)))
 			return ret;
+
+	if (pcb->heap_start == NULL) {
+		WARN("No loadable ELF segments found.");
+		return 1;
+	};
+
 	return 0;
 }
 
