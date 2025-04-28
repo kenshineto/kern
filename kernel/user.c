@@ -175,13 +175,13 @@ static int user_setup_stack(struct pcb *pcb)
 	// intruction pointer
 	pcb->regs.rip = pcb->elf_header.e_entry;
 	// code segment
-	pcb->regs.cs = 0x18 | 3;
+	pcb->regs.cs = USER_CODE | RING3;
 	// rflags
 	pcb->regs.rflags = (1 << 9);
 	// stack pointer
 	pcb->regs.rsp = USER_STACK_TOP;
 	// stack segment
-	pcb->regs.ss = 0x20 | 3;
+	pcb->regs.ss = USER_DATA | RING3;
 
 	return 0;
 }

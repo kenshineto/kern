@@ -51,12 +51,12 @@
 	# segments
 	popw	%ax
 	movw 	%ax, %gs
+	popw	%ax
 	movw 	%ax, %fs
 	popw	%ax
 	movw 	%ax, %es
 	popw	%ax
 	movw 	%ax, %ds
-	popw	%ax
 
 	# regs
 	popq	%r15
@@ -79,6 +79,7 @@
 .macro ISRSave
 	PUSHALL
 	cld
+
 	movq	%rsp, %rdi
 	callq	isr_save
 .endm
