@@ -182,11 +182,11 @@ static bool segment_invalid(const struct memory_segment *segment)
 		return true;
 	if (segment->type != SEG_TYPE_FREE)
 		return true;
-	if (segment->addr < (uintptr_t) kernel_start)
+	if (segment->addr < (uintptr_t)kernel_start)
 		return true;
 	if (segment->addr + segment->len < memory_start)
 		return true;
-	if (segment->addr + segment->len < (uintptr_t) kernel_start)
+	if (segment->addr + segment->len < (uintptr_t)kernel_start)
 		return true;
 	return false;
 }
@@ -200,7 +200,7 @@ static struct memory_segment clamp_segment(const struct memory_segment *segment)
 	if (memory_start)
 		start = memory_start;
 	else
-		start = (uintptr_t) kernel_end;
+		start = (uintptr_t)kernel_end;
 
 	if (segment->addr < start) {
 		addr = start;
