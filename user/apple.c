@@ -21,14 +21,34 @@ static size_t frame = 0;
 static size_t frame_size;
 static size_t ticks_off;
 
+#define PIXEL(x, y)                                         \
+	gAPPLEData[offset +                                     \
+			   (((x + APPLE_WIDTH % APPLE_WIDTH) / scale) + \
+				((y + APPLE_HEIGHT % APPLE_HEIGHT) / scale) * APPLE_WIDTH)]
+
 static void draw_frame(void)
 {
 	size_t offset = frame_size * frame;
 
 	for (int y = 0; y < APPLE_HEIGHT * scale; y++) {
 		for (int x = 0; x < APPLE_WIDTH * scale; x++) {
-			uint8_t color =
-				gAPPLEData[offset + ((x / scale) + (y / scale) * APPLE_WIDTH)];
+			uint8_t colors[9];
+			colors[0] = PIXEL(x, y);
+			colors[1] = PIXEL(x - 1, y);
+			colors[2] = PIXEL(x + 1, y);
+			colors[3] = PIXEL(x, y - 1);
+			colors[4] = PIXEL(x - 1, y - 1);
+			colors[5] = PIXEL(x + 1, y - 1);
+			colors[6] = PIXEL(x, y + 1);
+			colors[7] = PIXEL(x - 1, y + 1);
+			colors[8] = PIXEL(x + 1, y + 1);
+
+			// anti aliasing
+			uint8_t color = (colors[0] + colors[0] + colors[0] + colors[0] +
+							 colors[1] + colors[2] + colors[3] + colors[4] +
+							 colors[5] + colors[6] + colors[7] + colors[8]) /
+							12;
+
 			fb[x + y * width] = (color << 16) | (color << 8) | (color << 0);
 		}
 	}
