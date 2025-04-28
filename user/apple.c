@@ -44,7 +44,7 @@ int main(void)
 	printf("all your apple belong to bad\n");
 
 	if (drm((void **)&fb, &width, &height, &bpp)) {
-		printf("failure!\n");
+		fprintf(stderr, "failure!\n");
 		return 1;
 	}
 
