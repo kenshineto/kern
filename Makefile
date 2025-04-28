@@ -15,7 +15,7 @@ CFLAGS += -std=c11
 CFLAGS += -Wall -Wextra -pedantic
 CFLAGS += -fno-pie -fno-stack-protector
 CFLAGS += -fno-omit-frame-pointer -ffreestanding
-CFLAGS += -fno-builtin
+CFLAGS += -nostdlib -fno-builtin -mno-red-zone
 CFLAGS += -D DEBUG -g
 CFLAGS += $(CPPFLAGS)
 
