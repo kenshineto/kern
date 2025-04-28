@@ -1,6 +1,6 @@
 #include <lib.h>
 
-volatile void *memmovev(volatile void *dest, const volatile void *src, size_t n)
+volatile void *memmovev(volatile void *dest, const volatile void *src, register size_t n)
 {
 	volatile char *d = dest;
 	volatile const char *s = src;
