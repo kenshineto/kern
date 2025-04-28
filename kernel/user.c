@@ -230,6 +230,37 @@ fail:
 	return 1;
 }
 
+struct pcb *user_clone(struct pcb *pcb)
+{
+	struct pcb *child;
+
+	if (pcb_alloc(&child))
+		return NULL;
+
+	// copy context
+	memcpy(&child->regs, &pcb->regs, sizeof(struct cpu_regs));
+	child->memctx = mem_ctx_clone(pcb->memctx, true);
+	if (child->memctx == NULL)
+		return NULL;
+
+	// set metadata
+	child->parent = pcb;
+	child->state = PROC_STATE_READY;
+	child->priority = pcb->priority;
+	child->ticks = 0;
+
+	// copy heap
+	child->heap_start = pcb->heap_start;
+	child->heap_len = pcb->heap_len;
+
+	// copy elf data
+	memcpy(&child->elf_header, &pcb->elf_header, sizeof(Elf64_Ehdr));
+	memcpy(&child->elf_segments, &pcb->elf_segments, sizeof(Elf64_Ehdr));
+	child->n_elf_segments = pcb->n_elf_segments;
+
+	return child;
+}
+
 void user_cleanup(struct pcb *pcb)
 {
 	if (pcb == NULL)

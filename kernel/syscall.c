@@ -1,4 +1,4 @@
-#include "lib/kio.h"
+#include <comus/user.h>
 #include <comus/cpu.h>
 #include <comus/syscalls.h>
 #include <comus/drivers/acpi.h>
@@ -42,6 +42,20 @@ static int sys_waitpid(void)
 
 	// call next process
 	dispatch();
+}
+
+static int sys_fork(void)
+{
+	struct pcb *child;
+
+	child = user_clone(pcb);
+	if (child == NULL)
+		return -1;
+
+	child->regs.rax = 0;
+	pcb->regs.rax = child->pid;
+	schedule(child);
+	return 0;
 }
 
 static int sys_write(void)
@@ -313,7 +327,7 @@ static int sys_ticks(void)
 
 static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_exit] = sys_exit,		 [SYS_waitpid] = sys_waitpid,
-	[SYS_fork] = NULL,			 [SYS_exec] = NULL,
+	[SYS_fork] = sys_fork,			 [SYS_exec] = NULL,
 	[SYS_open] = NULL,			 [SYS_close] = NULL,
 	[SYS_read] = NULL,			 [SYS_write] = sys_write,
 	[SYS_getpid] = sys_getpid,	 [SYS_getppid] = sys_getppid,

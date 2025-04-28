@@ -18,6 +18,11 @@
 int user_load(struct pcb *pcb, struct disk *disk);
 
 /**
+ * Clone a user process. Used for fork().
+ */
+struct pcb *user_clone(struct pcb *pcb);
+
+/**
  * Clean up all loaded userland data from a pcb
  */
 void user_cleanup(struct pcb *pcb);
