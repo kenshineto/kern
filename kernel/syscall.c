@@ -186,6 +186,7 @@ static int sys_sleep(void)
 		WARN("sleep pcb insert failed");
 		return 1;
 	}
+	pcb->state = PROC_STATE_SLEEPING;
 
 	// calling pcb is in sleeping queue,
 	// we must call a new one
