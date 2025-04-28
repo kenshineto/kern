@@ -65,6 +65,14 @@ int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new);
 void *virtaddr_alloc(struct virt_ctx *ctx, int pages);
 
 /**
+ * Take (yoink) a predefined virtual address of length x pages
+ * @param virt - the start of the vitural address to take
+ * @param pages - x pages
+ * @returns 0 on success, 1 on err
+ */
+int virtaddr_take(struct virt_ctx *ctx, const void *virt, int pages);
+
+/**
  * Free the virtual address from virtaddr_alloc
  * @param virtaddr - the addr to free
  * @returns number of pages used for virtaddr

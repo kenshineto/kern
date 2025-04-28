@@ -736,6 +736,9 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	if (virt == NULL)
 		return NULL;
 
+	if (virtaddr_take(&ctx->virtctx, virt, pages))
+		return NULL;
+
 	assert((uint64_t)virt % PAGE_SIZE == 0,
 		   "mem_mapaddr: vitural address not page aligned");
 
@@ -759,6 +762,9 @@ void *kmapuseraddr(mem_ctx_t ctx, const void *usrADDR, size_t len)
 	error = (size_t)usrADDR % PAGE_SIZE;
 	vADDR = virtaddr_alloc(&kernel_mem_ctx->virtctx, npages);
 	if (vADDR == NULL)
+		return NULL;
+
+	if (virtaddr_take(&kernel_mem_ctx->virtctx, vADDR, npages))
 		return NULL;
 
 	assert((size_t)vADDR % PAGE_SIZE == 0,
@@ -846,6 +852,9 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 
 	struct phys_page_slice prev_phys_block = PHYS_PAGE_SLICE_NULL;
 	struct phys_page_slice phys_pages;
+
+	if (virtaddr_take(&ctx->virtctx, virt, count))
+		return NULL;
 
 	while (pages_needed > 0) {
 		phys_pages = alloc_phys_page_withextra(pages_needed);
