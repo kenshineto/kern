@@ -16,6 +16,10 @@ static struct pcb *pcb;
 #define ARG3(type, name) type name = (type)(pcb->regs.rdx)
 #define ARG4(type, name) type name = (type)(pcb->regs.rcx)
 
+#define stdin 0
+#define stdout 1
+#define stderr 2
+
 __attribute__((noreturn)) static int sys_exit(void)
 {
 	ARG1(int, status);
@@ -52,8 +56,8 @@ static int sys_write(void)
 	if (fd == 0)
 		nbytes = 0;
 
-	// write to stdout
-	else if (fd == 1) {
+	// write to stdout / stderr
+	else if (fd == stdout || fd == stderr) {
 		for (size_t i = 0; i < nbytes; i++)
 			kputc(map_buf[i]);
 	}
