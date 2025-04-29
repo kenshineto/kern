@@ -53,6 +53,11 @@ struct virt_ctx {
 void virtaddr_init(struct virt_ctx *ctx);
 
 /**
+ * Clone the virtual address allocator
+ */
+int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new);
+
+/**
  * Allocate a virtual address of length x pages
  * @param pages - x pages
  * @returns virt addr
@@ -60,11 +65,19 @@ void virtaddr_init(struct virt_ctx *ctx);
 void *virtaddr_alloc(struct virt_ctx *ctx, int pages);
 
 /**
+ * Take (yoink) a predefined virtual address of length x pages
+ * @param virt - the start of the vitural address to take
+ * @param pages - x pages
+ * @returns 0 on success, 1 on err
+ */
+int virtaddr_take(struct virt_ctx *ctx, const void *virt, int pages);
+
+/**
  * Free the virtual address from virtaddr_alloc
  * @param virtaddr - the addr to free
  * @returns number of pages used for virtaddr
  */
-long virtaddr_free(struct virt_ctx *ctx, void *virtaddr);
+long virtaddr_free(struct virt_ctx *ctx, const void *virtaddr);
 
 /**
  * Cleans up heap allocations and frees the virtalloc context

@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 FILE *stdout = (void *)1;
+FILE *stderr = (void *)2;
 
 int putchar(int c)
 {

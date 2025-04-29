@@ -15,6 +15,7 @@
 #include <lib/kctype.h>
 #include <lib/kio.h>
 #include <lib/klib.h>
+#include <lib/kmath.h>
 #include <lib/kstring.h>
 
 #endif /* lib.h */

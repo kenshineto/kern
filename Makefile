@@ -15,7 +15,7 @@ CFLAGS += -std=c11
 CFLAGS += -Wall -Wextra -pedantic
 CFLAGS += -fno-pie -fno-stack-protector
 CFLAGS += -fno-omit-frame-pointer -ffreestanding
-CFLAGS += -fno-builtin
+CFLAGS += -nostdlib -fno-builtin -mno-red-zone
 CFLAGS += -D DEBUG -g
 CFLAGS += $(CPPFLAGS)
 
@@ -40,7 +40,7 @@ UNAME := $(shell uname)
 QEMU = qemu-system-x86_64
 QEMUOPTS = -cdrom $(BIN)/$(ISO) \
 		   -no-reboot \
-		   -drive format=raw,file=$(BIN)/$(IMAGE)\
+		   -drive format=raw,file=$(BIN)/user/apple\
 		   -serial mon:stdio \
 		   -m 4G \
 		   -name kern
@@ -76,7 +76,8 @@ gdb:
 clean:
 	rm -fr $(BIN)
 
-build: $(BIN)/$(ISO)
+build: $(BIN)/$(KERNEL)
+	make -s -C user
 
 $(A_OBJ): $(BIN)/%.S.o : %.S $(H_SRC)
 	mkdir -p $(@D)
@@ -100,8 +101,7 @@ $(BIN)/$(ISO): $(BIN)/$(KERNEL)
 	cp $(BIN)/$(KERNEL) $(BIN)/iso/boot
 	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
 
-$(BIN)/$(IMAGE):
-	make -s -C user
+$(BIN)/$(IMAGE): build
 	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
 
 fmt:

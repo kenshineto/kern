@@ -1,8 +1,10 @@
 #include <lib.h>
 #include <comus/cpu.h>
+#include <comus/asm.h>
 
 #include "pic.h"
 #include "idt.h"
+#include "tss.h"
 
 static inline void fpu_init(void)
 {
@@ -60,8 +62,10 @@ void cpu_init(void)
 	struct cpu_feat feats;
 	cpu_feats(&feats);
 
-	pic_remap();
+	cli();
 	idt_init();
+	tss_init();
+	pic_remap();
 	if (feats.fpu)
 		fpu_init();
 	if (feats.sse) {
@@ -178,25 +182,26 @@ void cpu_feats(struct cpu_feat *feats)
 
 void cpu_print_regs(struct cpu_regs *regs)
 {
-	kprintf("rax: %#016lx (%lu)\n", regs->rax, regs->rax);
-	kprintf("rbx: %#016lx (%lu)\n", regs->rbx, regs->rbx);
-	kprintf("rcx: %#016lx (%lu)\n", regs->rcx, regs->rcx);
-	kprintf("rdx: %#016lx (%lu)\n", regs->rdx, regs->rdx);
-	kprintf("rsi: %#016lx (%lu)\n", regs->rsi, regs->rsi);
-	kprintf("rdi: %#016lx (%lu)\n", regs->rdi, regs->rdi);
-	kprintf("rsp: %#016lx (%lu)\n", regs->rsp, regs->rsp);
-	kprintf("rbp: %#016lx (%lu)\n", regs->rbp, regs->rbp);
-	kprintf("r8 : %#016lx (%lu)\n", regs->r8, regs->r8);
-	kprintf("r9 : %#016lx (%lu)\n", regs->r9, regs->r9);
-	kprintf("r10: %#016lx (%lu)\n", regs->r10, regs->r10);
-	kprintf("r11: %#016lx (%lu)\n", regs->r11, regs->r11);
-	kprintf("r12: %#016lx (%lu)\n", regs->r12, regs->r12);
-	kprintf("r13: %#016lx (%lu)\n", regs->r13, regs->r13);
-	kprintf("r14: %#016lx (%lu)\n", regs->r14, regs->r14);
-	kprintf("r15: %#016lx (%lu)\n", regs->r15, regs->r15);
-	kprintf("rip: %#016lx (%lu)\n", regs->rip, regs->rip);
-	kprintf("rflags: %#016lx (%lu)\n", regs->rflags, regs->rflags);
-	kputs("rflags: ");
+	kprintf("rax:\t%#016lx (%lu)\n", regs->rax, regs->rax);
+	kprintf("rbx:\t%#016lx (%lu)\n", regs->rbx, regs->rbx);
+	kprintf("rcx:\t%#016lx (%lu)\n", regs->rcx, regs->rcx);
+	kprintf("rdx:\t%#016lx (%lu)\n", regs->rdx, regs->rdx);
+	kprintf("rsi:\t%#016lx (%lu)\n", regs->rsi, regs->rsi);
+	kprintf("rdi:\t%#016lx (%lu)\n", regs->rdi, regs->rdi);
+	kprintf("rsp:\t%#016lx (%lu)\n", regs->rsp, regs->rsp);
+	kprintf("rbp:\t%#016lx (%lu)\n", regs->rbp, regs->rbp);
+	kprintf("r8:\t%#016lx (%lu)\n", regs->r8, regs->r8);
+	kprintf("r9:\t%#016lx (%lu)\n", regs->r9, regs->r9);
+	kprintf("r10:\t%#016lx (%lu)\n", regs->r10, regs->r10);
+	kprintf("r11:\t%#016lx (%lu)\n", regs->r11, regs->r11);
+	kprintf("r12:\t%#016lx (%lu)\n", regs->r12, regs->r12);
+	kprintf("r13:\t%#016lx (%lu)\n", regs->r13, regs->r13);
+	kprintf("r14:\t%#016lx (%lu)\n", regs->r14, regs->r14);
+	kprintf("r15:\t%#016lx (%lu)\n", regs->r15, regs->r15);
+	kprintf("rip:\t%#016lx (%lu)\n", regs->rip, regs->rip);
+	kprintf("rflags: %#016lx (%lu) [ ", regs->rflags, regs->rflags);
+	if (regs->rflags & (3 << 12))
+		kprintf("IOPL=%lu ", (regs->rflags >> 12) & 0x3);
 	if (regs->rflags & (1 << 0))
 		kputs("CF ");
 	if (regs->rflags & (1 << 2))
@@ -215,8 +220,6 @@ void cpu_print_regs(struct cpu_regs *regs)
 		kputs("DF ");
 	if (regs->rflags & (1 << 11))
 		kputs("OF ");
-	if (regs->rflags & (3 << 12))
-		kputs("IOPL ");
 	if (regs->rflags & (1 << 14))
 		kputs("NT ");
 	if (regs->rflags & (1 << 15))
@@ -233,5 +236,19 @@ void cpu_print_regs(struct cpu_regs *regs)
 		kputs("VIP ");
 	if (regs->rflags & (1 << 21))
 		kputs("ID ");
+	kputs("]\n");
+	kprintf("cs:\t%#04lx (%lu) [ DPL=%lu ]\n", regs->cs, regs->cs,
+			regs->cs & 0x3);
+	kprintf("ss:\t%#04lx (%lu) [ DPL=%lu ]\n", regs->ss, regs->ss,
+			regs->ss & 0x3);
+	kprintf("ds:\t%#04hx (%hu) [ DPL=%hu ]\n", regs->ds, regs->ds,
+			regs->ds & 0x3);
+	kprintf("es:\t%#04hx (%hu) [ DPL=%hu ]\n", regs->es, regs->es,
+			regs->es & 0x3);
+	kprintf("fs:\t%#04hx (%hu) [ DPL=%hu ]\n", regs->fs, regs->fs,
+			regs->fs & 0x3);
+	kprintf("gs:\t%#04hx (%hu) [ DPL=%hu ]\n", regs->gs, regs->gs,
+			regs->gs & 0x3);
+	kprintf("cr3:\t%#016lx (%lu)\n", regs->cr3, regs->cr3);
 	kputs("\n");
 }

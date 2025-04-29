@@ -6,10 +6,6 @@
 	.code64
 _start:
 	call main
-
 	subq	$16, %rsp # ???
 	pushq	%rax
 	call	exit
-
-halt:
-	jmp		halt

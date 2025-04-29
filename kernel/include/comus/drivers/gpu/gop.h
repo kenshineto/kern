@@ -15,6 +15,6 @@
  * Loads the uefi gop graphics driver
  * @returns 0 on success, NULL on error
  */
-int gop_init(struct gpu **gpu_dev);
+int gop_init(struct gpu_dev **gpu_dev);
 
 #endif /* gop.h */

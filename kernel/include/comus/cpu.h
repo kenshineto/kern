@@ -31,6 +31,13 @@ struct cpu_feat {
 };
 
 struct cpu_regs {
+	// pgdir
+	uint64_t cr3;
+	// segments
+	uint16_t gs;
+	uint16_t fs;
+	uint16_t es;
+	uint16_t ds;
 	// registers
 	uint64_t r15;
 	uint64_t r14;
@@ -88,5 +95,10 @@ void cpu_feats(struct cpu_feat *feats);
  * Dump registers to output
  */
 void cpu_print_regs(struct cpu_regs *regs);
+
+/**
+ * Return from a syscall handler back into userspace
+ */
+__attribute__((noreturn)) void syscall_return(void);
 
 #endif /* cpu.h */

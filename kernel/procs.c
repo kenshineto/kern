@@ -1,7 +1,10 @@
+#include <comus/drivers/pit.h>
+#include <comus/syscalls.h>
+#include <comus/memory.h>
 #include <comus/procs.h>
 #include <comus/error.h>
 #include <comus/cpu.h>
-#include <comus/memory.h>
+#include <comus/asm.h>
 
 #define PCB_QUEUE_EMPTY(q) ((q)->head == NULL)
 
@@ -12,18 +15,16 @@ struct pcb_queue_s {
 };
 
 // collection of queues
-static struct pcb_queue_s pcb_freelist_queue;
-static struct pcb_queue_s ready_queue;
-static struct pcb_queue_s waiting_queue;
-static struct pcb_queue_s sleeping_queue;
-static struct pcb_queue_s zombie_queue;
+static struct pcb_queue_s _pcb_freelist;
+static struct pcb_queue_s _ready_queue;
+static struct pcb_queue_s _zombie_queue;
+static struct pcb_queue_s _syscall_queue[N_SYSCALLS];
 
 // public facing queue handels
 pcb_queue_t pcb_freelist;
-pcb_queue_t ready;
-pcb_queue_t waiting;
-pcb_queue_t sleeping;
-pcb_queue_t zombie;
+pcb_queue_t ready_queue;
+pcb_queue_t zombie_queue;
+pcb_queue_t syscall_queue[N_SYSCALLS];
 
 /// pointer to the currently-running process
 struct pcb *current_pcb = NULL;
@@ -35,7 +36,7 @@ struct pcb *init_pcb = NULL;
 struct pcb ptable[N_PROCS];
 
 /// next avaliable pid
-pid_t next_pid = 0;
+pid_t next_pid = 1;
 
 static struct pcb *find_prev_wakeup(pcb_queue_t queue, struct pcb *pcb)
 {
@@ -84,7 +85,7 @@ static struct pcb *find_prev_pid(pcb_queue_t queue, struct pcb *pcb)
 
 // a macro to simplify queue setup
 #define QINIT(q, s)                         \
-	q = &q##_queue;                         \
+	q = &_##q;                              \
 	if (pcb_queue_reset(q, s) != SUCCESS) { \
 		panic("pcb_init can't reset " #q);  \
 	}
@@ -96,10 +97,11 @@ void pcb_init(void)
 
 	// set up the external links to the queues
 	QINIT(pcb_freelist, O_PCB_FIFO);
-	QINIT(ready, O_PCB_PRIO);
-	QINIT(waiting, O_PCB_PID);
-	QINIT(sleeping, O_PCB_WAKEUP);
-	QINIT(zombie, O_PCB_PID);
+	QINIT(ready_queue, O_PCB_PRIO);
+	QINIT(zombie_queue, O_PCB_PID);
+	for (size_t i = 0; i < N_SYSCALLS; i++) {
+		QINIT(syscall_queue[i], O_PCB_PID);
+	}
 
 	// setup pcb linked list (free list)
 	// this can be done by calling pcb_free :)
@@ -119,6 +121,8 @@ int pcb_alloc(struct pcb **pcb)
 	if (pcb_queue_pop(pcb_freelist, &tmp) != SUCCESS)
 		return E_NO_PCBS;
 
+	tmp->pid = next_pid++;
+	tmp->state = PROC_STATE_NEW;
 	*pcb = tmp;
 	return SUCCESS;
 }
@@ -177,46 +181,54 @@ void pcb_zombify(struct pcb *victim)
 	}
 
 	// schedule init if zombie child found
-	if (zchild != NULL && init_pcb->state == PROC_STATE_WAITING) {
-		assert(pcb_queue_remove(zombie, zchild) == SUCCESS,
+	if (zchild != NULL && init_pcb->syscall == SYS_waitpid) {
+		pid_t pid;
+		int *status;
+
+		assert(pcb_queue_remove(zombie_queue, zchild) == SUCCESS,
 			   "pcb_zombify: cannot remove zombie process from queue");
-		assert(pcb_queue_remove(waiting, init_pcb) == SUCCESS,
+		assert(pcb_queue_remove(syscall_queue[SYS_waitpid], init_pcb) ==
+				   SUCCESS,
 			   "pcb_zombify: cannot remove waiting process from queue");
 
-		// send exited pid to init
-		PCB_RET(init_pcb) = zchild->pid;
-		// set &status in init's waitpid call
-		int *ptr = (int *)PCB_ARG2(init_pcb);
-		if (ptr != NULL) {
-			mem_ctx_switch(init_pcb->memctx);
-			*ptr = zchild->exit_status;
-			mem_ctx_switch(kernel_mem_ctx);
+		pid = (pid_t)PCB_ARG1(init_pcb);
+		status = (int *)PCB_ARG2(init_pcb);
+
+		// set exited pid and exist status in init's waitpid call
+		if (pid == 0 || pid == zchild->pid) {
+			PCB_RET(init_pcb) = zchild->pid;
+			if (status != NULL) {
+				mem_ctx_switch(init_pcb->memctx);
+				*status = zchild->exit_status;
+				mem_ctx_switch(kernel_mem_ctx);
+			}
+			schedule(init_pcb);
 		}
 
-		// schedule init and cleanup child
-		schedule(init_pcb);
 		pcb_cleanup(zchild);
 	}
 
 	// if the parent is waiting, wake it up and clean the victim,
 	// otherwise the victim will become a zombie
-	if (parent->state == PROC_STATE_WAITING) {
-		// verify that the parent is either waiting for this process
-		// or is waiting for any of its children
-		uint64_t target = PCB_ARG1(parent);
+	if (parent->syscall == SYS_waitpid) {
+		pid_t pid;
+		int *status;
 
-		if (target != 0 || target == victim->pid) {
-			// send exited pid to parent
-			PCB_RET(parent) = victim->pid;
-			// send &status to parent
-			int *ptr = (int *)PCB_ARG2(parent);
-			if (ptr != NULL) {
+		pid = (pid_t)PCB_ARG1(parent);
+		status = (int *)PCB_ARG2(parent);
+
+		if (pid == 0 || pid == victim->pid) {
+			PCB_RET(parent) = zchild->pid;
+
+			assert(
+				pcb_queue_remove(syscall_queue[SYS_waitpid], parent) == SUCCESS,
+				"pcb_zombify: cannot remove parent process from waitpid queue");
+
+			if (status != NULL) {
 				mem_ctx_switch(parent->memctx);
-				*ptr = victim->exit_status;
+				*status = victim->exit_status;
 				mem_ctx_switch(kernel_mem_ctx);
 			}
-
-			// schedule the parent, and clean up the zombie
 			schedule(parent);
 			pcb_cleanup(victim);
 			return;
@@ -224,7 +236,7 @@ void pcb_zombify(struct pcb *victim)
 	}
 
 	victim->state = PROC_STATE_ZOMBIE;
-	assert(pcb_queue_insert(zombie, victim) == SUCCESS,
+	assert(pcb_queue_insert(zombie_queue, victim) == SUCCESS,
 		   "cannot insert victim process into zombie queue");
 }
 
@@ -451,25 +463,74 @@ struct pcb *pcb_queue_peek(const pcb_queue_t queue)
 void schedule(struct pcb *pcb)
 {
 	assert(pcb != NULL, "schedule: pcb is null");
-
-	if (pcb->state == PROC_STATE_KILLED)
-		panic("attempted to schedule killed process %d", pcb->pid);
+	assert(pcb->state != PROC_STATE_UNUSED,
+		   "attempted to schedule invalid process %d", pcb->pid);
+	assert(pcb->state != PROC_STATE_ZOMBIE,
+		   "attempted to schedule killed process %d", pcb->pid);
 
 	pcb->state = PROC_STATE_READY;
+	pcb->syscall = 0;
 
-	if (pcb_queue_insert(ready, pcb) != SUCCESS)
+	if (pcb_queue_insert(ready_queue, pcb) != SUCCESS)
 		panic("schedule insert fail");
 }
 
-void dispatch(void)
+__attribute__((noreturn)) void dispatch(void)
 {
+	int status;
+
 	assert(current_pcb == NULL, "dispatch: current process is not null");
 
-	int status = pcb_queue_pop(ready, &current_pcb);
-	if (status != SUCCESS)
-		panic("dispatch queue remove failed, code %d", status);
+	// wait for a process to schedule
+	do {
+		status = pcb_queue_pop(ready_queue, &current_pcb);
+		if (status == SUCCESS) {
+			break;
+		}
+		int_wait();
+	} while (1);
 
 	// set the process up for success
+	current_pcb->regs.cr3 = (uint64_t)mem_ctx_pgdir(current_pcb->memctx);
 	current_pcb->state = PROC_STATE_RUNNING;
 	current_pcb->ticks = 3; // ticks per process
+	current_pcb->syscall = 0;
+
+	syscall_return();
+}
+
+void pcb_on_tick(void)
+{
+	// procs not initalized yet
+	if (init_pcb == NULL)
+		return;
+
+	// update on sleeping
+	do {
+		struct pcb *pcb;
+
+		if (pcb_queue_empty(syscall_queue[SYS_sleep]))
+			break;
+
+		pcb = pcb_queue_peek(syscall_queue[SYS_sleep]);
+		assert(pcb != NULL, "sleeping queue should not be empty");
+
+		if (pcb->wakeup >= ticks)
+			break;
+
+		if (pcb_queue_remove(syscall_queue[SYS_sleep], pcb))
+			panic("failed to wake sleeping process: %d", pcb->pid);
+
+		schedule(pcb);
+	} while (1);
+
+	if (current_pcb) {
+		current_pcb->ticks--;
+		if (current_pcb->ticks < 1) {
+			// schedule another process
+			schedule(current_pcb);
+			current_pcb = NULL;
+			dispatch();
+		}
+	}
 }

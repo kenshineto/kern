@@ -15,6 +15,6 @@
  * Loads the bochs graphics driver
  * @returns 0 on success, NULL on error
  */
-int bochs_init(struct gpu **gpu_dev);
+int bochs_init(struct gpu_dev **gpu_dev);
 
 #endif /* bochs.h */

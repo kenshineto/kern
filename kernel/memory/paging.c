@@ -5,6 +5,7 @@
 #include "physalloc.h"
 #include "paging.h"
 #include "memory.h"
+#include <stdint.h>
 
 // PAGE MAP LEVEL 4 ENTRY
 struct pml4e {
@@ -138,83 +139,55 @@ extern char kernel_start[];
 extern char kernel_end[];
 
 // invalidate page cache at a vitural address
-static inline void invlpg(volatile void *vADDR)
+static inline void invlpg(volatile const void *vADDR)
 {
 	__asm__ volatile("invlpg (%0)" ::"r"(vADDR) : "memory");
 }
 
 /* map */
 
-// map a physical pml4 address to access
+// map a physical address to a virtural address
 // @returns VIRTUAL ADDRESS
-static volatile struct pml4 *pml4_map(volatile struct pml4 *pPML4)
+static volatile void *map_addr(volatile const void *pADDR, size_t pt_idx)
 {
-	static struct pml4 *vPML4 = (void *)(uintptr_t)0x40000000;
-	static volatile struct pte *vPTE = &paging_pt.entries[0];
+	volatile char *vADDR;
+	volatile struct pte *vPTE;
 
-	if ((uint64_t)pPML4 >> 12 == vPTE->address)
-		return vPML4;
+	assert(pt_idx < 512, "invalid page table entry index");
 
-	vPTE->address = (uint64_t)pPML4 >> 12;
+	vADDR = (char *)(uintptr_t)(0x40000000 + pt_idx * PAGE_SIZE);
+	vPTE = &paging_pt.entries[pt_idx];
+
+	if ((uint64_t)pADDR >> 12 == vPTE->address)
+		return vADDR;
+
+	vPTE->address = (uint64_t)pADDR >> 12;
 	vPTE->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(vPML4);
-	return vPML4;
+	invlpg(vADDR);
+	return vADDR;
 }
 
-// map a physical pdpt address to access
-// @returns VIRTUAL ADDRESS
-static volatile struct pdpt *pdpt_map(volatile struct pdpt *pPDPT)
-{
-	static struct pdpt *vPDPT = (void *)(uintptr_t)0x40001000;
-	static volatile struct pte *vPTE = &paging_pt.entries[1];
+#define PML4_MAP(pADDR) (volatile struct pml4 *)map_addr(pADDR, 0)
+#define PML4_MAPC(pADDR) (volatile const struct pml4 *)map_addr(pADDR, 4)
 
-	if ((uint64_t)pPDPT >> 12 == vPTE->address)
-		return vPDPT;
+#define PDPT_MAP(pADDR) (volatile struct pdpt *)map_addr(pADDR, 1)
+#define PDPT_MAPC(pADDR) (volatile const struct pdpt *)map_addr(pADDR, 5)
 
-	vPTE->address = (uint64_t)pPDPT >> 12;
-	vPTE->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(vPDPT);
-	return vPDPT;
-}
+#define PD_MAP(pADDR) (volatile struct pd *)map_addr(pADDR, 2)
+#define PD_MAPC(pADDR) (volatile const struct pd *)map_addr(pADDR, 6)
 
-// map a physical pd address to access
-// @returns VIRTUAL ADDRESS
-static volatile struct pd *pd_map(volatile struct pd *pPD)
-{
-	static struct pd *vPD = (void *)(uintptr_t)0x40002000;
-	static volatile struct pte *vPTE = &paging_pt.entries[2];
+#define PT_MAP(pADDR) (volatile struct pt *)map_addr(pADDR, 3)
+#define PT_MAPC(pADDR) (volatile const struct pt *)map_addr(pADDR, 7)
 
-	if ((uint64_t)pPD >> 12 == vPTE->address)
-		return vPD;
-
-	vPTE->address = (uint64_t)pPD >> 12;
-	vPTE->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(vPD);
-	return vPD;
-}
-
-// map a physical pt address to access
-// @returns VIRTUAL ADDRESS
-static volatile struct pt *pt_map(volatile struct pt *pPT)
-{
-	static struct pt *vPT = (void *)(uintptr_t)0x40003000;
-	static volatile struct pte *vPTE = &paging_pt.entries[3];
-
-	if ((uint64_t)pPT >> 12 == vPTE->address)
-		return vPT;
-
-	vPTE->address = (uint64_t)pPT >> 12;
-	vPTE->flags = F_PRESENT | F_WRITEABLE;
-	invlpg(vPT);
-	return vPT;
-}
+#define PAGE_MAP(pADDR) (volatile void *)map_addr(pADDR, 8)
+#define PAGE_MAPC(pADDR) (volatile const void *)map_addr(pADDR, 9)
 
 /* locate */
 
 // locate a pdpt for a vitural address
 // @returns PHYSICAL ADDRESS
 static volatile struct pdpt *pdpt_locate(volatile struct pml4 *pPML4,
-										 void *vADDR)
+										 const void *vADDR)
 {
 	volatile struct pml4 *vPML4;
 	volatile struct pml4e *vPML4E;
@@ -222,7 +195,7 @@ static volatile struct pdpt *pdpt_locate(volatile struct pml4 *pPML4,
 	uint64_t offset;
 
 	offset = (uint64_t)vADDR >> 39;
-	vPML4 = pml4_map(pPML4);
+	vPML4 = PML4_MAP(pPML4);
 	vPML4E = &vPML4->entries[offset];
 
 	if (vPML4E->flags & F_PRESENT) {
@@ -235,7 +208,8 @@ static volatile struct pdpt *pdpt_locate(volatile struct pml4 *pPML4,
 
 // locate a pd for a vitural address
 // @returns PHYSICAL ADDRESS
-static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, void *vADDR)
+static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT,
+									 const void *vADDR)
 {
 	volatile struct pdpt *vPDPT;
 	volatile struct pdpte *vPDPTE;
@@ -243,7 +217,7 @@ static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, void *vADDR)
 	uint64_t offset;
 
 	offset = ((uint64_t)vADDR >> 30) & 0x1ff;
-	vPDPT = pdpt_map(pPDPT);
+	vPDPT = PDPT_MAP(pPDPT);
 	vPDPTE = &vPDPT->entries[offset];
 
 	if (vPDPTE->flags & F_PRESENT) {
@@ -256,7 +230,7 @@ static volatile struct pd *pd_locate(volatile struct pdpt *pPDPT, void *vADDR)
 
 // locate a pt for a vitural address
 // @returns PHYSICAL ADDRESS
-static volatile struct pt *pt_locate(volatile struct pd *pPD, void *vADDR)
+static volatile struct pt *pt_locate(volatile struct pd *pPD, const void *vADDR)
 {
 	volatile struct pd *vPD;
 	volatile struct pde *vPDE;
@@ -264,7 +238,7 @@ static volatile struct pt *pt_locate(volatile struct pd *pPD, void *vADDR)
 	uint64_t offset;
 
 	offset = ((uint64_t)vADDR >> 21) & 0x1ff;
-	vPD = pd_map(pPD);
+	vPD = PD_MAP(pPD);
 	vPDE = &vPD->entries[offset];
 
 	if (vPDE->flags & F_PRESENT) {
@@ -287,7 +261,7 @@ static volatile struct pml4 *pml4_alloc(void)
 	if (pPML4 == NULL)
 		return NULL;
 
-	vPML4 = pml4_map(pPML4);
+	vPML4 = PML4_MAP(pPML4);
 	memsetv(vPML4, 0, sizeof(struct pml4));
 	return pPML4;
 }
@@ -303,7 +277,7 @@ static volatile struct pdpt *pdpt_alloc(volatile struct pml4 *pPML4,
 	uint64_t offset;
 
 	offset = (uint64_t)vADDR >> 39;
-	vPML4 = pml4_map(pPML4);
+	vPML4 = PML4_MAP(pPML4);
 	vPML4E = &vPML4->entries[offset];
 
 	pPDPT = pdpt_locate(pPML4, vADDR);
@@ -316,7 +290,7 @@ static volatile struct pdpt *pdpt_alloc(volatile struct pml4 *pPML4,
 	if (pPML4 == NULL)
 		return NULL;
 
-	vPDPT = pdpt_map(pPDPT);
+	vPDPT = PDPT_MAP(pPDPT);
 	memsetv(vPDPT, 0, sizeof(struct pdpt));
 	vPML4E->address = (uintptr_t)pPDPT >> 12;
 	vPML4E->flags = F_PRESENT | flags;
@@ -336,7 +310,7 @@ static volatile struct pd *pd_alloc(volatile struct pdpt *pPDPT, void *vADDR,
 	uint64_t offset;
 
 	offset = ((uint64_t)vADDR >> 30) & 0x1ff;
-	vPDPT = pdpt_map(pPDPT);
+	vPDPT = PDPT_MAP(pPDPT);
 	vPDPTE = &vPDPT->entries[offset];
 
 	pPD = pd_locate(pPDPT, vADDR);
@@ -349,7 +323,7 @@ static volatile struct pd *pd_alloc(volatile struct pdpt *pPDPT, void *vADDR,
 	if (pPDPT == NULL)
 		return NULL;
 
-	vPD = pd_map(pPD);
+	vPD = PD_MAP(pPD);
 	memsetv(vPD, 0, sizeof(struct pd));
 	vPDPTE->address = (uintptr_t)pPD >> 12;
 	vPDPTE->flags = F_PRESENT | flags;
@@ -369,7 +343,7 @@ static volatile struct pt *pt_alloc(volatile struct pd *pPD, void *vADDR,
 	uint64_t offset;
 
 	offset = ((uint64_t)vADDR >> 21) & 0x1ff;
-	vPD = pd_map(pPD);
+	vPD = PD_MAP(pPD);
 	vPDE = &vPD->entries[offset];
 
 	pPT = pt_locate(pPD, vADDR);
@@ -382,7 +356,7 @@ static volatile struct pt *pt_alloc(volatile struct pd *pPD, void *vADDR,
 	if (pPD == NULL)
 		return NULL;
 
-	vPT = pt_map(pPT);
+	vPT = PT_MAP(pPT);
 	memsetv(vPT, 0, sizeof(struct pt));
 	vPDE->address = (uintptr_t)pPT >> 12;
 	vPDE->flags = F_PRESENT | flags;
@@ -398,7 +372,7 @@ static void pt_free(volatile struct pt *pPT, bool force)
 	volatile struct pt *vPT;
 	uint64_t count;
 
-	vPT = pt_map(pPT);
+	vPT = PT_MAP(pPT);
 	count = (vPT->count_high << 2) | vPT->count_low;
 
 	if (!count)
@@ -409,11 +383,18 @@ static void pt_free(volatile struct pt *pPT, bool force)
 		void *pADDR;
 
 		vPTE = &vPT->entries[i];
-		if (!force && !(vPTE->flags & F_PRESENT))
+		if (!(vPTE->flags & F_PRESENT))
 			continue;
 
 		pADDR = (void *)((uintptr_t)vPTE->address << 12);
 		free_phys_page(pADDR);
+		count--;
+	}
+
+	if (!force && count) {
+		vPT->count_low = count;
+		vPT->count_high = count >> 2;
+		return;
 	}
 
 free:
@@ -425,7 +406,7 @@ static void pd_free(volatile struct pd *pPD, bool force)
 	volatile struct pd *vPD;
 	uint64_t count;
 
-	vPD = pd_map(pPD);
+	vPD = PD_MAP(pPD);
 	count = vPD->count;
 
 	if (!count)
@@ -436,11 +417,17 @@ static void pd_free(volatile struct pd *pPD, bool force)
 		volatile struct pt *pPT;
 
 		vPDE = &vPD->entries[i];
-		if (!force && !(vPDE->flags & F_PRESENT))
+		if (!(vPDE->flags & F_PRESENT))
 			continue;
 
 		pPT = (volatile struct pt *)((uintptr_t)vPDE->address << 12);
 		pt_free(pPT, force);
+		count--;
+	}
+
+	if (!force && count) {
+		vPD->count = count;
+		return;
 	}
 
 free:
@@ -452,7 +439,7 @@ static void pdpt_free(volatile struct pdpt *pPDPT, bool force)
 	volatile struct pdpt *vPDPT;
 	uint64_t count;
 
-	vPDPT = pdpt_map(pPDPT);
+	vPDPT = PDPT_MAP(pPDPT);
 	count = vPDPT->count;
 
 	if (!count)
@@ -463,11 +450,17 @@ static void pdpt_free(volatile struct pdpt *pPDPT, bool force)
 		volatile struct pd *pPD;
 
 		vPDPTE = &vPDPT->entries[i];
-		if (!force && !(vPDPTE->flags & F_PRESENT))
+		if (!(vPDPTE->flags & F_PRESENT))
 			continue;
 
 		pPD = (volatile struct pd *)((uintptr_t)vPDPTE->address << 12);
 		pd_free(pPD, force);
+		count--;
+	}
+
+	if (!force && count) {
+		vPDPT->count = count;
+		return;
 	}
 
 free:
@@ -479,7 +472,7 @@ static void pml4_free(volatile struct pml4 *pPML4, bool force)
 	volatile struct pml4 *vPML4;
 	uint64_t count;
 
-	vPML4 = pml4_map(pPML4);
+	vPML4 = PML4_MAP(pPML4);
 	count = vPML4->count;
 
 	if (!count)
@@ -490,15 +483,229 @@ static void pml4_free(volatile struct pml4 *pPML4, bool force)
 		volatile struct pdpt *pPDPT;
 
 		vPML4E = &vPML4->entries[i];
-		if (!force && !(vPML4E->flags & F_PRESENT))
+		if (!(vPML4E->flags & F_PRESENT))
 			continue;
 
 		pPDPT = (volatile struct pdpt *)((uintptr_t)vPML4E->address << 12);
 		pdpt_free(pPDPT, force);
+		count--;
+	}
+
+	if (!force && count) {
+		vPML4->count = count;
+		return;
 	}
 
 free:
 	free_phys_page((void *)(uintptr_t)pPML4);
+}
+
+/* clone */
+
+volatile void *page_clone(volatile void *old_pADDR, bool cow)
+{
+	volatile const void *old_vADDR;
+	volatile void *new_pADDR, *new_vADDR;
+
+	// TODO: cow
+	(void)cow;
+
+	// dont reallocate kernel memeory!!
+	if ((volatile char *)old_pADDR <= kernel_end)
+		return old_pADDR;
+
+	new_pADDR = alloc_phys_page();
+	if (new_pADDR == NULL)
+		return NULL;
+
+	old_vADDR = PAGE_MAPC(old_pADDR);
+	new_vADDR = PAGE_MAP(new_pADDR);
+	memcpyv(new_vADDR, old_vADDR, PAGE_SIZE);
+	return new_pADDR;
+}
+
+volatile struct pt *pt_clone(volatile const struct pt *old_pPT, bool cow)
+{
+	volatile const struct pt *old_vPT;
+	volatile struct pt *new_pPT, *new_vPT;
+
+	new_pPT = alloc_phys_page();
+	if (new_pPT == NULL)
+		return NULL;
+
+	old_vPT = PT_MAPC(old_pPT);
+	new_vPT = PT_MAP(new_pPT);
+	memsetv(new_vPT, 0, PAGE_SIZE);
+
+	new_vPT->count_high = old_vPT->count_high;
+	new_vPT->count_low = old_vPT->count_low;
+
+	for (size_t i = 0; i < 512; i++) {
+		volatile const struct pte *old_vPTE;
+		volatile struct pte *new_vPTE;
+		volatile void *old_pADDR, *new_pADDR;
+
+		old_vPTE = &old_vPT->entries[i];
+		new_vPTE = &new_vPT->entries[i];
+
+		new_vPTE->execute_disable = old_vPTE->execute_disable;
+		new_vPTE->flags = old_vPTE->flags;
+		if (!(old_vPTE->flags & F_PRESENT))
+			continue;
+
+		new_vPTE->execute_disable = old_vPTE->execute_disable;
+		new_vPTE->flags = old_vPTE->flags;
+
+		old_pADDR = (volatile void *)((uintptr_t)old_vPTE->address << 12);
+		new_pADDR = page_clone(old_pADDR, cow);
+		if (new_pADDR == NULL)
+			goto fail;
+
+		new_vPTE->address = (uint64_t)new_pADDR >> 12;
+	}
+
+	return new_pPT;
+
+fail:
+	pt_free(new_pPT, true);
+	return NULL;
+}
+
+volatile struct pd *pd_clone(volatile const struct pd *old_pPD, bool cow)
+{
+	volatile const struct pd *old_vPD;
+	volatile struct pd *new_pPD, *new_vPD;
+
+	new_pPD = alloc_phys_page();
+	if (new_pPD == NULL)
+		return NULL;
+
+	old_vPD = PD_MAPC(old_pPD);
+	new_vPD = PD_MAP(new_pPD);
+	memsetv(new_vPD, 0, PAGE_SIZE);
+
+	new_vPD->count = old_vPD->count;
+
+	for (size_t i = 0; i < 512; i++) {
+		volatile const struct pde *old_vPDE;
+		volatile struct pde *new_vPDE;
+		volatile const struct pt *old_pPT;
+		volatile struct pt *new_pPT;
+
+		old_vPDE = &old_vPD->entries[i];
+		new_vPDE = &new_vPD->entries[i];
+
+		new_vPDE->execute_disable = old_vPDE->execute_disable;
+		new_vPDE->flags = old_vPDE->flags;
+		if (!(old_vPDE->flags & F_PRESENT))
+			continue;
+
+		old_pPT =
+			(volatile const struct pt *)((uintptr_t)old_vPDE->address << 12);
+		new_pPT = pt_clone(old_pPT, cow);
+		if (new_pPT == NULL)
+			goto fail;
+
+		new_vPDE->address = (uint64_t)new_pPT >> 12;
+	}
+
+	return new_pPD;
+
+fail:
+	pd_free(new_pPD, true);
+	return NULL;
+}
+
+volatile struct pdpt *pdpt_clone(volatile const struct pdpt *old_pPDPT,
+								 bool cow)
+{
+	volatile const struct pdpt *old_vPDPT;
+	volatile struct pdpt *new_pPDPT, *new_vPDPT;
+
+	new_pPDPT = alloc_phys_page();
+	if (new_pPDPT == NULL)
+		return NULL;
+
+	old_vPDPT = PDPT_MAPC(old_pPDPT);
+	new_vPDPT = PDPT_MAP(new_pPDPT);
+	memsetv(new_vPDPT, 0, PAGE_SIZE);
+
+	new_vPDPT->count = old_vPDPT->count;
+
+	for (size_t i = 0; i < 512; i++) {
+		volatile const struct pdpte *old_vPDPTE;
+		volatile struct pdpte *new_vPDPTE;
+		volatile const struct pd *old_pPD;
+		volatile struct pd *new_pPD;
+
+		old_vPDPTE = &old_vPDPT->entries[i];
+		new_vPDPTE = &new_vPDPT->entries[i];
+
+		new_vPDPTE->execute_disable = old_vPDPTE->execute_disable;
+		new_vPDPTE->flags = old_vPDPTE->flags;
+		if (!(old_vPDPTE->flags & F_PRESENT))
+			continue;
+
+		old_pPD =
+			(volatile const struct pd *)((uintptr_t)old_vPDPTE->address << 12);
+		new_pPD = pd_clone(old_pPD, cow);
+		if (new_pPD == NULL)
+			goto fail;
+
+		new_vPDPTE->address = (uint64_t)new_pPD >> 12;
+	}
+
+	return new_pPDPT;
+
+fail:
+	pdpt_free(new_pPDPT, true);
+	return NULL;
+}
+
+volatile struct pml4 *pml4_clone(volatile const struct pml4 *old_pPML4,
+								 bool cow)
+{
+	volatile const struct pml4 *old_vPML4;
+	volatile struct pml4 *new_pPML4, *new_vPML4;
+
+	new_pPML4 = pml4_alloc();
+	if (new_pPML4 == NULL)
+		return NULL;
+
+	old_vPML4 = PML4_MAPC(old_pPML4);
+	new_vPML4 = PML4_MAP(new_pPML4);
+
+	new_vPML4->count = old_vPML4->count;
+
+	for (size_t i = 0; i < 512; i++) {
+		volatile const struct pml4e *old_vPML4E;
+		volatile struct pml4e *new_vPML4E;
+		volatile const struct pdpt *old_pPDPT;
+		volatile struct pdpt *new_pPDPT;
+
+		old_vPML4E = &old_vPML4->entries[i];
+		new_vPML4E = &new_vPML4->entries[i];
+
+		new_vPML4E->execute_disable = old_vPML4E->execute_disable;
+		new_vPML4E->flags = old_vPML4E->flags;
+		if (!(old_vPML4E->flags & F_PRESENT))
+			continue;
+
+		old_pPDPT =
+			(volatile const struct pdpt *)((uintptr_t)old_vPML4E->address
+										   << 12);
+		new_pPDPT = pdpt_clone(old_pPDPT, cow);
+		if (new_pPDPT == NULL)
+			goto fail;
+
+		new_vPML4E->address = (uint64_t)new_pPDPT >> 12;
+	}
+
+	return new_pPML4;
+
+fail:
+	pml4_free(new_pPML4, true);
+	return NULL;
 }
 
 /* page specific */
@@ -506,7 +713,7 @@ free:
 // locate a pte for a vitural address
 // @returns VIRTUAL ADDRESS
 static volatile struct pte *page_locate(volatile struct pml4 *pPML4,
-										void *vADDR)
+										const void *vADDR)
 {
 	volatile struct pdpt *pPDPT;
 	volatile struct pd *pPD;
@@ -527,7 +734,7 @@ static volatile struct pte *page_locate(volatile struct pml4 *pPML4,
 		return NULL;
 
 	offset = ((uint64_t)vADDR >> 12) & 0x1ff;
-	vPT = pt_map(pPT);
+	vPT = PT_MAP(pPT);
 	vPTE = &vPT->entries[offset];
 
 	if (vPTE->flags & F_PRESENT)
@@ -560,7 +767,7 @@ static volatile struct pte *page_alloc(volatile struct pml4 *pPML4, void *vADDR,
 		return NULL;
 
 	offset = ((uint64_t)vADDR >> 12) & 0x1ff;
-	vPT = pt_map(pPT);
+	vPT = PT_MAP(pPT);
 	vPTE = &vPT->entries[offset];
 
 	memsetv(vPTE, 0, sizeof(struct pte));
@@ -573,7 +780,8 @@ static volatile struct pte *page_alloc(volatile struct pml4 *pPML4, void *vADDR,
 }
 
 // free a pte (page) for a vitural address
-static void page_free(volatile struct pml4 *pPML4, void *vADDR)
+static void page_free(volatile struct pml4 *pPML4, const void *vADDR,
+					  bool deallocate)
 {
 	volatile struct pte *vPTE;
 	void *pADDR;
@@ -585,17 +793,19 @@ static void page_free(volatile struct pml4 *pPML4, void *vADDR)
 	vPTE->flags = 0;
 	vPTE->address = 0;
 
-	pADDR = (void *)((uintptr_t)vPTE->address << 12);
-	free_phys_page(pADDR);
+	if (deallocate) {
+		pADDR = (void *)((uintptr_t)vPTE->address << 12);
+		free_phys_page(pADDR);
+	}
 }
 
 /* map & unmap pages */
 
-static void unmap_pages(volatile struct pml4 *pPML4, void *vADDR,
-						long page_count)
+static void unmap_pages(volatile struct pml4 *pPML4, const void *vADDR,
+						long page_count, bool deallocate)
 {
 	for (long i = 0; i < page_count; i++) {
-		page_free(pPML4, vADDR);
+		page_free(pPML4, vADDR, deallocate);
 		vADDR = (char *)vADDR + PAGE_SIZE;
 	}
 }
@@ -617,7 +827,7 @@ static int map_pages(volatile struct pml4 *pPML4, void *vADDR, void *pADDR,
 	return 0;
 
 fail:
-	unmap_pages(pPML4, vADDR, page_count);
+	unmap_pages(pPML4, vADDR, page_count, true);
 	return 1;
 }
 
@@ -651,14 +861,14 @@ void paging_init(void)
 	kernel_pd_1.entries[0].flags = F_PRESENT | F_WRITEABLE;
 	kernel_pd_1.entries[0].address = (uint64_t)(paging_pt.entries) >> 12;
 
-	memsetv(paging_pt.entries, 0, 4096);
+	memsetv(paging_pt.entries, 0, PAGE_SIZE);
 
 	// make sure we are using THESE pagetables
 	// EFI doesnt on boot
 	__asm__ volatile("mov %0, %%cr3" ::"r"(kernel_pml4.entries) : "memory");
 }
 
-volatile void *paging_alloc(void)
+volatile void *pgdir_alloc(void)
 {
 	volatile struct pml4 *pPML4;
 
@@ -666,8 +876,7 @@ volatile void *paging_alloc(void)
 	if (pPML4 == NULL)
 		return NULL;
 
-	if (map_pages(pPML4, kernel_start, kernel_start,
-				  F_PRESENT | F_WRITEABLE,
+	if (map_pages(pPML4, kernel_start, kernel_start, F_PRESENT | F_WRITEABLE,
 				  (kernel_end - kernel_start) / PAGE_SIZE)) {
 		pml4_free(pPML4, false);
 		return NULL;
@@ -676,37 +885,39 @@ volatile void *paging_alloc(void)
 	return pPML4;
 }
 
-void paging_free(volatile void *addr)
+volatile void *pgdir_clone(volatile const void *old_pgdir, bool cow)
 {
-	pml4_free(addr, true);
+	return pml4_clone((volatile const struct pml4 *)old_pgdir, cow);
 }
 
-static inline void *page_align(void *addr)
+void pgdir_free(volatile void *addr)
 {
-	uintptr_t a = (uintptr_t)addr;
-	a /= PAGE_SIZE;
-	a *= PAGE_SIZE;
-	return (void *)a;
+	pml4_free(addr, true);
 }
 
 void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 				  unsigned int flags)
 {
 	long pages;
-	ptrdiff_t error;
+	size_t error;
 	void *aligned_phys;
 
-	// get length and physical page aligned address
-	aligned_phys = page_align(phys);
-	error = (char *)phys - (char *)aligned_phys;
+	error = (size_t)phys % PAGE_SIZE;
 	len += error;
-	pages = len / PAGE_SIZE + 1;
+	pages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+	aligned_phys = (char *)phys - error;
 
 	// get page aligned (or allocate) vitural address
 	if (virt == NULL)
 		virt = virtaddr_alloc(&ctx->virtctx, pages);
 	if (virt == NULL)
 		return NULL;
+
+	if (virtaddr_take(&ctx->virtctx, virt, pages))
+		return NULL;
+
+	assert((uint64_t)virt % PAGE_SIZE == 0,
+		   "mem_mapaddr: vitural address not page aligned");
 
 	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, aligned_phys,
 				  F_PRESENT | flags, pages)) {
@@ -717,15 +928,74 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	return (char *)virt + error;
 }
 
-void mem_unmapaddr(mem_ctx_t ctx, void *virt)
+void *kmapuseraddr(mem_ctx_t ctx, const void *usrADDR, size_t len)
 {
+	volatile struct pml4 *pml4;
+	char *pADDR, *vADDR;
+	size_t npages, error, i;
+
+	pml4 = (volatile struct pml4 *)kernel_mem_ctx->pml4;
+	npages = (len + PAGE_SIZE - 1) / PAGE_SIZE;
+	error = (size_t)usrADDR % PAGE_SIZE;
+	vADDR = virtaddr_alloc(&kernel_mem_ctx->virtctx, npages);
+	if (vADDR == NULL)
+		return NULL;
+
+	if (virtaddr_take(&kernel_mem_ctx->virtctx, vADDR, npages))
+		return NULL;
+
+	assert((size_t)vADDR % PAGE_SIZE == 0,
+		   "kmapuseraddr: vitural address not page aligned");
+
+	for (i = 0; i < npages; i++) {
+		pADDR = mem_get_phys(ctx, (char *)usrADDR + i * PAGE_SIZE);
+		if (pADDR == NULL)
+			goto fail;
+
+		// page align
+		pADDR = (char *)(((size_t)pADDR / PAGE_SIZE) * PAGE_SIZE);
+
+		if (map_pages(pml4, vADDR + i * PAGE_SIZE, pADDR,
+					  F_PRESENT | F_WRITEABLE, 1))
+			goto fail;
+	}
+
+	return vADDR + error;
+
+fail:
+	unmap_pages(&kernel_pml4, vADDR, i, false);
+	virtaddr_free(&kernel_mem_ctx->virtctx, vADDR);
+	return NULL;
+}
+
+void mem_unmapaddr(mem_ctx_t ctx, const void *virt)
+{
+	long pages;
+
 	if (virt == NULL)
 		return;
 
-	long pages = virtaddr_free(&ctx->virtctx, virt);
+	// page align
+	virt = (void *)(((size_t)virt / PAGE_SIZE) * PAGE_SIZE);
+
+	pages = virtaddr_free(&ctx->virtctx, virt);
 	if (pages < 1)
 		return;
-	unmap_pages(&kernel_pml4, virt, pages);
+	unmap_pages(&kernel_pml4, virt, pages, false);
+}
+
+void *mem_get_phys(mem_ctx_t ctx, const void *vADDR)
+{
+	char *pADDR;
+	volatile struct pte *vPTE;
+
+	vPTE = page_locate((volatile struct pml4 *)ctx->pml4, vADDR);
+	if (vPTE == NULL)
+		return NULL;
+
+	pADDR = (void *)((uintptr_t)vPTE->address << 12);
+	pADDR += ((uint64_t)vADDR % PAGE_SIZE);
+	return pADDR;
 }
 
 void *mem_alloc_page(mem_ctx_t ctx, unsigned int flags)
@@ -755,24 +1025,71 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags)
 void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 						 unsigned int flags)
 {
-	void *phys = alloc_phys_pages(count);
-	if (phys == NULL)
+	size_t pages_needed = count;
+
+	struct phys_page_slice prev_phys_block = PHYS_PAGE_SLICE_NULL;
+	struct phys_page_slice phys_pages;
+
+	if (virtaddr_take(&ctx->virtctx, virt, count))
 		return NULL;
 
-	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, phys, flags,
-				  count)) {
-		if (phys)
-			free_phys_pages(phys, count);
-		return NULL;
+	while (pages_needed > 0) {
+		phys_pages = alloc_phys_page_withextra(pages_needed);
+		if (phys_pages.pagestart == NULL) {
+			goto mem_alloc_pages_at_fail;
+		}
+
+		{
+			// allocate the first page and store in it the physical address of the
+			// previous chunk of pages
+			// TODO: skip this if there are already enough pages from first alloc
+			void *pageone = kmapaddr(phys_pages.pagestart, NULL, 1,
+									 F_PRESENT | F_WRITEABLE);
+			if (pageone == NULL) {
+				panic("kernel out of virtual memory");
+			}
+			*((struct phys_page_slice *)pageone) = prev_phys_block;
+			prev_phys_block = phys_pages;
+			kunmapaddr(pageone);
+		}
+
+		// index into virtual page array at index [count - pages_needed]
+		void *vaddr = ((uint8_t *)virt) + ((count - pages_needed) * PAGE_SIZE);
+
+		assert(pages_needed >= phys_pages.num_pages, "overflow");
+		pages_needed -= phys_pages.num_pages;
+
+		if (map_pages((volatile struct pml4 *)ctx->pml4, vaddr,
+					  phys_pages.pagestart, flags, phys_pages.num_pages)) {
+			goto mem_alloc_pages_at_fail;
+		}
 	}
+
 	return virt;
+
+mem_alloc_pages_at_fail:
+	while (prev_phys_block.pagestart) {
+		void *virtpage = kmapaddr(prev_phys_block.pagestart, NULL, 1,
+								  F_PRESENT | F_WRITEABLE);
+		if (!virtpage) {
+			// memory corruption, most likely a bug
+			// could also ERROR here and exit with leak
+			panic("unable to free memory from failed mem_alloc_pages_at call");
+		}
+		struct phys_page_slice prev = *(struct phys_page_slice *)virtpage;
+		prev_phys_block = prev;
+		free_phys_pages_slice(prev);
+		kunmapaddr(virtpage);
+	}
+
+	return NULL;
 }
 
-void mem_free_pages(mem_ctx_t ctx, void *virt)
+void mem_free_pages(mem_ctx_t ctx, const void *virt)
 {
 	if (virt == NULL)
 		return;
 
 	long pages = virtaddr_free(&ctx->virtctx, virt);
-	unmap_pages((volatile struct pml4 *)ctx->pml4, virt, pages);
+	unmap_pages((volatile struct pml4 *)ctx->pml4, virt, pages, true);
 }

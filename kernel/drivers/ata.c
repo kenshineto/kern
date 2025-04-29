@@ -506,7 +506,7 @@ static uint8_t get_ata_cmd_for_access(enum lba_mode lba_mode,
 
 static enum ide_error ide_device_ata_access(struct ide_device *dev,
 											enum access_mode mode, uint32_t lba,
-											uint8_t numsects,
+											uint16_t numsects,
 											uint16_t buf[numsects * 256])
 {
 	struct ide_channel *chan = channel(dev->channel_idx);
@@ -521,7 +521,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 					  chan->no_interrupt = (ide_irq_invoked = 0x0) + 0x02);
 
 	// select one from LBA28, LBA48 or CHS
-	if (lba >= 0x10000000) {
+	if (lba >= 0x10000000 || numsects > UINT8_MAX) {
 		// drive should support LBA in this case, or you are giving a bad LBA
 		lba_mode = LBA48;
 		lba_io[0] = (lba & 0x000000FF) >> 0;
@@ -565,19 +565,21 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 	if (lba_mode == CHS) {
 		ide_channel_write(chan, ATA_REG_HDDEVSEL,
 						  0xA0 | (dev->drive_idx << 4) | head);
-	} else {
+	} else if (lba_mode == LBA28) {
 		ide_channel_write(chan, ATA_REG_HDDEVSEL,
 						  0xE0 | (dev->drive_idx << 4) | head);
+	} else {
+		ide_channel_write(chan, ATA_REG_HDDEVSEL, 0x40 | (dev->drive_idx << 4));
 	}
 
 	// write Parameters
-	if (lba_mode == 2) {
-		ide_channel_write(chan, ATA_REG_SECCOUNT1, 0);
+	if (lba_mode == LBA48) {
+		ide_channel_write(chan, ATA_REG_SECCOUNT1, (numsects >> 8) & 0xff);
 		ide_channel_write(chan, ATA_REG_LBA3, lba_io[3]);
 		ide_channel_write(chan, ATA_REG_LBA4, lba_io[4]);
 		ide_channel_write(chan, ATA_REG_LBA5, lba_io[5]);
 	}
-	ide_channel_write(chan, ATA_REG_SECCOUNT0, numsects);
+	ide_channel_write(chan, ATA_REG_SECCOUNT0, numsects & 0xff);
 	ide_channel_write(chan, ATA_REG_LBA0, lba_io[0]);
 	ide_channel_write(chan, ATA_REG_LBA1, lba_io[1]);
 	ide_channel_write(chan, ATA_REG_LBA2, lba_io[2]);
@@ -624,7 +626,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 }
 
 enum ide_error ide_device_read_sectors(ide_device_t dev_identifier,
-									   uint8_t numsects, uint32_t lba,
+									   uint16_t numsects, uint32_t lba,
 									   uint16_t buf[numsects * 256])
 {
 	struct ide_device *dev = device(dev_identifier);
@@ -656,7 +658,7 @@ enum ide_error ide_device_read_sectors(ide_device_t dev_identifier,
 }
 
 enum ide_error ide_device_write_sectors(ide_device_t device_identifier,
-										uint8_t numsects, uint32_t lba,
+										uint16_t numsects, uint32_t lba,
 										uint16_t buf[numsects * 256])
 {
 	struct ide_device *dev = device(device_identifier);

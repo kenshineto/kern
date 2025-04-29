@@ -9,7 +9,7 @@ PHDRS
 
 SECTIONS
 {
-	. = 1024M;
+	. = 2048M;
 
 	user_start = .;
 

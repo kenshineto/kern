@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-struct gpu {
+struct gpu_dev {
 	const char *name;
 	uint16_t width;
 	uint16_t height;
@@ -31,7 +31,7 @@ struct psf2_font {
 	uint8_t data[];
 };
 
-extern struct gpu *gpu_dev;
+extern struct gpu_dev *gpu_dev;
 extern struct psf2_font en_font;
 
 /**

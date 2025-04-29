@@ -87,7 +87,7 @@ mem_ctx_t mem_ctx_alloc(void);
  *
  * @returns pointer context or NULL on failure
  */
-mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow);
+mem_ctx_t mem_ctx_clone(const mem_ctx_t ctx, bool cow);
 
 /**
  * Free a memory context into a new one
@@ -102,6 +102,11 @@ void mem_ctx_free(mem_ctx_t ctx);
  * @param ctx - the memory context
  */
 void mem_ctx_switch(mem_ctx_t ctx);
+
+/**
+ * @returns the pgdir pointer in the memory ctx
+ */
+volatile void *mem_ctx_pgdir(mem_ctx_t ctx);
 
 /**
  * Allocates at least len bytes of memory starting at
@@ -121,7 +126,14 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
  * Unmaps mapped address from the kmapaddr function
  * @param virt - the vitural address returned from kmapaddr
  */
-void mem_unmapaddr(mem_ctx_t ctx, void *virt);
+void mem_unmapaddr(mem_ctx_t ctx, const void *virt);
+
+/**
+ * Gets the physical address for a given vitural address
+ * @param ctx - the memory context
+ * @param virt - the vitural address
+ */
+void *mem_get_phys(mem_ctx_t ctx, const void *virt);
 
 /**
  * Allocate a single page of memory with the given paging structure
@@ -169,7 +181,7 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
  *
  * @param ptr - the pointer provided by alloc_page or alloc_pages
  */
-void mem_free_pages(mem_ctx_t ctx, void *ptr);
+void mem_free_pages(mem_ctx_t ctx, const void *ptr);
 
 /**
  * Allocates at least len bytes of memory starting at
@@ -185,10 +197,26 @@ void mem_free_pages(mem_ctx_t ctx, void *ptr);
 void *kmapaddr(void *phys, void *virt, size_t len, unsigned int flags);
 
 /**
+ * Map a vitural address in a userspace context to kernel space
+ *
+ * @param ctx - the userspace memory context to map from
+ * @param virt - the vitural address given by userspace
+ * @param len - the length of the buffer to map
+ * @returns vitural address mapped in kernel context
+ */
+void *kmapuseraddr(mem_ctx_t ctx, const void *virt, size_t len);
+
+/**
+ * Gets the physical address for a given vitural address
+ * @param virt - the vitural address
+ */
+void *kget_phys(const void *virt);
+
+/**
  * Unmaps mapped address from the kmapaddr function
  * @param virt - the vitural address returned from kmapaddr
  */
-void kunmapaddr(void *virt);
+void kunmapaddr(const void *virt);
 
 /**
  * Allocate a single page of memory
@@ -210,6 +238,6 @@ void *kalloc_pages(size_t count);
  *
  * @param ptr - the pointer provided by alloc_page or alloc_pages
  */
-void kfree_pages(void *ptr);
+void kfree_pages(const void *ptr);
 
 #endif /* memory.h */

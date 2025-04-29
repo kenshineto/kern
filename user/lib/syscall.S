@@ -24,3 +24,6 @@ SYSCALL kill SYS_kill
 SYSCALL sleep SYS_sleep
 SYSCALL brk SYS_brk
 SYSCALL sbrk SYS_sbrk
+SYSCALL poweroff SYS_poweroff
+SYSCALL drm SYS_drm
+SYSCALL ticks SYS_ticks

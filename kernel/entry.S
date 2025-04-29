@@ -7,8 +7,10 @@
 	.globl kernel_pd_0_ents
 	.globl kernel_pd_1
 	.globl paging_pt
+	.globl GDT
+	.globl kern_stack_end
+	.globl kern_stack_start
 	.extern main
-	.extern GDT
 
 	.section .multiboot
 
@@ -155,6 +157,7 @@ GDT:
 
 	# TSS segment (0x28)
 	.equ GDT.TSS, . - GDT
+	.quad 0
 	.quad 0 # to be modified in kernel
 
 	# GDT Pointer

@@ -1,5 +1,7 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
+#include <stdint.h>
 
 #include "virtalloc.h"
 
@@ -79,7 +81,7 @@ static void free_node(struct virt_ctx *ctx, struct virt_addr_node *node)
 void virtaddr_init(struct virt_ctx *ctx)
 {
 	struct virt_addr_node init = {
-		.start = 0x40005000, // map after paging pt
+		.start = 0x50000000,
 		.end = 0x1000000000000, // 48bit memory address max
 		.next = NULL,
 		.prev = NULL,
@@ -94,6 +96,44 @@ void virtaddr_init(struct virt_ctx *ctx)
 	ctx->alloc_node_count = 0;
 	ctx->used_node_count = 0;
 	ctx->is_allocating = false;
+}
+
+int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new)
+{
+	// copy over data
+	memcpy(new, old, sizeof(struct virt_ctx));
+
+	// allocate new space
+	new->alloc_nodes =
+		kalloc(sizeof(struct virt_addr_node) * new->alloc_node_count);
+	if (new->alloc_nodes == NULL)
+		return 1;
+
+	// update prev/next in new allocation space
+	update_node_ptrs(old->alloc_nodes, new->alloc_nodes, old->alloc_node_count,
+					 new->alloc_node_count);
+
+	// update bootstrap nodes
+	for (size_t i = 0; i < new->used_node_count; i++) {
+		struct virt_addr_node *prev, *next;
+
+		if (i >= BOOTSTRAP_VIRT_ALLOC_NODES)
+			break;
+
+		// get prev
+		prev = i > 0 ? &new->bootstrap_nodes[i - 1] : NULL;
+		next = i < BOOTSTRAP_VIRT_ALLOC_NODES - 1 ?
+				   &new->bootstrap_nodes[i + 1] :
+				   NULL;
+
+		new->bootstrap_nodes[i].prev = prev;
+		new->bootstrap_nodes[i].next = next;
+	}
+
+	// get starting node
+	new->start_node = &new->bootstrap_nodes[0]; // for now
+
+	return 0;
 }
 
 static void merge_back(struct virt_ctx *ctx, struct virt_addr_node *node)
@@ -139,33 +179,69 @@ void *virtaddr_alloc(struct virt_ctx *ctx, int n_pages)
 		if (node->is_alloc)
 			continue;
 
-		if (length >= n_length) {
-			struct virt_addr_node *new = get_node(ctx);
-			if (node->prev != NULL) {
-				node->prev->next = new;
-			} else {
-				ctx->start_node = new;
-			}
-			new->next = node;
-			new->prev = node->prev;
-			node->prev = new;
-			new->start = node->start;
-			new->end = new->start + n_length;
-			node->start = new->end;
-			new->is_alloc = true;
-			new->is_used = true;
-			new->next = node;
-			void *mem = (void *)new->start;
-			merge_back(ctx, new);
-			merge_forward(ctx, new);
-			return mem;
-		}
+		if (length < n_length)
+			continue;
+
+		return (void *)node->start;
 	}
 
 	return NULL;
 }
 
-long virtaddr_free(struct virt_ctx *ctx, void *virtaddr)
+int virtaddr_take(struct virt_ctx *ctx, const void *virt, int n_pages)
+{
+	if (n_pages < 1)
+		return 0;
+
+	long n_length = n_pages * PAGE_SIZE;
+	struct virt_addr_node *node = ctx->start_node;
+
+	for (; node != NULL; node = node->next) {
+		if (node->is_alloc)
+			continue;
+
+		if (node->start > (uintptr_t)virt ||
+			node->end < (uintptr_t)virt + n_length)
+			continue;
+
+		// create new node on left
+		if (node->start < (uintptr_t)virt) {
+			struct virt_addr_node *left = get_node(ctx);
+			left->next = node;
+			left->prev = node->prev;
+			left->start = node->start;
+			left->end = (uintptr_t)virt;
+			left->is_used = true;
+			left->is_alloc = false;
+			node->prev->next = left;
+			node->prev = left;
+		}
+
+		// create new node on right
+		if (node->end > (uintptr_t)virt + n_length) {
+			struct virt_addr_node *right = get_node(ctx);
+			right->prev = node;
+			right->next = node->next;
+			right->start = (uintptr_t)virt + n_length;
+			right->end = node->end;
+			right->is_used = true;
+			right->is_alloc = false;
+			node->next->prev = right;
+			node->next = right;
+		}
+
+		node->start = (uintptr_t)virt;
+		node->end = node->start + n_length;
+		node->is_alloc = true;
+		node->is_used = true;
+
+		return 0;
+	}
+
+	return 1;
+}
+
+long virtaddr_free(struct virt_ctx *ctx, const void *virtaddr)
 {
 	if (virtaddr == NULL)
 		return -1;

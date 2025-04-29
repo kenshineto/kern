@@ -12,10 +12,12 @@
 #include <comus/cpu.h>
 #include <comus/limits.h>
 #include <comus/memory.h>
+#include <comus/syscalls.h>
 #include <lib.h>
+#include <elf.h>
 
-#define PCB_REG(pcb, x) ((pcb)->regs->x)
-#define PCB_RET(pcb) ((pcb)->regs->rax)
+#define PCB_REG(pcb, x) ((pcb)->regs.x)
+#define PCB_RET(pcb) ((pcb)->regs.rax)
 #define PCB_ARG1(pcb) PCB_REG((pcb), rdi)
 #define PCB_ARG2(pcb) PCB_REG((pcb), rsi)
 #define PCB_ARG3(pcb) PCB_REG((pcb), rdx)
@@ -33,11 +35,8 @@ enum proc_state {
 	PROC_STATE_READY,
 	PROC_STATE_RUNNING,
 	// runnable, but waiting for some event
-	PROC_STATE_SLEEPING,
 	PROC_STATE_BLOCKED,
-	PROC_STATE_WAITING,
 	// no longer runnalbe
-	PROC_STATE_KILLED,
 	PROC_STATE_ZOMBIE,
 	// sentinel
 	N_PROC_STATES,
@@ -46,8 +45,8 @@ enum proc_state {
 /// process control block
 struct pcb {
 	// context
-	struct cpu_regs *regs;
 	mem_ctx_t memctx;
+	struct cpu_regs regs;
 
 	// metadata
 	pid_t pid;
@@ -56,10 +55,20 @@ struct pcb {
 	size_t priority;
 	size_t ticks;
 
+	// heap
+	char *heap_start;
+	size_t heap_len;
+
+	// elf metadata
+	Elf64_Ehdr elf_header;
+	Elf64_Phdr elf_segments[N_ELF_SEGMENTS];
+	Elf64_Half n_elf_segments;
+
 	// queue linkage
 	struct pcb *next; // next PDB in queue
 
 	// process state information
+	uint64_t syscall;
 	uint64_t wakeup;
 	uint8_t exit_status;
 };
@@ -79,10 +88,9 @@ typedef struct pcb_queue_s *pcb_queue_t;
 
 /// public facing pcb queues
 extern pcb_queue_t pcb_freelist;
-extern pcb_queue_t ready;
-extern pcb_queue_t waiting;
-extern pcb_queue_t sleeping;
-extern pcb_queue_t zombie;
+extern pcb_queue_t ready_queue;
+extern pcb_queue_t zombie_queue;
+extern pcb_queue_t syscall_queue[N_SYSCALLS];
 
 /// pointer to the currently-running process
 extern struct pcb *current_pcb;
@@ -216,6 +224,11 @@ void schedule(struct pcb *pcb);
 /**
  * Select the next process to receive the CPU
  */
-void dispatch(void);
+__attribute__((noreturn)) void dispatch(void);
+
+/**
+ * Scheduler function called on every system tick
+ */
+void pcb_on_tick(void);
 
 #endif /* procs.h */

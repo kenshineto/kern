@@ -26,9 +26,14 @@ void *kmapaddr(void *phys, void *virt, size_t len, unsigned int flags)
 	return mem_mapaddr(kernel_mem_ctx, phys, virt, len, flags);
 }
 
-void kunmapaddr(void *virt)
+void kunmapaddr(const void *virt)
 {
 	mem_unmapaddr(kernel_mem_ctx, virt);
+}
+
+void *kget_phys(const void *virt)
+{
+	return mem_get_phys(kernel_mem_ctx, virt);
 }
 
 void *kalloc_page(void)
@@ -41,7 +46,7 @@ void *kalloc_pages(size_t count)
 	return mem_alloc_pages(kernel_mem_ctx, count, F_PRESENT | F_WRITEABLE);
 }
 
-void kfree_pages(void *ptr)
+void kfree_pages(const void *ptr)
 {
 	mem_free_pages(kernel_mem_ctx, ptr);
 }
@@ -52,7 +57,7 @@ mem_ctx_t mem_ctx_alloc(void)
 	if (ctx == NULL)
 		return NULL;
 
-	if ((ctx->pml4 = paging_alloc()) == NULL)
+	if ((ctx->pml4 = pgdir_alloc()) == NULL)
 		return NULL;
 	virtaddr_init(&ctx->virtctx);
 
@@ -64,17 +69,39 @@ mem_ctx_t mem_ctx_alloc(void)
 	return ctx;
 }
 
-mem_ctx_t mem_ctx_clone(mem_ctx_t ctx, bool cow)
+mem_ctx_t mem_ctx_clone(const mem_ctx_t old, bool cow)
 {
-	(void)ctx;
-	(void)cow;
+	mem_ctx_t new;
 
-	panic("not yet implemented");
+	assert(old != NULL, "memory context is null");
+	assert(old->pml4 != NULL, "pgdir is null");
+
+	new = user_mem_ctx_next;
+	if (new == NULL)
+		return NULL;
+
+	if ((new->pml4 = pgdir_clone(old->pml4, cow)) == NULL)
+		return NULL;
+
+	if (virtaddr_clone(&old->virtctx, &new->virtctx)) {
+		pgdir_free(new->pml4);
+		return NULL;
+	}
+
+	user_mem_ctx_next = new->prev;
+	if (new->prev)
+		new->prev->next = NULL;
+	new->prev = NULL;
+
+	return new;
 }
 
 void mem_ctx_free(mem_ctx_t ctx)
 {
-	paging_free(ctx->pml4);
+	assert(ctx != NULL, "memory context is null");
+	assert(ctx->pml4 != NULL, "pgdir is null");
+
+	pgdir_free(ctx->pml4);
 	virtaddr_cleanup(&ctx->virtctx);
 
 	if (user_mem_ctx_next == NULL) {
@@ -88,7 +115,18 @@ void mem_ctx_free(mem_ctx_t ctx)
 
 void mem_ctx_switch(mem_ctx_t ctx)
 {
+	assert(ctx != NULL, "memory context is null");
+	assert(ctx->pml4 != NULL, "pgdir is null");
+
 	__asm__ volatile("mov %0, %%cr3" ::"r"(ctx->pml4) : "memory");
+}
+
+volatile void *mem_ctx_pgdir(mem_ctx_t ctx)
+{
+	assert(ctx != NULL, "memory context is null");
+	assert(ctx->pml4 != NULL, "pgdir is null");
+
+	return ctx->pml4;
 }
 
 void memory_init(void)

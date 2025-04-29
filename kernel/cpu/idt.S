@@ -1,12 +1,17 @@
 	.global isr_stub_table
+	.global syscall_return
 
 	.extern idt_exception_handler
 	.extern idt_pic_timer
 	.extern idt_pic_keyboard
 	.extern idt_pic_mouse
 	.extern idt_pic_eoi
+	.extern syscall_handler
+	.extern current_pcb
+	.extern isr_save
 
 .macro PUSHALL
+	# regs
 	pushq	%rax
 	pushq 	%rbx
 	pushq 	%rcx
@@ -22,9 +27,38 @@
 	pushq 	%r13
 	pushq 	%r14
 	pushq 	%r15
+
+	# segments
+	movw 	%ds, %ax
+	pushw	%ax
+	movw 	%es, %ax
+	pushw	%ax
+	movw 	%fs, %ax
+	pushw	%ax
+	movw 	%gs, %ax
+	pushw	%ax
+
+	# pgdir
+	movq	%cr3, %rax
+	pushq	%rax
 .endm
 
 .macro POPALL
+	# pgdir
+	popq	%rax
+	movq	%rax, %cr3
+
+	# segments
+	popw	%ax
+	movw 	%ax, %gs
+	popw	%ax
+	movw 	%ax, %fs
+	popw	%ax
+	movw 	%ax, %es
+	popw	%ax
+	movw 	%ax, %ds
+
+	# regs
 	popq	%r15
 	popq 	%r14
 	popq 	%r13
@@ -42,19 +76,29 @@
 	popq 	%rax
 .endm
 
+.macro ISRSave
+	PUSHALL
+	cld
+
+	movq	%rsp, %rdi
+	callq	isr_save
+.endm
+
+.macro ISRRestore
+	POPALL
+	iretq
+.endm
+
 # call the exception handler with the interrupt number
 # args: interrupt number
 .macro ISRException num
 	.align 8
 isr_stub_\num:
-	PUSHALL
-	cld
-	movq	$\num, %rdi			# exception number
+	ISRSave
+	movq	$\num, %rdi				# exception number
 	movq	$0, %rsi                # placeholder error code
-	movq	%rsp, %rdx				# top of stack
 	callq	idt_exception_handler
-	POPALL
-	iretq
+	ISRRestore
 .endm
 
 # call the exception handler with the interrupt number
@@ -64,65 +108,64 @@ isr_stub_\num:
 	.align 8
 isr_stub_\num:
 	# retrieve the error code without corrupting registers
-	mov 	%eax, isr_tmp
+	movq	%rax, isr_tmp
 	popq	%rax
-	mov 	%eax, isr_err_code
+	movq	%rax, isr_err_code
 	movq	isr_tmp, %rax
-	PUSHALL
-	cld
+	ISRSave
 	movq	$\num, %rdi             # exception number
 	movq	isr_err_code, %rsi      # error code
-	movq	%rsp, %rdx              # top of stack
 	callq	idt_exception_handler
-	POPALL
-	iretq
+	ISRRestore
+.endm
+
+.macro SYSCALL num
+	.align 8
+isr_stub_\num:
+	ISRSave
+	callq	syscall_handler
+	jmp		syscall_return
 .endm
 
 .macro PICGeneric num
 	.align 8
 isr_stub_\num:
-	PUSHALL
-	cld
+	ISRSave
 	movq	$\num, %rdi
 	callq	idt_pic_eoi
-	POPALL
-	iretq
+	ISRRestore
 .endm
 
+# we have to send eoi first since
+# idt_pic_timer may not return
 .macro PICTimer num
 	.align 8
 isr_stub_\num:
-	PUSHALL
-	cld
-	callq	idt_pic_timer
-	movq	$\num, %rdi
+	ISRSave
 	callq	idt_pic_eoi
-	POPALL
-	iretq
+	movq	$\num, %rdi
+	callq	idt_pic_timer
+	ISRRestore
 .endm
 
 .macro PICKeyboard num
 	.align 8
 isr_stub_\num:
-	PUSHALL
-	cld
+	ISRSave
 	callq	idt_pic_keyboard
 	movq	$\num, %rdi
 	callq	idt_pic_eoi
-	POPALL
-	iretq
+	ISRRestore
 .endm
 
 .macro PICMouse num
 	.align 8
 isr_stub_\num:
-	PUSHALL
-	cld
+	ISRSave
 	callq	idt_pic_mouse
 	movq	$\num, %rdi
 	callq	idt_pic_eoi
-	POPALL
-	iretq
+	ISRRestore
 .endm
 
 # do nothing
@@ -402,10 +445,22 @@ isr_stub_table:
 	.quad isr_stub_254
 	.quad isr_stub_255
 
-# isr stubs
 	.section .text
 	.code64
 
+# isr restore
+syscall_return:
+	// get current pcb address
+	movq	current_pcb, %rbx
+
+	// load user stack
+	leaq	8(%rbx), %rsp
+
+	// return
+	POPALL
+	iretq
+
+# isr stubs
 ISRException 0
 ISRException 1
 ISRException 2
@@ -536,7 +591,7 @@ ISRIgnore 124
 ISRIgnore 125
 ISRIgnore 126
 ISRIgnore 127
-ISRIgnore 128
+SYSCALL 128
 ISRIgnore 129
 ISRIgnore 130
 ISRIgnore 131

@@ -54,7 +54,8 @@ static void *alloc_new(size_t size)
 	}
 
 	struct page_header *header = addr;
-	header->magic = 0xBEEFCAFE;
+	memsetv(header, 0, sizeof(struct page_header));
+	header->magic = MAGIC;
 	header->used = size;
 	header->free = free;
 	header->prev = end_header;

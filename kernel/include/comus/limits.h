@@ -20,7 +20,15 @@
 
 /// max fs limits
 #define N_FILE_NAME 256
+#define N_DIR_ENTS 256
 #define N_DISKS 8
+
+/// elf limits
+#define N_ELF_SEGMENTS 16
+
+/// input buffer
+#define N_KEYCODE 64
+#define N_MOUSEEV 64
 
 /// length of terminal buffer
 #define TERM_MAX_WIDTH 1920
