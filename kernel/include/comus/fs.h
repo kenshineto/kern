@@ -9,7 +9,6 @@
 #ifndef FS_H_
 #define FS_H_
 
-#include <stdint.h>
 #include <stddef.h>
 #include <comus/limits.h>
 #include <comus/drivers/ata.h>
@@ -65,104 +64,55 @@ enum file_type {
 	F_REG = 0,
 	// directory
 	F_DIR = 1,
-	// symbolic link
-	F_SYM = 2,
 };
 
-/// TODO: file name queue or storage area???
-/// hash map?!? (performance !!! :) )
+struct dirent {
+	int d_id;
+	unsigned long d_offset;
+	unsigned short d_namelen;
+	char d_name[N_FILE_NAME];
+};
+
+struct stat {
+	/// file id
+	int s_id;
+	/// file type
+	enum file_type s_type;
+	/// file length
+	unsigned long s_length;
+};
 
 struct file {
-	/// name of the file
-	char name[N_FILE_NAME];
-	/// parent directory of the file
-	struct file_s *parent;
-	/// type of the file
-	enum file_type type;
-	/// the filesystem of this file
-	struct file_system *fsys;
+	/// file id
+	int f_id;
+	/// read from the file
+	int (*read)(struct file *, char *, size_t);
+	/// write into the file
+	int (*write)(struct file *, char *, size_t);
+	/// seeks the file
+	int (*seek)(struct file *, long);
+	/// get directory entry at index
+	int (*ents)(struct file *, struct dirent *, size_t);
 };
 
-/// vtable for filesystem functions
-/// NOTE: feel free to change this as needed
-/// its just stuff that i thought may be good
 struct file_system {
 	/// set to 1 in fs array to state that fs is defined
 	/// system use only
-	int present;
+	int fs_present;
 	/// index into the loaded filesystems array
 	/// system use only
-	int id;
+	int fs_id;
+	/// mount point of this filesystem
+	/// system use only
+	char fs_mount[N_FILE_NAME];
 	/// the disk this filesystem is hooked up to
 	struct disk disk;
-	/// get root file in file file_system
-	/// @param fs - the file system
-	/// @returns the root file or NULL on failure
-	struct file *(*fs_get_root_file)(struct file_system *fs);
-	/// rename a file
-	/// @param fs - the file system
-	/// @param file - the file to rename
-	/// @param name - the new file name
-	/// @returns 0 on success, or an negative fs error code on failure
-	int (*fs_rename_file)(struct file_system *fs, struct file *file,
-						  char *name);
-	/// get length of file
-	/// @param fs - the file system
-	/// @param file - the file to get the length of
-	/// @param length - the pointer to save the length to
-	/// @return 0 on success, or an negative fs error code on failure
-	int (*fs_get_file_length)(struct file_system *fs, struct file *file,
-							  uint64_t *length);
-	/// get created date of file
-	/// @param fs - the file system
-	/// @param file - the file to get the date created
-	/// @param created - the pointer to save the created date to
-	/// @param modified - the pointer to save the modified date to
-	/// @param accessed - the pointer to save the accessed date to
-	/// @return 0 on success, or an negative fs error code on failure
-	int (*fs_get_file_dates)(struct file_system *fs, struct file *file,
-							 uint64_t *created, uint64_t *modified,
-							 uint64_t *accessed);
-	/// delete a file in the file system
-	/// @param fs - the file system
-	/// @param file - the file to delete
-	/// @returns 0 on success, or an negative fs error code on failure
-	int (*fs_delete_file)(struct file_system *fs, struct file *file);
-	/// create a file with a given name and type
-	/// @param fs - the file system
-	/// @param res - the new file structure to save the new file into
-	/// @param parent - the parent (directory) of the file to create
-	/// @param type - the type of file to create
-	/// @returns 0 on success, or an negative fs error code on failure
-	int (*fs_new_file)(struct file_system *fs, struct file *res,
-					   struct file *parent, enum file_type type);
-	/// get files in a directory
-	/// @param fs - the file system
-	/// @param dir - the directory to search into
-	/// @param start - the directory entry to start at
-	/// @param len - the max number of entrys to save starting at `start`
-	/// @param res - the list of structures to save into
-	/// @returns number of entries read, or an negative fs error code on failure
-	int (*fs_get_dir_ents)(struct file_system *fs, struct file *dir,
-						   size_t start, size_t len, struct file res[]);
-	/// read from a file
-	/// @param fs - the file system
-	/// @param file - the file to read from
-	/// @param offset - the offset of the file to read into
-	/// @param length - the length of the file to read starting at `offset`
-	/// @param buffer - the buffer to save the data into
-	/// @returns number of bytes read, or an negative fs error code on failure
-	int (*fs_read_file)(struct file_system *fs, struct file *file,
-						size_t offset, size_t length, uint8_t *buffer);
-	/// write into a file
-	/// @param fs - the file system
-	/// @param file - the file to write to
-	/// @param offset - the offset of the file to write into
-	/// @param length - the length of the data to write
-	/// @param buffer - the buffer the data to write is stored in
-	/// @returns number of bytes written, or an negative fs error code on failure
-	int (*fs_write_file)(struct file_system *fs, struct file *file,
-						 size_t offset, size_t length, uint8_t *buffer);
+	/// opens a file
+	int (*open)(const char *, struct file **);
+	/// closes a file
+	void (*close)(struct file *);
+	/// stats a file
+	int (*stat)(const char *, struct stat *);
 };
 
 // list of all disks on the system
@@ -189,30 +139,5 @@ struct disk *fs_get_root_disk(void);
  * @returns NULL on failure
  */
 struct file_system *fs_get_root_file_system(void);
-
-/**
- * Find a file in the given file system, traversing the path
- * Always use this function to find files globally
- *
- * @param fs - the file system to search
- * @param name - the absolute path of the file to look for
- * @param res - where to store the file structure
- * @returns 0 on success, or an negative fs error code on failure
- */
-int fs_find_file_abs(struct file_system *fs, char *abs_path, struct file *res);
-
-/**
- * Find a file in the given file system, traversing the path, relative to
- * another file.
- * Always use this function to find files globally
- *
- * @param rel - the relative file to search from
- * @param name - the absolute path of the file to look for
- * @param res - where to store the file structure
- * @returns 0 on success, or an negative fs error code on failure
- */
-int fs_find_file_rel(struct file *rel, char *rel_path, struct file *res);
-
-// NOTE: fell free to add more functions if needed :)
 
 #endif /* fs.h */

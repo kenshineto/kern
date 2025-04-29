@@ -20,6 +20,7 @@
 
 /// max fs limits
 #define N_FILE_NAME 256
+#define N_DIR_ENTS 256
 #define N_DISKS 8
 
 /// elf limits

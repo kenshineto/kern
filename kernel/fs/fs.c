@@ -68,7 +68,7 @@ struct file_system *fs_get_root_file_system(void)
 
 	for (int i = 0; i < N_DISKS; i++) {
 		struct file_system *fs = &fs_loaded_file_systems[i];
-		if (fs->present)
+		if (fs->fs_present)
 			return fs;
 	}
 
