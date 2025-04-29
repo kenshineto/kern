@@ -1,8 +1,9 @@
 #include <comus/drivers/pit.h>
+#include <comus/memory.h>
 #include <comus/procs.h>
 #include <comus/error.h>
 #include <comus/cpu.h>
-#include <comus/memory.h>
+#include <comus/asm.h>
 
 #define PCB_QUEUE_EMPTY(q) ((q)->head == NULL)
 
@@ -467,11 +468,17 @@ void schedule(struct pcb *pcb)
 
 __attribute__((noreturn)) void dispatch(void)
 {
+	int status;
+
 	assert(current_pcb == NULL, "dispatch: current process is not null");
 
-	int status = pcb_queue_pop(ready, &current_pcb);
-	if (status != SUCCESS)
-		panic("dispatch queue remove failed, code %d", status);
+	// wait for a process to schedule
+	do {
+		status = pcb_queue_pop(ready, &current_pcb);
+		if (status == SUCCESS)
+			break;
+		int_wait();
+	} while (1);
 
 	// set the process up for success
 	current_pcb->regs.cr3 = (uint64_t)mem_ctx_pgdir(current_pcb->memctx);
