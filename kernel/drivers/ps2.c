@@ -1,5 +1,6 @@
 #include <comus/drivers/ps2.h>
 #include <comus/keycodes.h>
+#include <comus/input.h>
 #include <comus/asm.h>
 #include <lib.h>
 
@@ -78,22 +79,10 @@ static bool has_kbd = false;
 static bool has_mouse = false;
 
 // kbd
-static struct keycode last_keycode = {
-	.key = KEY_NONE,
-	.flags = 0,
-};
 static bool state_keyup = false;
 static bool state_ext = false;
 
 // mouse
-static struct mouse_event last_mouse_ev = {
-	.updated = false,
-	.lmb = false,
-	.mmb = false,
-	.rmb = false,
-	.relx = 0,
-	.rely = 0,
-};
 static uint8_t first_b, second_b, third_b;
 
 static uint8_t ps2ctrl_in_status(void)
@@ -170,6 +159,7 @@ static int ps2mouse_init(void)
 
 void ps2kb_recv(void)
 {
+	static struct keycode keycode;
 	uint8_t code;
 
 	if (!has_kbd)
@@ -177,40 +167,28 @@ void ps2kb_recv(void)
 
 	code = ps2ctrl_in();
 	if (code == 0x00 || code == 0x0F) {
-		last_keycode.key = KEY_NONE;
-		last_keycode.flags = KC_FLAG_ERROR;
+		keycode.key = KEY_NONE;
+		keycode.flags = KC_FLAG_ERROR;
 	} else if (code == 0xF0) {
 		state_keyup = true;
 	} else if (code == 0xE0) {
 		state_ext = true;
 	} else if (code <= 0x84) {
 		uint8_t *scancode_table = state_ext ? scancodes_ext : scancodes;
-		uint8_t keycode = scancode_table[code];
-		if (keycode != KEY_NONE) {
-			last_keycode.key = keycode;
-			last_keycode.flags = state_keyup ? KC_FLAG_KEY_UP :
-											   KC_FLAG_KEY_DOWN;
+		uint8_t kcode = scancode_table[code];
+		if (kcode != KEY_NONE) {
+			keycode.key = kcode;
+			keycode.flags = state_keyup ? KC_FLAG_KEY_UP : KC_FLAG_KEY_DOWN;
+			keycode_push(&keycode);
 		}
 		state_keyup = false;
 		state_ext = false;
 	}
 }
 
-struct keycode ps2kb_get(void)
-{
-	struct keycode code;
-
-	if (!has_kbd)
-		return last_keycode;
-
-	code = last_keycode;
-	last_keycode.key = KEY_NONE;
-	last_keycode.flags = 0;
-	return code;
-}
-
 void ps2mouse_recv(void)
 {
+	static struct mouse_event mouse_ev;
 	static uint8_t packet_num = 0;
 	uint8_t code;
 
@@ -231,27 +209,21 @@ void ps2mouse_recv(void)
 		third_b = code;
 		state = first_b;
 		d = second_b;
-		last_mouse_ev.relx = d - ((state << 4) & 0x100);
+		mouse_ev.relx = d - ((state << 4) & 0x100);
 		d = third_b;
-		last_mouse_ev.rely = d - ((state << 3) & 0x100);
+		mouse_ev.rely = d - ((state << 3) & 0x100);
 
-		last_mouse_ev.lmb = first_b & 0x01;
-		last_mouse_ev.rmb = first_b & 0x02;
-		last_mouse_ev.mmb = first_b & 0x04;
-		last_mouse_ev.updated = true;
+		mouse_ev.lmb = first_b & 0x01;
+		mouse_ev.rmb = first_b & 0x02;
+		mouse_ev.mmb = first_b & 0x04;
+		mouse_ev.updated = true;
+		mouse_event_push(&mouse_ev);
 		break;
 	}
 	}
 
 	packet_num += 1;
 	packet_num %= 3;
-}
-
-struct mouse_event ps2mouse_get(void)
-{
-	struct mouse_event event = last_mouse_ev;
-	last_mouse_ev.updated = false;
-	return event;
 }
 
 int ps2_init(void)

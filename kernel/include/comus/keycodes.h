@@ -9,11 +9,6 @@
 #ifndef KEYCODES_H_
 #define KEYCODES_H_
 
-struct keycode {
-	char key;
-	char flags;
-};
-
 #define KC_FLAG_KEY_DOWN 0x01
 #define KC_FLAG_KEY_UP 0x02
 #define KC_FLAG_ERROR 0x04

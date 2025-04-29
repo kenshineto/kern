@@ -25,6 +25,10 @@
 /// elf limits
 #define N_ELF_SEGMENTS 16
 
+/// input buffer
+#define N_KEYCODE 64
+#define N_MOUSEEV 64
+
 /// length of terminal buffer
 #define TERM_MAX_WIDTH 1920
 #define TERM_MAX_HEIGHT 1080
