@@ -474,7 +474,7 @@ __attribute__((noreturn)) void dispatch(void)
 		panic("dispatch queue remove failed, code %d", status);
 
 	// set the process up for success
-	current_pcb->regs.cr3 = (uint64_t) mem_ctx_pgdir(current_pcb->memctx);
+	current_pcb->regs.cr3 = (uint64_t)mem_ctx_pgdir(current_pcb->memctx);
 	current_pcb->state = PROC_STATE_RUNNING;
 	current_pcb->ticks = 3; // ticks per process
 

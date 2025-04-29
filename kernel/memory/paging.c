@@ -508,10 +508,10 @@ volatile void *page_clone(volatile void *old_pADDR, bool cow)
 	volatile void *new_pADDR, *new_vADDR;
 
 	// TODO: cow
-	(void) cow;
+	(void)cow;
 
 	// dont reallocate kernel memeory!!
-	if ((volatile char *) old_pADDR <= kernel_end)
+	if ((volatile char *)old_pADDR <= kernel_end)
 		return old_pADDR;
 
 	new_pADDR = alloc_phys_page();
@@ -524,8 +524,7 @@ volatile void *page_clone(volatile void *old_pADDR, bool cow)
 	return new_pADDR;
 }
 
-volatile struct pt *pt_clone(volatile const struct pt *old_pPT,
-								 bool cow)
+volatile struct pt *pt_clone(volatile const struct pt *old_pPT, bool cow)
 {
 	volatile const struct pt *old_vPT;
 	volatile struct pt *new_pPT, *new_vPT;
@@ -557,9 +556,7 @@ volatile struct pt *pt_clone(volatile const struct pt *old_pPT,
 		new_vPTE->execute_disable = old_vPTE->execute_disable;
 		new_vPTE->flags = old_vPTE->flags;
 
-		old_pADDR =
-			(volatile void *)((uintptr_t)old_vPTE->address
-										   << 12);
+		old_pADDR = (volatile void *)((uintptr_t)old_vPTE->address << 12);
 		new_pADDR = page_clone(old_pADDR, cow);
 		if (new_pADDR == NULL)
 			goto fail;
@@ -574,8 +571,7 @@ fail:
 	return NULL;
 }
 
-volatile struct pd *pd_clone(volatile const struct pd *old_pPD,
-								 bool cow)
+volatile struct pd *pd_clone(volatile const struct pd *old_pPD, bool cow)
 {
 	volatile const struct pd *old_vPD;
 	volatile struct pd *new_pPD, *new_vPD;
@@ -605,8 +601,7 @@ volatile struct pd *pd_clone(volatile const struct pd *old_pPD,
 			continue;
 
 		old_pPT =
-			(volatile const struct pt *)((uintptr_t)old_vPDE->address
-										   << 12);
+			(volatile const struct pt *)((uintptr_t)old_vPDE->address << 12);
 		new_pPT = pt_clone(old_pPT, cow);
 		if (new_pPT == NULL)
 			goto fail;
@@ -652,8 +647,7 @@ volatile struct pdpt *pdpt_clone(volatile const struct pdpt *old_pPDPT,
 			continue;
 
 		old_pPD =
-			(volatile const struct pd *)((uintptr_t)old_vPDPTE->address
-										   << 12);
+			(volatile const struct pd *)((uintptr_t)old_vPDPTE->address << 12);
 		new_pPD = pd_clone(old_pPD, cow);
 		if (new_pPD == NULL)
 			goto fail;

@@ -327,7 +327,7 @@ static int sys_ticks(void)
 
 static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_exit] = sys_exit,		 [SYS_waitpid] = sys_waitpid,
-	[SYS_fork] = sys_fork,			 [SYS_exec] = NULL,
+	[SYS_fork] = sys_fork,		 [SYS_exec] = NULL,
 	[SYS_open] = NULL,			 [SYS_close] = NULL,
 	[SYS_read] = NULL,			 [SYS_write] = sys_write,
 	[SYS_getpid] = sys_getpid,	 [SYS_getppid] = sys_getppid,
