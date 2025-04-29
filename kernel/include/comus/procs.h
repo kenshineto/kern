@@ -12,6 +12,7 @@
 #include <comus/cpu.h>
 #include <comus/limits.h>
 #include <comus/memory.h>
+#include <comus/syscalls.h>
 #include <lib.h>
 #include <elf.h>
 
@@ -34,11 +35,8 @@ enum proc_state {
 	PROC_STATE_READY,
 	PROC_STATE_RUNNING,
 	// runnable, but waiting for some event
-	PROC_STATE_SLEEPING,
 	PROC_STATE_BLOCKED,
-	PROC_STATE_WAITING,
 	// no longer runnalbe
-	PROC_STATE_KILLED,
 	PROC_STATE_ZOMBIE,
 	// sentinel
 	N_PROC_STATES,
@@ -70,6 +68,7 @@ struct pcb {
 	struct pcb *next; // next PDB in queue
 
 	// process state information
+	uint64_t syscall;
 	uint64_t wakeup;
 	uint8_t exit_status;
 };
@@ -89,10 +88,9 @@ typedef struct pcb_queue_s *pcb_queue_t;
 
 /// public facing pcb queues
 extern pcb_queue_t pcb_freelist;
-extern pcb_queue_t ready;
-extern pcb_queue_t waiting;
-extern pcb_queue_t sleeping;
-extern pcb_queue_t zombie;
+extern pcb_queue_t ready_queue;
+extern pcb_queue_t zombie_queue;
+extern pcb_queue_t syscall_queue[N_SYSCALLS];
 
 /// pointer to the currently-running process
 extern struct pcb *current_pcb;

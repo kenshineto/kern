@@ -7,6 +7,7 @@
 #include <comus/memory.h>
 #include <comus/procs.h>
 #include <comus/time.h>
+#include <comus/error.h>
 #include <lib.h>
 #include <stddef.h>
 
@@ -37,8 +38,9 @@ static int sys_waitpid(void)
 {
 	// arguments are read later
 	// by procs.c
-	pcb->state = PROC_STATE_WAITING;
-	pcb_queue_insert(waiting, pcb);
+	pcb->state = PROC_STATE_BLOCKED;
+	assert(pcb_queue_insert(syscall_queue[SYS_waitpid], pcb) == SUCCESS,
+		   "sys_waitpid: could not add process to waitpid queue");
 
 	// call next process
 	dispatch();
@@ -149,17 +151,22 @@ static int sys_kill(void)
 		return 1;
 
 	switch (victim->state) {
-	case PROC_STATE_KILLED:
 	case PROC_STATE_ZOMBIE:
 		// you can't kill it if it's already dead
 		return 0;
 
 	case PROC_STATE_READY:
-	case PROC_STATE_SLEEPING:
+		// remove from ready queue
+		victim->exit_status = 1;
+		pcb_queue_remove(ready_queue, victim);
+		pcb_zombify(victim);
+		return 0;
+
 	case PROC_STATE_BLOCKED:
-		// here, the process is on a queue somewhere; mark
-		// it as "killed", and let the scheduler deal with it
-		victim->state = PROC_STATE_KILLED;
+		// remove from syscall queue
+		victim->exit_status = 1;
+		pcb_queue_remove(syscall_queue[victim->syscall], victim);
+		pcb_zombify(victim);
 		return 0;
 
 	case PROC_STATE_RUNNING:
@@ -168,14 +175,6 @@ static int sys_kill(void)
 		pcb_zombify(pcb);
 		// we need a new current process
 		dispatch();
-		break;
-
-	case PROC_STATE_WAITING:
-		// similar to the 'running' state, but we don't need
-		// to dispatch a new process
-		victim->exit_status = 1;
-		pcb_queue_remove(waiting, pcb);
-		pcb_zombify(victim);
 		break;
 
 	default:
@@ -198,11 +197,11 @@ static int sys_sleep(void)
 	}
 
 	pcb->wakeup = ticks + ms;
-	if (pcb_queue_insert(sleeping, pcb)) {
+	if (pcb_queue_insert(syscall_queue[SYS_sleep], pcb)) {
 		WARN("sleep pcb insert failed");
 		return 1;
 	}
-	pcb->state = PROC_STATE_SLEEPING;
+	pcb->state = PROC_STATE_BLOCKED;
 
 	// calling pcb is in sleeping queue,
 	// we must call a new one
@@ -348,6 +347,7 @@ void syscall_handler(void)
 	pcb = current_pcb;
 	num = pcb->regs.rax;
 	pcb->regs.rax = 0;
+	pcb->syscall = num;
 	current_pcb = NULL;
 
 	// check for invalid syscall
@@ -369,5 +369,6 @@ void syscall_handler(void)
 		pcb->regs.rax = ret;
 
 	// return to current pcb
+	pcb->syscall = 0;
 	current_pcb = pcb;
 }
