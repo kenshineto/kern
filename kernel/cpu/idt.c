@@ -2,6 +2,7 @@
 #include <comus/memory.h>
 #include <comus/asm.h>
 #include <comus/cpu.h>
+#include <comus/drivers/ps2.h>
 #include <comus/drivers/pit.h>
 #include <comus/procs.h>
 #include <comus/memory.h>
@@ -185,8 +186,10 @@ void idt_pic_timer(void)
 
 void idt_pic_keyboard(void)
 {
+	ps2kb_recv();
 }
 
 void idt_pic_mouse(void)
 {
+	ps2mouse_recv();
 }
