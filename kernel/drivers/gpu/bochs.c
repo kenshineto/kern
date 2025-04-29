@@ -31,7 +31,7 @@
 #define BOCHS_HEIGHT 768
 #define BOCHS_BIT_DEPTH 32
 
-struct gpu bochs_dev = { 0 };
+struct gpu_dev bochs_dev = { 0 };
 
 static void write(uint16_t index, uint16_t data)
 {
@@ -45,7 +45,7 @@ static uint16_t read(uint16_t value)
 	return inw(DATA);
 }
 
-int bochs_init(struct gpu **gpu_dev)
+int bochs_init(struct gpu_dev **gpu_dev)
 {
 	struct pci_device bochs = { 0 };
 	bool found =

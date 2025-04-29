@@ -5,11 +5,11 @@
 #include <comus/efi.h>
 #include <efi.h>
 
-struct gpu gop_dev = { 0 };
+struct gpu_dev gop_dev = { 0 };
 
 static EFI_GRAPHICS_OUTPUT_PROTOCOL *gop;
 
-int gop_init(struct gpu **gpu_dev)
+int gop_init(struct gpu_dev **gpu_dev)
 {
 	gop = efi_get_gop();
 	if (gop == NULL || gop->Mode == NULL)

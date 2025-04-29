@@ -7,7 +7,7 @@
 #include <comus/term.h>
 #include <comus/asm.h>
 
-struct gpu *gpu_dev = NULL;
+struct gpu_dev *gpu_dev = NULL;
 
 int gpu_init(void)
 {
