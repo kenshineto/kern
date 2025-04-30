@@ -1,3 +1,4 @@
+#include "comus/memory.h"
 #include <lib.h>
 #include <comus/fs.h>
 #include <comus/mboot.h>
@@ -6,13 +7,9 @@
 struct disk fs_disks[N_DISKS];
 struct file_system fs_loaded_file_systems[N_DISKS];
 
-void fs_init(void)
+static void load_disks(void)
 {
 	size_t idx = 0;
-
-	// zero structures
-	memsetv(fs_disks, 0, sizeof(fs_disks));
-	memsetv(fs_loaded_file_systems, 0, sizeof(fs_loaded_file_systems));
 
 	// check for initrd
 	size_t rd_len;
@@ -20,9 +17,9 @@ void fs_init(void)
 	if (rd != NULL) {
 		assert(idx < N_DISKS, "Too many disks, limit is: %d\n", N_DISKS);
 		fs_disks[idx] = (struct disk){
-			.present = 1,
-			.id = idx,
-			.type = DISK_TYPE_RAMDISK,
+			.d_present = 1,
+			.d_id = idx,
+			.d_type = DISK_TYPE_RAMDISK,
 			.rd.start = rd,
 			.rd.len = rd_len,
 		};
@@ -34,17 +31,44 @@ void fs_init(void)
 	for (size_t i = 0; i < ide_list.num_devices; i++) {
 		assert(idx < N_DISKS, "Too many disks, limit is: %d\n", N_DISKS);
 		fs_disks[idx] = (struct disk){
-			.present = 1,
-			.id = idx,
-			.type = DISK_TYPE_ATA,
+			.d_present = 1,
+			.d_id = idx,
+			.d_type = DISK_TYPE_ATA,
 			.ide = ide_list.devices[i],
 		};
 		idx++;
 	}
 
-	INFO("loaded %zu disks\n", idx);
+	INFO("loaded %zu disks", idx);
 
-	// TODO: load filesystems on disks
+}
+
+static void load_fs(struct disk *disk)
+{
+	struct file_system *fs = &fs_loaded_file_systems[disk->d_id];
+	fs->fs_disk = disk;
+	fs->fs_id = disk->d_id;
+
+	(void)fs;
+	// TODO: load fs on disk
+
+	WARN("failed to load fs on disk %u", disk->d_id);
+}
+
+void fs_init(void)
+{
+
+	// zero structures
+	memsetv(fs_disks, 0, sizeof(fs_disks));
+	memsetv(fs_loaded_file_systems, 0, sizeof(fs_loaded_file_systems));
+
+	// load disks
+	load_disks();
+
+	// load fs's on disks
+	for (size_t i = 0; i < N_DISKS; i++)
+		if (fs_disks[i].d_present)
+			load_fs(&fs_disks[i]);
 }
 
 struct disk *fs_get_root_disk(void)
@@ -54,7 +78,7 @@ struct disk *fs_get_root_disk(void)
 
 	for (int i = 0; i < N_DISKS; i++) {
 		struct disk *disk = &fs_disks[i];
-		if (disk->present)
+		if (disk->d_present)
 			return disk;
 	}
 
@@ -136,7 +160,7 @@ int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer)
 {
 	int ret = 0;
 
-	switch (disk->type) {
+	switch (disk->d_type) {
 	case DISK_TYPE_RAMDISK:
 		ret = disk_read_rd(disk, offset, len, buffer);
 		break;
@@ -145,7 +169,7 @@ int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer)
 		break;
 	default:
 		ERROR("attempted to read from disk with invalid type: %d\n",
-			  disk->type);
+			  disk->d_type);
 		ret = -E_BAD_PARAM;
 	}
 
@@ -200,7 +224,7 @@ int disk_write(struct disk *disk, size_t offset, size_t len, void *buffer)
 {
 	int ret = 0;
 
-	switch (disk->type) {
+	switch (disk->d_type) {
 	case DISK_TYPE_RAMDISK:
 		ret = disk_write_rd(disk, offset, len, buffer);
 		break;
@@ -208,7 +232,7 @@ int disk_write(struct disk *disk, size_t offset, size_t len, void *buffer)
 		ret = disk_write_ata(disk, offset, len, buffer);
 		break;
 	default:
-		ERROR("attempted to write to disk with invalid type: %d\n", disk->type);
+		ERROR("attempted to write to disk with invalid type: %d\n", disk->d_type);
 		ret = -E_BAD_PARAM;
 	}
 

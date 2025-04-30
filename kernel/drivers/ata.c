@@ -646,7 +646,8 @@ enum ide_error ide_device_read_sectors(ide_device_t dev_identifier,
 	} else if (dev->type == IDE_ATAPI) {
 		// for (i = 0; i < numsects; i++)
 		//    err = ide_atapi_read(drive, lba + i, 1, es, edi + (i*2048));
-		panic("atapi unimplemented- todo");
+		//panic("atapi unimplemented- todo");
+		return 1;
 	}
 
 	if (err) {
@@ -676,8 +677,9 @@ enum ide_error ide_device_write_sectors(ide_device_t device_identifier,
 	if (dev->type == IDE_ATA) {
 		err = ide_device_ata_access(dev, ATA_WRITE, lba, numsects, buf);
 	} else if (dev->type == IDE_ATAPI) {
-		panic("atapi unimplemented- todo");
-		err = IDE_ERROR_POLL_WRITE_PROTECTED;
+		//panic("atapi unimplemented- todo");
+		//err = IDE_ERROR_POLL_WRITE_PROTECTED;
+		return 1;
 	}
 
 	if (err)

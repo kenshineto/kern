@@ -20,13 +20,11 @@ enum disk_type {
 
 struct disk {
 	/// set to 1 in array to state that fs is defined
-	/// system use only
-	int present;
-	/// index into disks array
-	/// system use only
-	int id;
+	int d_present;
+	/// disk id
+	int d_id;
 	/// disk type
-	enum disk_type type;
+	enum disk_type d_type;
 	/// internal disk device
 	union {
 		struct {
@@ -59,60 +57,137 @@ int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer);
  */
 int disk_write(struct disk *disk, size_t offset, size_t len, void *buffer);
 
+/// file type
 enum file_type {
-	// regular file
+	/// regular file
 	F_REG = 0,
-	// directory
+	/// directory
 	F_DIR = 1,
 };
 
+/// directory entry
 struct dirent {
-	int d_id;
+	/// file offset into directory
 	unsigned long d_offset;
+	/// file name len
 	unsigned short d_namelen;
+	/// file name
 	char d_name[N_FILE_NAME];
 };
 
+/// file statistics
 struct stat {
-	/// file id
-	int s_id;
 	/// file type
 	enum file_type s_type;
 	/// file length
 	unsigned long s_length;
 };
 
+/// generic file pointer type. file system open function
+/// must extend this struct, allocate it on the heap,
+/// and return it as a generic file pointer.
+///
+/// # Functions
+///
+/// read - read bytes from a opened file
+/// write - write bytes to a opened file
+/// seek - seek the open file
+/// close - close an opened file (free pointer and other structures)
+///
+/// # Example FS Open
+///
+/// ```
+/// struct example_file {
+///     struct file file;
+///     size_t offset; // custom
+///     size_t sector; // data
+/// };
+///
+/// int example_open(const char *fullpath, struct file **out)
+/// {
+///     struct example_file *file;
+///
+///     // do some checks here to get file info at full path
+///
+///     file = kalloc(sizeof(struct example_file));
+///     file->read = example_read;
+///     file->write = example_write;
+///     file->seek = example_seek;
+///     file->ents = example_ents;
+///     file->close = example_close; // frees pointer from kalloc
+///     *out = (struct file *) *file;
+///     return 0; // success
+/// }
+/// ```
+///
 struct file {
-	/// file id
-	int f_id;
 	/// read from the file
-	int (*read)(struct file *, char *, size_t);
+	int (*read)(struct file *file, char *buffer, size_t nbytes);
 	/// write into the file
-	int (*write)(struct file *, char *, size_t);
+	int (*write)(struct file *file, char *buffer, size_t nbytes);
 	/// seeks the file
-	int (*seek)(struct file *, long);
+	int (*seek)(struct file *file, long int offset, int whence);
 	/// get directory entry at index
-	int (*ents)(struct file *, struct dirent *, size_t);
+	int (*ents)(struct file *file, struct dirent *dirent, size_t dir_index);
+	/// closes a file
+	void (*close)(struct file *file);
 };
 
+/// file system vtable, used for opening
+/// and stating files. filesystem mount functions must
+/// set fs_name, fs_disk, open, and stat.
+///
+/// # Variables
+///
+/// fs_present - if this filesystem is present in `fs_loaded_file_systems`.
+///            - this is set in fs.c. do not touch.
+///
+/// fs_id - the unique if for this filesystem.
+///       - this is set in fs.c. do not touch.
+///
+/// fs_disk - the disk of this filesyste.
+///         - this is set in fs.c. do not touch.
+///
+/// fs_name - the custom name for this filesystem. mount function is to set
+///         - this.
+///
+/// # Functions
+///
+/// open - open a file at a given fullpath, returning the file pointer
+///      - in out on success. see `struct file`
+///
+/// stat - get statistics on a file at fillpath
+///
+/// # Example FS Mount
+///
+/// // mount fs on disk in fs, present, id, & disk are already set
+/// int example_mount(struct file_system *fs)
+/// {
+///     // do some checks to make sure fs on disk is valid
+///     if (failure) {
+///         return 1;
+///     }
+///
+///     fs->fs_name = "examplefs";
+///     fs->open = example_open; // see `struct file`
+///     fs->stat = example_stat;
+///     INFO("loaded examplefs on disk %u", fs->fs_disk->d_id);
+///     return 0;
+/// }
+///
 struct file_system {
 	/// set to 1 in fs array to state that fs is defined
-	/// system use only
 	int fs_present;
-	/// index into the loaded filesystems array
-	/// system use only
+	/// filesystem id
 	int fs_id;
-	/// mount point of this filesystem
-	/// system use only
-	char fs_mount[N_FILE_NAME];
 	/// the disk this filesystem is hooked up to
-	struct disk disk;
+	struct disk *fs_disk;
+	/// filesystem name
+	const char *fs_name;
 	/// opens a file
-	int (*open)(const char *, struct file **);
-	/// closes a file
-	void (*close)(struct file *);
+	int (*open)(const char *fullpath, struct file **out);
 	/// stats a file
-	int (*stat)(const char *, struct stat *);
+	int (*stat)(const char *fullpath, struct stat *file);
 };
 
 // list of all disks on the system
