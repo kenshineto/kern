@@ -1,4 +1,3 @@
-#include "comus/memory.h"
 #include <lib.h>
 #include <comus/fs.h>
 #include <comus/mboot.h>
@@ -15,7 +14,7 @@ static void load_disks(void)
 	size_t rd_len;
 	void *rd = mboot_get_initrd(&rd_len);
 	if (rd != NULL) {
-		assert(idx < N_DISKS, "Too many disks, limit is: %d\n", N_DISKS);
+		assert(idx < N_DISKS, "Too many disks, limit is: %d", N_DISKS);
 		fs_disks[idx] = (struct disk){
 			.d_present = 1,
 			.d_id = idx,
@@ -29,7 +28,7 @@ static void load_disks(void)
 	// check for ide/ata devices
 	struct ide_devicelist ide_list = ide_devices_enumerate();
 	for (size_t i = 0; i < ide_list.num_devices; i++) {
-		assert(idx < N_DISKS, "Too many disks, limit is: %d\n", N_DISKS);
+		assert(idx < N_DISKS, "Too many disks, limit is: %d", N_DISKS);
 		fs_disks[idx] = (struct disk){
 			.d_present = 1,
 			.d_id = idx,
@@ -45,19 +44,23 @@ static void load_disks(void)
 
 static void load_fs(struct disk *disk)
 {
-	struct file_system *fs = &fs_loaded_file_systems[disk->d_id];
+	struct file_system *fs;
+
+	fs = &fs_loaded_file_systems[disk->d_id];
 	fs->fs_disk = disk;
 	fs->fs_id = disk->d_id;
+	fs->fs_present = 1;
 
-	(void)fs;
-	// TODO: load fs on disk
+	// // try examplefs
+	// if (example_mount(fs) == SUCCESS)
+	// 	return;
 
+	fs->fs_present = 0;
 	WARN("failed to load fs on disk %u", disk->d_id);
 }
 
 void fs_init(void)
 {
-
 	// zero structures
 	memsetv(fs_disks, 0, sizeof(fs_disks));
 	memsetv(fs_loaded_file_systems, 0, sizeof(fs_loaded_file_systems));

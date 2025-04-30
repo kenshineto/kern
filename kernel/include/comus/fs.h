@@ -83,6 +83,16 @@ struct stat {
 	unsigned long s_length;
 };
 
+/// seek whence
+enum {
+	/// seek from start of file
+	SEEK_SET = 0,
+	/// seek from current position
+	SEEK_CUR = 1,
+	/// seek from end of file
+	SEEK_END = 2,
+};
+
 /// generic file pointer type. file system open function
 /// must extend this struct, allocate it on the heap,
 /// and return it as a generic file pointer.
@@ -103,13 +113,16 @@ struct stat {
 ///     size_t sector; // data
 /// };
 ///
-/// int example_open(const char *fullpath, struct file **out)
+/// int example_open(struct file_system *fs, const char *fullpath,
+///         struct file **out)
 /// {
 ///     struct example_file *file;
 ///
 ///     // do some checks here to get file info at full path
+///     // header = example_locate(fs, fullpath); ??
 ///
 ///     file = kalloc(sizeof(struct example_file));
+///     file->f_type = F_REG;
 ///     file->read = example_read;
 ///     file->write = example_write;
 ///     file->seek = example_seek;
@@ -121,10 +134,12 @@ struct stat {
 /// ```
 ///
 struct file {
+	/// file type
+	enum file_type f_type;
 	/// read from the file
 	int (*read)(struct file *file, char *buffer, size_t nbytes);
 	/// write into the file
-	int (*write)(struct file *file, char *buffer, size_t nbytes);
+	int (*write)(struct file *file, const char *buffer, size_t nbytes);
 	/// seeks the file
 	int (*seek)(struct file *file, long int offset, int whence);
 	/// get directory entry at index
@@ -185,9 +200,9 @@ struct file_system {
 	/// filesystem name
 	const char *fs_name;
 	/// opens a file
-	int (*open)(const char *fullpath, struct file **out);
+	int (*open)(struct file_system *fs, const char *fullpath, struct file **out);
 	/// stats a file
-	int (*stat)(const char *fullpath, struct stat *file);
+	int (*stat)(struct file_system *fs, const char *fullpath, struct stat *file);
 };
 
 // list of all disks on the system
