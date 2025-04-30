@@ -39,7 +39,6 @@ static void load_disks(void)
 	}
 
 	INFO("loaded %zu disks", idx);
-
 }
 
 static void load_fs(struct disk *disk)
@@ -235,7 +234,8 @@ int disk_write(struct disk *disk, size_t offset, size_t len, void *buffer)
 		ret = disk_write_ata(disk, offset, len, buffer);
 		break;
 	default:
-		ERROR("attempted to write to disk with invalid type: %d\n", disk->d_type);
+		ERROR("attempted to write to disk with invalid type: %d\n",
+			  disk->d_type);
 		ret = -E_BAD_PARAM;
 	}
 

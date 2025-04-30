@@ -200,9 +200,11 @@ struct file_system {
 	/// filesystem name
 	const char *fs_name;
 	/// opens a file
-	int (*open)(struct file_system *fs, const char *fullpath, struct file **out);
+	int (*open)(struct file_system *fs, const char *fullpath,
+				struct file **out);
 	/// stats a file
-	int (*stat)(struct file_system *fs, const char *fullpath, struct stat *file);
+	int (*stat)(struct file_system *fs, const char *fullpath,
+				struct stat *file);
 };
 
 // list of all disks on the system
