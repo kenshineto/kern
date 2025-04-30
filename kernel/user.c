@@ -107,37 +107,37 @@ static int validate_elf_hdr(struct pcb *pcb)
 	Elf64_Ehdr *ehdr = &pcb->elf_header;
 
 	if (strncmp((const char *)ehdr->e_ident, ELFMAG, SELFMAG)) {
-		WARN("Invalid ELF File.\n");
+		WARN("Invalid ELF File.");
 		return 1;
 	}
 
 	if (ehdr->e_ident[EI_CLASS] != ELFCLASS64) {
-		WARN("Unsupported ELF Class.\n");
+		WARN("Unsupported ELF Class.");
 		return 1;
 	}
 
 	if (ehdr->e_ident[EI_DATA] != ELFDATA2LSB) {
-		ERROR("Unsupported ELF File byte order.\n");
+		ERROR("Unsupported ELF File byte order.");
 		return 1;
 	}
 
 	if (ehdr->e_machine != EM_X86_64) {
-		WARN("Unsupported ELF File target.\n");
+		WARN("Unsupported ELF File target.");
 		return 1;
 	}
 
 	if (ehdr->e_ident[EI_VERSION] != EV_CURRENT) {
-		WARN("Unsupported ELF File version.\n");
+		WARN("Unsupported ELF File version.");
 		return 1;
 	}
 
 	if (ehdr->e_phnum > N_ELF_SEGMENTS) {
-		WARN("Too many ELF segments.\n");
+		WARN("Too many ELF segments.");
 		return 1;
 	}
 
 	if (ehdr->e_type != ET_EXEC) {
-		ERROR("Unsupported ELF File type.\n");
+		ERROR("Unsupported ELF File type.");
 		return 1;
 	}
 

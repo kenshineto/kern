@@ -156,7 +156,8 @@ __attribute__((noreturn)) void idt_exception_handler(uint64_t exception,
 void isr_save(struct cpu_regs *regs)
 {
 	// make sure were in the kernel memory context
-	mem_ctx_switch(kernel_mem_ctx);
+	if (kernel_mem_ctx)
+		mem_ctx_switch(kernel_mem_ctx);
 
 	// save pointer to registers
 	state = regs;

@@ -1,109 +1,59 @@
 ### Copyright (c) 2025 Freya Murphy <freya@freyacat.org>
 
-.PHONY: build fmt clean qemu
+.PHONY: build clean fmt qemu qemu-kvm qemu-gdb gdb
 .SILENT:
 
-AS ?= as
-CC ?= cc
-LD ?= ld
-CPP ?= cpp
-
-CPPFLAGS += -Ikernel/include
-
-CFLAGS += -O2
-CFLAGS += -std=c11
-CFLAGS += -Wall -Wextra -pedantic
-CFLAGS += -fno-pie -fno-stack-protector
-CFLAGS += -fno-omit-frame-pointer -ffreestanding
-CFLAGS += -nostdlib -fno-builtin -mno-red-zone
-CFLAGS += -D DEBUG -g
-CFLAGS += $(CPPFLAGS)
-
-LDFLAGS += -nmagic -nostdlib
-LDFLAGS += -z noexecstack
-
-SRC=kernel
 BIN=bin
-KERNEL=kernel.bin
 ISO=os.iso
-IMAGE=disk.img
-IMAGE_SIZE=4G
 
-H_SRC = $(shell find $(SRC) -type f -name "*.h")
-A_SRC = $(shell find $(SRC) -type f -name "*.S")
-A_OBJ = $(patsubst %.S,$(BIN)/%.S.o,$(A_SRC))
-C_SRC = $(shell find $(SRC) -type f -name "*.c")
-C_OBJ = $(patsubst %.c,$(BIN)/%.o,$(C_SRC))
+QEMU ?= qemu-system-x86_64
+GRUB ?= grub-mkrescue
 
-UNAME := $(shell uname)
-
-QEMU = qemu-system-x86_64
-QEMUOPTS = -cdrom $(BIN)/$(ISO) \
-		   -no-reboot \
-		   -drive format=raw,file=$(BIN)/user/apple\
-		   -serial mon:stdio \
-		   -m 4G \
-		   -name kern
-
-GRUB = grub-mkrescue
+QEMUOPTS += -cdrom $(BIN)/$(ISO) \
+		    -no-reboot \
+		    -drive format=raw,file=user/bin/apple \
+		    -serial mon:stdio \
+		    -m 4G \
+		    -name kern
 
 ifdef UEFI
 QEMU = qemu-system-x86_64-uefi
 GRUB = grub-mkrescue-uefi
 endif
 
-qemu: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
+ifndef DISPLAY
+QEMUOPTS += -nographic
+endif
+
+qemu: $(BIN)/$(ISO)
 	$(QEMU) $(QEMUOPTS)
 
-qemu-kvm: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
+qemu-kvm: $(BIN)/$(ISO)
 	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm
 
-qemu-kvm-nox: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
-	$(QEMU) $(QEMUOPTS) -cpu host --enable-kvm -nographic
-
-qemu-nox: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
-	$(QEMU) $(QEMUOPTS) -nographic
-
-qemu-gdb: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
+qemu-gdb: $(BIN)/$(ISO)
 	$(QEMU) $(QEMUOPTS) -S -gdb tcp::1337
-
-qemu-gdb-nox: $(BIN)/$(ISO) $(BIN)/$(IMAGE)
-	$(QEMU) $(QEMUOPTS) -nographic -S -gdb tcp::1337
 
 gdb:
 	gdb -q -n -x config/gdbinit
 
-clean:
-	rm -fr $(BIN)
-
-build: $(BIN)/$(KERNEL)
+build:
+	make -s -C kernel
 	make -s -C user
 
-$(A_OBJ): $(BIN)/%.S.o : %.S $(H_SRC)
-	mkdir -p $(@D)
-	printf "\033[33m  AS  \033[0m%s\n" $<
-	$(CPP) $(CPPFLAGS) -o $@.cpp $<
-	$(AS) -o $@ $@.cpp
-
-$(C_OBJ): $(BIN)/%.o : %.c $(H_SRC)
-	mkdir -p $(@D)
-	printf "\033[34m  CC  \033[0m%s\n" $<
-	$(CC) -c $(CFLAGS) -o $@ $<
-
-$(BIN)/$(KERNEL): $(C_OBJ) $(A_OBJ)
-	mkdir -p $(@D)
-	printf "\033[32m  LD  \033[0m%s\n" $@
-	$(LD) $(LDFLAGS) -T config/kernel.ld -o $(BIN)/$(KERNEL) $(A_OBJ) $(C_OBJ)
-
-$(BIN)/$(ISO): $(BIN)/$(KERNEL)
-	mkdir -p $(BIN)/iso/boot/grub
-	cp config/grub.cfg $(BIN)/iso/boot/grub
-	cp $(BIN)/$(KERNEL) $(BIN)/iso/boot
-	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
-
-$(BIN)/$(IMAGE): build
-	qemu-img create $(BIN)/$(IMAGE) $(IMAGE_SIZE)
+clean:
+	rm -fr $(BIN)
+	make -s -C kernel clean
+	make -s -C user clean
 
 fmt:
 	clang-format -i $(shell find -type f -name "*.[ch]" -and -not -path "./kernel/old/*")
 	sed -i 's/[ \t]*$$//' $(shell find -type f -name "*.[chS]" -and -not -path "./kernel/old/*")
+
+$(BIN)/$(ISO): build config/grub.cfg
+	printf "\033[35m  ISO \033[0m%s\n" $@
+	mkdir -p $(BIN)/iso/boot/grub
+	cp config/grub.cfg $(BIN)/iso/boot/grub
+	cp kernel/bin/kernel $(BIN)/iso/boot
+	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
+

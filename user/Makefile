@@ -1,31 +1,18 @@
 ### Copyright (c) 2025 Freya Murphy <freya@freyacat.org>
 
+include ../config.mk
+
 .PHONY: build clean
 .SILENT:
 
-AS ?= as
-AR ?= ar
-CC ?= cc
-LD ?= ld
-CPP ?= cpp
-
-CPPFLAGS += -Iinclude
-
-CFLAGS += -O2
-CFLAGS += -std=c11
-CFLAGS += -Wall -Wextra -pedantic
-CFLAGS += -no-pie -fPIC -fno-stack-protector
-CFLAGS += -fno-omit-frame-pointer -ffreestanding
-CFLAGS += -fno-builtin -mcmodel=large
-CFLAGS += -D DEBUG -g
-CFLAGS += $(CPPFLAGS)
-
-LDFLAGS += -nmagic -nostdlib
-LDFLAGS += -z noexecstack
+CFLAGS += -fPIC -mcmodel=large
 
 USER=*
 LIB=lib
-BIN=../bin/user
+BIN=bin
+LINKER=../config/user.ld
+CONFIG=../config.mk
+TAR=initrd.tar
 
 H_SRC = $(shell find include -type f -name "*.h")
 LIBA_SRC = $(shell find $(LIB) -type f -name "*.S")
@@ -34,35 +21,42 @@ LIBC_SRC = $(shell find $(LIB) -type f -name "*.c")
 LIBC_OBJ = $(patsubst %.c,$(BIN)/%.o,$(LIBC_SRC))
 USER_SRC = $(shell find $(USER) -maxdepth 0 -type f -name "*.c")
 USER_OBJ = $(patsubst %.c,$(BIN)/%.o,$(USER_SRC))
-USER_PROJ = $(patsubst %.o,%,$(USER_OBJ))
+USER_PROG = $(patsubst %.o,%,$(USER_OBJ))
 
-build: $(USER_PROJ)
+build: $(BIN)/$(TAR)
 
 clean:
 	rm -fr $(BIN)
 
-$(LIBA_OBJ): $(BIN)/%.S.o : %.S $(H_SRC)
+$(BIN)/$(TAR): $(USER_PROG)
+	printf "\033[35m  TAR \033[0m%s\n" $@
+	mkdir -p $(BIN)/initrd/bin
+	cp $(USER_PROG) $(BIN)/initrd/bin
+	tar cHf ustar $(BIN)/$(TAR) -C $(BIN)/initrd bin
+	rm -fr $(BIN)/initrd
+
+$(LIBA_OBJ): $(BIN)/%.S.o : %.S $(H_SRC) $(CONFIG)
 	mkdir -p $(@D)
-	printf "\033[33m  AS  \033[0m%s\n" user/$<
+	printf "\033[33m  AS  \033[0m%s\n" $<
 	$(CPP) $(CPPFLAGS) -o $@.cpp $<
 	$(AS) -o $@ $@.cpp
 
-$(LIBC_OBJ): $(BIN)/%.o : %.c $(H_SRC)
+$(LIBC_OBJ): $(BIN)/%.o : %.c $(H_SRC) $(CONFIG)
 	mkdir -p $(@D)
-	printf "\033[34m  CC  \033[0m%s\n" user/$<
+	printf "\033[34m  CC  \033[0m%s\n" $<
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 $(BIN)/libc.a: $(LIBA_OBJ) $(LIBC_OBJ)
 	@mkdir -p $(@D)
-	printf "\033[35m  AR  \033[0m%s\n" $(shell echo $@ | cut -c 4-)
+	printf "\033[35m  AR  \033[0m%s\n" $@
 	$(AR) rcs $@ $(LIBA_OBJ) $(LIBC_OBJ)
 
-$(USER_OBJ): $(BIN)/%.o : %.c $(H_SRC)
+$(USER_OBJ): $(BIN)/%.o : %.c $(H_SRC) $(CONFIG)
 	mkdir -p $(@D)
-	printf "\033[34m  CC  \033[0m%s\n" user/$<
+	printf "\033[34m  CC  \033[0m%s\n" $<
 	$(CC) -c $(CFLAGS) -o $@ $<
 
-$(USER_PROJ): % : %.o $(BIN)/libc.a
+$(USER_PROG): % : $(BIN)/libc.a %.o $(LINKER)
 	mkdir -p $(@D)
-	printf "\033[32m  LD  \033[0m%s\n" $(shell echo $@ | cut -c 4-)
-	$(LD) $(LDFLAGS) -T ../config/user.ld -o $@ $< $(BIN)/libc.a
+	printf "\033[32m  LD  \033[0m%s\n" $@
+	$(LD) $(LDFLAGS) -T $(LINKER) -o $@ $@.o $(BIN)/libc.a
