@@ -23,15 +23,27 @@ static struct page_header *end_header = NULL;
 
 static void *alloc_pages(size_t pages)
 {
-	(void)pages;
-	// TODO: impl
-	return NULL;
+	void *brk;
+
+	brk = sbrk(0);
+	if (brk == NULL)
+		return NULL;
+
+	if (sbrk(pages * PAGE_SIZE) == NULL)
+		return NULL;
+
+	return brk;
 }
 
-static void free_pages(struct page_header *header)
+static int free_pages(struct page_header *header)
 {
-	(void)header;
-	// TODO: impl
+	if (header->next)
+		return 1;
+	if (header->used)
+		return 1;
+
+	sbrk(-(header->free + sizeof(struct page_header)));
+	return 0;
 }
 
 static struct page_header *get_header(void *ptr)
@@ -217,10 +229,11 @@ void free(void *ptr)
 		(header->prev == NULL ||
 		 header->prev->node_number != header->node_number) &&
 		header->used == 0) {
-		if (header->next)
-			header->next->prev = header->prev;
-		if (header->prev)
-			header->prev->next = header->next;
-		free_pages(header);
+		if (free_pages(header) == 0) {
+			if (header->next)
+				header->next->prev = header->prev;
+			if (header->prev)
+				header->prev->next = header->next;
+		}
 	}
 }
