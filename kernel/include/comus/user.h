@@ -15,7 +15,7 @@
 /**
  * Load a user elf program from a file into a pcb
  */
-int user_load(struct pcb *pcb, struct disk *disk);
+int user_load(struct pcb *pcb, struct file *file);
 
 /**
  * Clone a user process. Used for fork().

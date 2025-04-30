@@ -1,5 +1,6 @@
 #include <lib.h>
 #include <comus/fs.h>
+#include <comus/fs/tar.h>
 #include <comus/mboot.h>
 #include <comus/error.h>
 
@@ -50,9 +51,9 @@ static void load_fs(struct disk *disk)
 	fs->fs_id = disk->d_id;
 	fs->fs_present = 1;
 
-	// // try examplefs
-	// if (example_mount(fs) == SUCCESS)
-	// 	return;
+	// try tarfs
+	if (tar_mount(fs) == SUCCESS)
+		return;
 
 	fs->fs_present = 0;
 	WARN("failed to load fs on disk %u", disk->d_id);

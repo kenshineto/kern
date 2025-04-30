@@ -11,7 +11,7 @@ GRUB ?= grub-mkrescue
 
 QEMUOPTS += -cdrom $(BIN)/$(ISO) \
 		    -no-reboot \
-		    -drive format=raw,file=user/bin/apple \
+		    -drive format=raw,file=user/bin/initrd.tar \
 		    -serial mon:stdio \
 		    -m 4G \
 		    -name kern

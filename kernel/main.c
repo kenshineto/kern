@@ -22,6 +22,36 @@ void kreport(void)
 	gpu_report();
 }
 
+void load_init(void)
+{
+	struct file_system *fs;
+	struct file *file;
+
+	if (pcb_alloc(&init_pcb))
+		return;
+
+	// get root fs
+	fs = fs_get_root_file_system();
+	if (fs == NULL)
+		return;
+
+	// get init bin
+	if (fs->open(fs, "bin/apple", &file))
+		return;
+
+	if (user_load(init_pcb, file)) {
+		file->close(file);
+		return;
+	}
+
+	// close file
+	file->close(file);
+
+	// schedule and dispatch init
+	schedule(init_pcb);
+	dispatch();
+}
+
 __attribute__((noreturn)) void main(long magic, volatile void *mboot)
 {
 	// initalize idt and pic
@@ -49,11 +79,7 @@ __attribute__((noreturn)) void main(long magic, volatile void *mboot)
 	kreport();
 
 	// load init process
-	pcb_alloc(&init_pcb);
-	if (user_load(init_pcb, &fs_disks[0]))
-		panic("failed to load init");
+	load_init();
 
-	// schedule and dispatch init
-	schedule(init_pcb);
-	dispatch();
+	panic("failed to load init");
 }

@@ -14,13 +14,13 @@
 #define USER_STACK_LEN (4 * PAGE_SIZE)
 
 #define BLOCK_SIZE (PAGE_SIZE * 1000)
-static uint8_t *load_buffer = NULL;
+static char *load_buffer = NULL;
 
 #define USER_CODE 0x18
 #define USER_DATA 0x20
 #define RING3 3
 
-static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
+static int user_load_segment(struct pcb *pcb, struct file *file, int idx)
 {
 	Elf64_Phdr hdr;
 	size_t mem_bytes, mem_pages;
@@ -56,14 +56,17 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 	if (mapADDR == NULL)
 		return 1;
 
+	// seek to start of segment
+	if (file->seek(file, hdr.p_offset, SEEK_SET))
+		return 1;
+
 	// load data
 	size_t total_read = 0;
 	while (total_read < file_bytes) {
 		size_t read = BLOCK_SIZE;
 		if (read > file_bytes - total_read)
 			read = file_bytes - total_read;
-		if ((read = disk_read(disk, hdr.p_offset + total_read, read,
-							  load_buffer)) < 1) {
+		if ((read = file->read(file, load_buffer, read)) < 1) {
 			kunmapaddr(mapADDR);
 			return 1;
 		}
@@ -79,7 +82,7 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 	return 0;
 }
 
-static int user_load_segments(struct pcb *pcb, struct disk *disk)
+static int user_load_segments(struct pcb *pcb, struct file *file)
 {
 	int ret = 0;
 
@@ -91,7 +94,7 @@ static int user_load_segments(struct pcb *pcb, struct disk *disk)
 			return 1;
 
 	for (int i = 0; i < pcb->n_elf_segments; i++)
-		if ((ret = user_load_segment(pcb, disk, i)))
+		if ((ret = user_load_segment(pcb, file, i)))
 			return ret;
 
 	if (pcb->heap_start == NULL) {
@@ -144,11 +147,13 @@ static int validate_elf_hdr(struct pcb *pcb)
 	return 0;
 }
 
-static int user_load_elf(struct pcb *pcb, struct disk *disk)
+static int user_load_elf(struct pcb *pcb, struct file *file)
 {
 	int ret = 0;
 
-	ret = disk_read(disk, 0, sizeof(Elf64_Ehdr), &pcb->elf_header);
+	if (file->seek(file, 0, SEEK_SET))
+		return 1;
+	ret = file->read(file, (char *)&pcb->elf_header, sizeof(Elf64_Ehdr));
 	if (ret < 0)
 		return 1;
 
@@ -156,9 +161,10 @@ static int user_load_elf(struct pcb *pcb, struct disk *disk)
 		return 1;
 
 	pcb->n_elf_segments = pcb->elf_header.e_phnum;
-	ret = disk_read(disk, pcb->elf_header.e_phoff,
-					sizeof(Elf64_Phdr) * pcb->elf_header.e_phnum,
-					&pcb->elf_segments);
+	if (file->seek(file, pcb->elf_header.e_phoff, SEEK_SET))
+		return 1;
+	ret = file->read(file, (char *)&pcb->elf_segments,
+					 sizeof(Elf64_Phdr) * pcb->elf_header.e_phnum);
 	if (ret < 0)
 		return 1;
 
@@ -199,10 +205,10 @@ static int user_setup_stack(struct pcb *pcb)
 	return 0;
 }
 
-int user_load(struct pcb *pcb, struct disk *disk)
+int user_load(struct pcb *pcb, struct file *file)
 {
 	// check inputs
-	if (pcb == NULL || disk == NULL)
+	if (pcb == NULL || file == NULL)
 		return 1;
 
 	// allocate memory context
@@ -211,11 +217,11 @@ int user_load(struct pcb *pcb, struct disk *disk)
 		goto fail;
 
 	// load elf information
-	if (user_load_elf(pcb, disk))
+	if (user_load_elf(pcb, file))
 		goto fail;
 
 	// load segments into memory
-	if (user_load_segments(pcb, disk))
+	if (user_load_segments(pcb, file))
 		goto fail;
 
 	// setup process stack
