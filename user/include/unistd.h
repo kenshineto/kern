@@ -16,6 +16,20 @@
 
 typedef unsigned short pid_t;
 
+enum {
+	S_SET = 0,
+	S_CUR = 1,
+	S_END = 2,
+};
+
+enum {
+	O_CREATE = 0x01,
+	O_RDONLY = 0x02,
+	O_WRONLY = 0x04,
+	O_APPEND = 0x08,
+	O_RDWR = O_RDONLY | O_WRONLY,
+};
+
 /**
  * terminates the calling process and does not return.
  *
@@ -65,7 +79,7 @@ extern void exec(const char *filename, char **args);
  * @param filename - the name of the file to open
  * @return the file descriptior of the open file or a negative error code.
  */
-extern int open(const char *filename);
+extern int open(const char *filename, int flags);
 
 /**
  * closes a stream with the given file descriptior
@@ -93,6 +107,16 @@ extern int read(int fd, void *buffer, size_t nbytes);
  * @return - The count of bytes transferred, or an error code
  */
 extern int write(int fd, const void *buffer, size_t nbytes);
+
+/**
+ * seek a file
+ *
+ * @param fd - file stream to seek
+ * @param off - offset to seek
+ * @param whence - whence to seek
+ * @return 0 on success, or an error code
+ */
+extern int seek(int fd, long int off, int whence);
 
 /**
  * gets the pid of the calling process
