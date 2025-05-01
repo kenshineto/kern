@@ -1,9 +1,11 @@
-#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <stdint.h>
 
 #include "virtalloc.h"
+
+extern char kernel_start[];
+extern char kernel_end[];
 
 static struct virt_addr_node *get_node_idx(struct virt_ctx *ctx, int idx)
 {
@@ -64,6 +66,7 @@ static struct virt_addr_node *get_node(struct virt_ctx *ctx)
 	for (; idx < count; idx++) {
 		struct virt_addr_node *node = get_node_idx(ctx, idx);
 		if (!node->is_used) {
+			node->is_used = true;
 			ctx->used_node_count++;
 			return node;
 		}
@@ -81,7 +84,7 @@ static void free_node(struct virt_ctx *ctx, struct virt_addr_node *node)
 void virtaddr_init(struct virt_ctx *ctx)
 {
 	struct virt_addr_node init = {
-		.start = 0x50000000,
+		.start = 0x0,
 		.end = 0x1000000000000, // 48bit memory address max
 		.next = NULL,
 		.prev = NULL,
@@ -96,6 +99,10 @@ void virtaddr_init(struct virt_ctx *ctx)
 	ctx->alloc_node_count = 0;
 	ctx->used_node_count = 0;
 	ctx->is_allocating = false;
+
+	virtaddr_take(ctx, (void *)kernel_start,
+				  ((uint64_t)kernel_end - (uint64_t)kernel_start) / PAGE_SIZE +
+					  1);
 }
 
 int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new)
@@ -211,9 +218,9 @@ int virtaddr_take(struct virt_ctx *ctx, const void *virt, int n_pages)
 			left->prev = node->prev;
 			left->start = node->start;
 			left->end = (uintptr_t)virt;
-			left->is_used = true;
 			left->is_alloc = false;
-			node->prev->next = left;
+			if (node->prev)
+				node->prev->next = left;
 			node->prev = left;
 		}
 
@@ -224,16 +231,15 @@ int virtaddr_take(struct virt_ctx *ctx, const void *virt, int n_pages)
 			right->next = node->next;
 			right->start = (uintptr_t)virt + n_length;
 			right->end = node->end;
-			right->is_used = true;
 			right->is_alloc = false;
-			node->next->prev = right;
+			if (node->next)
+				node->next->prev = right;
 			node->next = right;
 		}
 
 		node->start = (uintptr_t)virt;
 		node->end = node->start + n_length;
 		node->is_alloc = true;
-		node->is_used = true;
 
 		return 0;
 	}
@@ -257,6 +263,8 @@ long virtaddr_free(struct virt_ctx *ctx, const void *virtaddr)
 		if (node->start == virt) {
 			int length = node->end - node->start;
 			int pages = length / PAGE_SIZE;
+			// FIXME: ???
+			node->is_alloc = false;
 			merge_back(ctx, node);
 			merge_forward(ctx, node);
 			return pages;
