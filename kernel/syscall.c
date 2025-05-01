@@ -1,3 +1,5 @@
+#include "comus/fs.h"
+#include "lib/kio.h"
 #include <comus/user.h>
 #include <comus/cpu.h>
 #include <comus/syscalls.h>
@@ -23,6 +25,16 @@ static struct pcb *pcb;
 #define stdout 1
 #define stderr 2
 
+static struct file *get_file_ptr(int fd)
+{
+	// valid index?
+	if (fd < 3 || fd >= (N_OPEN_FILES + 3))
+		return NULL;
+
+	// will be NULL if not open
+	return pcb->open_files[fd - 3];
+}
+
 __attribute__((noreturn)) static int sys_exit(void)
 {
 	ARG1(int, status);
@@ -36,6 +48,33 @@ __attribute__((noreturn)) static int sys_exit(void)
 
 static int sys_waitpid(void)
 {
+	ARG1(pid_t, pid);
+	ARG2(int *, status);
+
+	struct pcb *child;
+	for (int i = 0; i < N_PROCS; i++) {
+		child = &ptable[i];
+		if (child->state != PROC_STATE_ZOMBIE)
+			continue;
+		if (child->parent != pcb)
+			continue;
+
+		// we found a child!
+		if (pid && pid != child->pid)
+			continue;
+
+		// set status
+		mem_ctx_switch(pcb->memctx);
+		*status = child->exit_status;
+		mem_ctx_switch(kernel_mem_ctx);
+
+		// clean up child process
+		pcb_cleanup(child);
+
+		// return
+		return child->pid;
+	}
+
 	// arguments are read later
 	// by procs.c
 	pcb->state = PROC_STATE_BLOCKED;
@@ -58,6 +97,125 @@ static int sys_fork(void)
 	pcb->regs.rax = child->pid;
 	schedule(child);
 	return 0;
+}
+
+static int sys_exec(void)
+{
+	ARG1(const char *, in_filename);
+	ARG2(const char **, in_args);
+
+	struct file_system *fs;
+	struct file *file;
+	char filename[N_FILE_NAME];
+	struct pcb save;
+
+	// save data
+	file = NULL;
+	save = *pcb;
+
+	// read filename
+	mem_ctx_switch(pcb->memctx);
+	memcpy(filename, in_filename, strlen(in_filename) + 1);
+	mem_ctx_switch(kernel_mem_ctx);
+
+	// get binary
+	fs = fs_get_root_file_system();
+	if (fs == NULL)
+		goto fail;
+	if (fs->open(fs, filename, O_RDONLY, &file))
+		goto fail;
+
+	// load program
+	save = *pcb;
+	if (user_load(pcb, file, in_args, save.memctx))
+		goto fail;
+	file->close(file);
+	mem_ctx_free(save.memctx);
+	schedule(pcb);
+	dispatch();
+
+fail:
+	*pcb = save;
+	if (file)
+		file->close(file);
+	return 1;
+}
+
+static int sys_open(void)
+{
+	ARG1(const char *, in_filename);
+	ARG2(int, flags);
+
+	char filename[N_FILE_NAME];
+	struct file_system *fs;
+	struct file **file;
+	int fd;
+
+	// read filename
+	mem_ctx_switch(pcb->memctx);
+	memcpy(filename, in_filename, strlen(in_filename));
+	mem_ctx_switch(kernel_mem_ctx);
+
+	// get fd
+	for (fd = 3; fd < (N_OPEN_FILES + 3); fd++) {
+		if (pcb->open_files[fd - 3] == NULL) {
+			file = &pcb->open_files[fd - 3];
+			break;
+		}
+	}
+
+	// could not find fd
+	if (fd == (N_OPEN_FILES + 3))
+		return -1;
+
+	// open file
+	fs = fs_get_root_file_system();
+	if (fs == NULL)
+		return -1;
+	if (fs->open(fs, filename, flags, file))
+		return -1;
+
+	// file opened
+	return fd;
+}
+
+static int sys_close(void)
+{
+	ARG1(int, fd);
+
+	struct file *file;
+	file = get_file_ptr(fd);
+	if (file == NULL)
+		return 1;
+
+	file->close(file);
+	return 0;
+}
+
+static int sys_read(void)
+{
+	ARG1(int, fd);
+	ARG2(void *, buffer);
+	ARG3(size_t, nbytes);
+
+	struct file *file;
+	char *map_buf;
+
+	map_buf = kmapuseraddr(pcb->memctx, buffer, nbytes);
+	if (map_buf == NULL)
+		return -1;
+
+	file = get_file_ptr(fd);
+	if (file == NULL)
+		goto fail;
+
+	nbytes = file->read(file, map_buf, nbytes);
+	kunmapaddr(map_buf);
+	return nbytes;
+
+fail:
+	kunmapaddr(map_buf);
+	return -1;
 }
 
 static int sys_write(void)
@@ -324,17 +482,34 @@ static int sys_ticks(void)
 	return 0;
 }
 
+static int sys_seek(void)
+{
+	RET(long int, ret);
+	ARG1(int, fd);
+	ARG2(long int, off);
+	ARG3(int, whence);
+
+	struct file *file;
+	file = get_file_ptr(fd);
+	if (file == NULL)
+		return -1;
+
+	*ret = file->seek(file, off, whence);
+	return 0;
+}
+
 static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_exit] = sys_exit,		 [SYS_waitpid] = sys_waitpid,
-	[SYS_fork] = sys_fork,		 [SYS_exec] = NULL,
-	[SYS_open] = NULL,			 [SYS_close] = NULL,
-	[SYS_read] = NULL,			 [SYS_write] = sys_write,
+	[SYS_fork] = sys_fork,		 [SYS_exec] = sys_exec,
+	[SYS_open] = sys_open,		 [SYS_close] = sys_close,
+	[SYS_read] = sys_read,		 [SYS_write] = sys_write,
 	[SYS_getpid] = sys_getpid,	 [SYS_getppid] = sys_getppid,
 	[SYS_gettime] = sys_gettime, [SYS_getprio] = sys_getprio,
 	[SYS_setprio] = sys_setprio, [SYS_kill] = sys_kill,
 	[SYS_sleep] = sys_sleep,	 [SYS_brk] = sys_brk,
 	[SYS_sbrk] = sys_sbrk,		 [SYS_poweroff] = sys_poweroff,
 	[SYS_drm] = sys_drm,		 [SYS_ticks] = sys_ticks,
+	[SYS_seek] = sys_seek,
 };
 
 void syscall_handler(void)

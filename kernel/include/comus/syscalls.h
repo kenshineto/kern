@@ -30,9 +30,10 @@
 #define SYS_poweroff 17
 #define SYS_drm 18
 #define SYS_ticks 19
+#define SYS_seek 20
 
 // UPDATE THIS DEFINITION IF MORE SYSCALLS ARE ADDED!
-#define N_SYSCALLS 20
+#define N_SYSCALLS 21
 
 // interrupt vector entry for system calls
 #define VEC_SYSCALL 0x80

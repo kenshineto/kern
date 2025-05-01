@@ -148,6 +148,15 @@ struct file {
 	void (*close)(struct file *file);
 };
 
+/// open flags
+enum {
+	O_CREATE = 0x01,
+	O_RDONLY = 0x02,
+	O_WRONLY = 0x04,
+	O_APPEND = 0x08,
+	O_RDWR = 0x10,
+};
+
 /// file system vtable, used for opening
 /// and stating files. filesystem mount functions must
 /// set fs_name, fs_disk, open, and stat.
@@ -200,7 +209,7 @@ struct file_system {
 	/// filesystem name
 	const char *fs_name;
 	/// opens a file
-	int (*open)(struct file_system *fs, const char *fullpath,
+	int (*open)(struct file_system *fs, const char *fullpath, int flags,
 				struct file **out);
 	/// stats a file
 	int (*stat)(struct file_system *fs, const char *fullpath,

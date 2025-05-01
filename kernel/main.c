@@ -26,6 +26,7 @@ void load_init(void)
 {
 	struct file_system *fs;
 	struct file *file;
+	const char *init_vector[] = { NULL };
 
 	if (pcb_alloc(&init_pcb))
 		return;
@@ -36,10 +37,10 @@ void load_init(void)
 		return;
 
 	// get init bin
-	if (fs->open(fs, "bin/apple", &file))
+	if (fs->open(fs, "bin/init", O_RDONLY, &file))
 		return;
 
-	if (user_load(init_pcb, file)) {
+	if (user_load(init_pcb, file, init_vector, kernel_mem_ctx)) {
 		file->close(file);
 		return;
 	}

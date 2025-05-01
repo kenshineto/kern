@@ -13,6 +13,7 @@
 #include <comus/limits.h>
 #include <comus/memory.h>
 #include <comus/syscalls.h>
+#include <comus/fs.h>
 #include <lib.h>
 #include <elf.h>
 
@@ -58,6 +59,9 @@ struct pcb {
 	// heap
 	char *heap_start;
 	size_t heap_len;
+
+	// open files
+	struct file *open_files[N_OPEN_FILES];
 
 	// elf metadata
 	Elf64_Ehdr elf_header;

@@ -57,7 +57,7 @@ static int user_load_segment(struct pcb *pcb, struct file *file, int idx)
 		return 1;
 
 	// seek to start of segment
-	if (file->seek(file, hdr.p_offset, SEEK_SET))
+	if (file->seek(file, hdr.p_offset, SEEK_SET) < 0)
 		return 1;
 
 	// load data
@@ -151,7 +151,7 @@ static int user_load_elf(struct pcb *pcb, struct file *file)
 {
 	int ret = 0;
 
-	if (file->seek(file, 0, SEEK_SET))
+	if (file->seek(file, 0, SEEK_SET) < 0)
 		return 1;
 	ret = file->read(file, (char *)&pcb->elf_header, sizeof(Elf64_Ehdr));
 	if (ret < 0)
@@ -161,7 +161,7 @@ static int user_load_elf(struct pcb *pcb, struct file *file)
 		return 1;
 
 	pcb->n_elf_segments = pcb->elf_header.e_phnum;
-	if (file->seek(file, pcb->elf_header.e_phoff, SEEK_SET))
+	if (file->seek(file, pcb->elf_header.e_phoff, SEEK_SET) < 0)
 		return 1;
 	ret = file->read(file, (char *)&pcb->elf_segments,
 					 sizeof(Elf64_Phdr) * pcb->elf_header.e_phnum);
@@ -171,14 +171,56 @@ static int user_load_elf(struct pcb *pcb, struct file *file)
 	return 0;
 }
 
-static int user_setup_stack(struct pcb *pcb)
+static int user_setup_stack(struct pcb *pcb, const char **args,
+							mem_ctx_t args_ctx)
 {
-	// allocate stack
+	/* args */
+	int argbytes = 0;
+	int argc = 0;
+
+	mem_ctx_switch(args_ctx);
+
+	while (args[argc] != NULL) {
+		int n = strlen(args[argc]) + 1;
+		if ((argbytes + n) > USER_STACK_LEN) {
+			// oops - ignore this and any others
+			break;
+		}
+		argbytes += n;
+		argc++;
+	}
+
+	// round to nearest multiple of 8
+	argbytes = (argbytes + 7) & 0xfffffffffffffff8;
+
+	// allocate arg strings on kernel stack
+	char argstrings[argbytes];
+	char *argv[argc + 1];
+	memset(argstrings, 0, sizeof(argstrings));
+	memset(argv, 0, sizeof(argv));
+
+	// Next, duplicate the argument strings, and create pointers to
+	// each one in our argv.
+	char *tmp = argstrings;
+	for (int i = 0; i < argc; ++i) {
+		int nb = strlen(args[i]) + 1;
+		strcpy(tmp, args[i]);
+		argv[i] = tmp;
+		tmp += nb;
+	}
+
+	// trailing NULL pointer
+	argv[argc] = NULL;
+
+	mem_ctx_switch(kernel_mem_ctx);
+
+	/* stack */
 	if (mem_alloc_pages_at(pcb->memctx, USER_STACK_LEN / PAGE_SIZE,
 						   (void *)(USER_STACK_TOP - USER_STACK_LEN),
 						   F_WRITEABLE | F_UNPRIVILEGED) == NULL)
 		return 1;
 
+	/* regs */
 	memset(&pcb->regs, 0, sizeof(struct cpu_regs));
 
 	// pgdir
@@ -189,7 +231,7 @@ static int user_setup_stack(struct pcb *pcb)
 	pcb->regs.es = USER_DATA | RING3;
 	pcb->regs.ds = USER_DATA | RING3;
 	// registers
-	pcb->regs.rdi = 0; // argc
+	pcb->regs.rdi = argc; // argc
 	pcb->regs.rsi = 0; // argv
 	// intruction pointer
 	pcb->regs.rip = pcb->elf_header.e_entry;
@@ -205,7 +247,8 @@ static int user_setup_stack(struct pcb *pcb)
 	return 0;
 }
 
-int user_load(struct pcb *pcb, struct file *file)
+int user_load(struct pcb *pcb, struct file *file, const char **args,
+			  mem_ctx_t args_ctx)
 {
 	// check inputs
 	if (pcb == NULL || file == NULL)
@@ -225,7 +268,7 @@ int user_load(struct pcb *pcb, struct file *file)
 		goto fail;
 
 	// setup process stack
-	if (user_setup_stack(pcb))
+	if (user_setup_stack(pcb, args, args_ctx))
 		goto fail;
 
 	// success

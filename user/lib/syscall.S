@@ -13,6 +13,8 @@ SYSCALL exit SYS_exit
 SYSCALL waitpid SYS_waitpid
 SYSCALL fork SYS_fork
 SYSCALL exec SYS_exec
+SYSCALL open SYS_open
+SYSCALL close SYS_close
 SYSCALL read SYS_read
 SYSCALL write SYS_write
 SYSCALL getpid SYS_getpid
@@ -27,3 +29,4 @@ SYSCALL sbrk SYS_sbrk
 SYSCALL poweroff SYS_poweroff
 SYSCALL drm SYS_drm
 SYSCALL ticks SYS_ticks
+SYSCALL seek SYS_seek

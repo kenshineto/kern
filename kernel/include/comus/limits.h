@@ -12,6 +12,10 @@
 /// max number of processes
 #define N_PROCS 256
 
+/// process limits
+#define N_OPEN_FILES 64
+#define N_ARGS 64
+
 /// max nubmer of pci devices
 #define N_PCI_DEV 256
 

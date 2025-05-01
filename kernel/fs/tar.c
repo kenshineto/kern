@@ -150,15 +150,15 @@ int tar_seek(struct file *in, long int off, int whence)
 	switch (whence) {
 	case SEEK_SET:
 		file->offset = off;
-		return 0;
+		return file->offset;
 	case SEEK_CUR:
 		file->offset += off;
-		return 0;
+		return file->offset;
 	case SEEK_END:
 		file->offset = file->len + off;
-		return 0;
+		return file->offset;
 	default:
-		return 1;
+		return -1;
 	}
 }
 
@@ -202,11 +202,16 @@ void tar_close(struct file *file)
 	kfree(file);
 }
 
-int tar_open(struct file_system *fs, const char *path, struct file **out)
+int tar_open(struct file_system *fs, const char *path, int flags,
+			 struct file **out)
 {
 	struct tar_file *file;
 	struct tar_hdr hdr;
 	size_t sect;
+
+	// cannot create or write files
+	if (flags != O_RDONLY)
+		return 1;
 
 	if (tar_locate(fs, path, &hdr, &sect, NULL, false))
 		return 1;

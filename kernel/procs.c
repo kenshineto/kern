@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <comus/drivers/pit.h>
 #include <comus/syscalls.h>
 #include <comus/memory.h>
@@ -218,7 +219,7 @@ void pcb_zombify(struct pcb *victim)
 		status = (int *)PCB_ARG2(parent);
 
 		if (pid == 0 || pid == victim->pid) {
-			PCB_RET(parent) = zchild->pid;
+			PCB_RET(parent) = victim->pid;
 
 			assert(
 				pcb_queue_remove(syscall_queue[SYS_waitpid], parent) == SUCCESS,

@@ -252,7 +252,7 @@ extern size_t fwrite(const void *restrict ptr, size_t size, size_t n,
  * @param stream - the stream to seek
  * @param off - the offset from whence
  * @param whence - where to seek from (SEEK_SET, SEEK_CUR, SEEK_END)
- * @returns 0 on success, -1 on error setting errno
+ * @returns new offset on success, -1 on error
  */
 extern int fseek(FILE *stream, long int off, int whence);
 
@@ -260,9 +260,9 @@ extern int fseek(FILE *stream, long int off, int whence);
  * return the current position of stream
  *
  * @param stream - the stream to tell
- * @return the position on success, -1 on error setting errno
+ * @returns new offset on success, -1 on error
  */
-extern long int ftell(FILE *stream);
+extern long ftell(FILE *stream);
 
 /**
  * rewing to the begining of a stream
