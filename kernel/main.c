@@ -28,19 +28,26 @@ void load_init(void)
 	struct file *file;
 	const char *init_vector[] = { NULL };
 
-	if (pcb_alloc(&init_pcb))
+	if (pcb_alloc(&init_pcb)) {
+		WARN("failed to alloc init pcb");
 		return;
+	}
 
 	// get root fs
 	fs = fs_get_root_file_system();
-	if (fs == NULL)
+	if (fs == NULL) {
+		WARN("failed to get root fs");
 		return;
+	}
 
 	// get init bin
-	if (fs->open(fs, "bin/init", O_RDONLY, &file))
+	if (fs->open(fs, "bin/init", O_RDONLY, &file)) {
+		WARN("cannot find init elf");
 		return;
+	}
 
 	if (user_load(init_pcb, file, init_vector, kernel_mem_ctx)) {
+		WARN("init elf failed to load! bad bad BAD!!");
 		file->close(file);
 		return;
 	}
