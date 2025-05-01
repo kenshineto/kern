@@ -34,7 +34,7 @@ static struct page_header *get_header(void *ptr)
 
 static void *alloc_new(size_t size)
 {
-	size_t pages = ((size + header_len) / PAGE_SIZE) + 1;
+	size_t pages = ((size + header_len + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
 
 	void *addr = kalloc_pages(pages);
 	void *mem = (char *)addr + header_len;
@@ -180,7 +180,7 @@ void kfree(void *ptr)
 	for (neighbor = header->prev; neighbor != NULL; neighbor = neighbor->prev) {
 		if (neighbor->node_number != header->node_number)
 			break;
-		if (neighbor->used && header->used)
+		if (neighbor->used || header->used)
 			break;
 		neighbor->free += header->free + header_len;
 		neighbor->next = header->next;
