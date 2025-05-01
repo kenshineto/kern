@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define BOOTSTRAP_VIRT_ALLOC_NODES 64
+#define BOOTSTRAP_VIRT_ALLOC_NODES 256
 
 struct virt_addr_node {
 	/// first virtural address
