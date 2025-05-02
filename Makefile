@@ -55,5 +55,6 @@ $(BIN)/$(ISO): build config/grub.cfg
 	mkdir -p $(BIN)/iso/boot/grub
 	cp config/grub.cfg $(BIN)/iso/boot/grub
 	cp kernel/bin/kernel $(BIN)/iso/boot
+	cp user/bin/initrd.tar $(BIN)/iso/boot
 	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
 

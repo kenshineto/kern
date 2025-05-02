@@ -123,13 +123,16 @@ int fs_find_file_rel(struct file *rel, char *rel_path, struct file *res)
 static int disk_read_rd(struct disk *disk, size_t offset, size_t len,
 						uint8_t *buffer)
 {
-	if (offset + len >= disk->rd.len) {
+	if (offset >= disk->rd.len) {
 		WARN("attempted to read past length of ramdisk");
 		return -E_BAD_PARAM;
 	}
 
+	if (disk->rd.len - offset < len)
+		len = disk->rd.len - offset;
+
 	memcpy(buffer, disk->rd.start + offset, len);
-	return 0;
+	return len;
 }
 
 static int disk_read_ata(struct disk *disk, size_t offset, size_t len,
@@ -182,13 +185,16 @@ int disk_read(struct disk *disk, size_t offset, size_t len, void *buffer)
 static int disk_write_rd(struct disk *disk, size_t offset, size_t len,
 						 uint8_t *buffer)
 {
-	if (offset + len >= disk->rd.len) {
+	if (offset >= disk->rd.len) {
 		WARN("attempted to write past length of ramdisk");
 		return -E_BAD_PARAM;
 	}
 
+	if (disk->rd.len - offset < len)
+		len = disk->rd.len - offset;
+
 	memcpy(disk->rd.start + offset, buffer, len);
-	return 0;
+	return len;
 }
 
 static int disk_write_ata(struct disk *disk, size_t offset, size_t len,
