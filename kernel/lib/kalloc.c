@@ -35,8 +35,7 @@ static struct page_header *get_header(void *ptr)
 
 static void *alloc_new(size_t size)
 {
-	size_t pages =
-		((size + header_len + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
+	size_t pages = ((size + header_len + PAGE_SIZE - 1) / PAGE_SIZE);
 
 	void *addr = kalloc_pages(pages);
 	void *mem = (char *)addr + header_len;
@@ -91,6 +90,8 @@ static void *alloc_block(size_t size, struct page_header *block)
 	header->prev = block;
 	header->next = block->next;
 	block->next = header;
+	if (header->next)
+		header->next->prev = header;
 	header->node_number = block->node_number;
 
 	void *mem = (char *)header + header_len;
@@ -163,7 +164,7 @@ void *krealloc(void *src, size_t dst_len)
 
 void kfree(void *ptr)
 {
-	struct page_header *header;
+	struct page_header *header, *neighbor;
 
 	if (ptr == NULL)
 		return;
@@ -176,17 +177,17 @@ void kfree(void *ptr)
 	header->free += header->used;
 	header->used = 0;
 
-	struct page_header *neighbor;
-
 	// merge left
 	for (neighbor = header->prev; neighbor != NULL; neighbor = neighbor->prev) {
 		if (neighbor->node_number != header->node_number)
 			break;
-		if (neighbor->used || header->used)
-			break;
 		neighbor->free += header->free + header_len;
 		neighbor->next = header->next;
+		if (neighbor->next)
+			neighbor->next->prev = neighbor;
 		header = neighbor;
+		if (header->used)
+			break;
 	}
 
 	// merge right
@@ -197,17 +198,24 @@ void kfree(void *ptr)
 			break;
 		header->free += neighbor->free + header_len;
 		header->next = neighbor->next;
+		if (header->next)
+			header->next->prev = header;
 	}
 
-	if ((header->next == NULL ||
-		 header->next->node_number != header->node_number) &&
-		(header->prev == NULL ||
-		 header->prev->node_number != header->node_number) &&
-		header->used == 0) {
-		if (header->next)
-			header->next->prev = header->prev;
-		if (header->prev)
-			header->prev->next = header->next;
-		kfree_pages(header);
-	}
+	// ignore if node on left
+	if (header->prev != NULL &&
+		header->prev->node_number == header->node_number)
+		return;
+
+	// ignore if node on right
+	if (header->next != NULL &&
+		header->next->node_number == header->node_number)
+		return;
+
+	// ignore if still used
+	if (header->used)
+		return;
+
+	// FIXME: huh?!
+	// kfree_pages(header);
 }
