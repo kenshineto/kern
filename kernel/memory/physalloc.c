@@ -27,7 +27,7 @@ static const char *segment_type_str[] = {
 
 static int n_pages(const struct memory_segment *m)
 {
-	return m->len / PAGE_SIZE;
+	return (m->len + PAGE_SIZE - 1) / PAGE_SIZE;
 }
 
 static void *page_at(int i)
