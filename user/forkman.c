@@ -6,10 +6,12 @@
  *
  */
 
-#include <unistd.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <unistd.h>
+#include "../kernel/include/comus/keycodes.h"
 
 #define GAME_WIDTH 480
 #define GAME_HEIGHT 360
@@ -29,11 +31,15 @@ typedef struct {
 	volatile size_t frame;
 	volatile size_t dummy_counter;
 	volatile int lock;
+	volatile uint8_t client_barrier;
+	volatile uint8_t server_barrier;
+	volatile uint8_t key_status[255];
 	volatile uint8_t mem[PAGE_SIZE * (SHARED_PAGES - 1)];
 } sharedmem;
 
 static int display_server_entry(sharedmem *);
 static int client_entry(sharedmem *);
+static void barrier_wait(sharedmem *, int isclient);
 
 int main(void)
 {
@@ -43,8 +49,6 @@ int main(void)
 		return 1;
 	}
 
-	printf("ABOUT TO FORK\n");
-
 	int child = fork();
 	if (child < 0) {
 		fprintf(stderr, "fork failed!\n");
@@ -52,7 +56,6 @@ int main(void)
 	}
 
 	if (child) {
-		printf("FORK GOOD, CHILD IS %d\n", child);
 		sharedmem *shared = allocshared(SHARED_PAGES, child);
 		if (!shared) {
 			fprintf(stderr, "memory share failure\n");
@@ -61,8 +64,6 @@ int main(void)
 
 		return display_server_entry(shared);
 	} else {
-		printf("FORK GOOD, WE ARE CHILD\n");
-
 		sharedmem *shared;
 
 		while (!(shared = popsharedmem()))
@@ -90,12 +91,22 @@ static int display_server_entry(sharedmem *shared)
 
 	size_t last_frame = 1;
 
-	while (1) {
-		if (shared->frame == last_frame) {
-			continue;
-		}
+	barrier_wait(shared, 0);
 
-		printf("server writing frame %zu\n", last_frame);
+	while (1) {
+		if (shared->frame == last_frame)
+			continue;
+
+		struct keycode keycode;
+
+		if (keypoll(&keycode)) {
+			if (keycode.flags & KC_FLAG_KEY_DOWN) {
+				shared->key_status[(uint8_t)keycode.key] = 1;
+			}
+			if (keycode.flags & KC_FLAG_KEY_UP) {
+				shared->key_status[(uint8_t)keycode.key] = 0;
+			}
+		}
 
 		last_frame += 1;
 		shared->frame = last_frame;
@@ -107,15 +118,35 @@ static int display_server_entry(sharedmem *shared)
 static int client_entry(sharedmem *shared)
 {
 	size_t last_frame = shared->frame;
+	barrier_wait(shared, 1);
 	do {
 		if (last_frame == shared->frame)
 			continue;
-
-		printf("client writing frame %zu\n", last_frame);
 
 		last_frame += 1;
 		shared->frame = last_frame;
 	} while (1);
 
 	return 0;
+}
+
+static void barrier_wait(sharedmem *shared, int isclient)
+{
+	if (isclient) {
+		if (shared->server_barrier) {
+			shared->server_barrier = 0;
+		} else {
+			shared->client_barrier = 1;
+			while (shared->client_barrier)
+				;
+		}
+	} else {
+		if (shared->client_barrier) {
+			shared->client_barrier = 0;
+		} else {
+			shared->server_barrier = 1;
+			while (shared->server_barrier)
+				;
+		}
+	}
 }

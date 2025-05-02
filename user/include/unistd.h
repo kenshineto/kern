@@ -14,6 +14,12 @@
 
 /* System Call Definitions */
 
+// NOTE: needs to match kernel input.h
+struct keycode {
+	char key;
+	char flags;
+};
+
 typedef unsigned short pid_t;
 
 enum {
@@ -195,7 +201,7 @@ extern void *sbrk(intptr_t increment);
  * @return pointer to the virtual address which will be accessible by both,
  * after popsharedmem() is called.
  */
-extern void* allocshared(size_t num_pages, int other_pid);
+extern void *allocshared(size_t num_pages, int other_pid);
 
 /**
  * Checks if another process has tried to share memory with us, and return it.
@@ -207,7 +213,16 @@ extern void* allocshared(size_t num_pages, int other_pid);
  * process has tried to share with us, or NULL if we the shared virtual address
  * space is already occupied in the caller's pagetable.
  */
-extern void* popsharedmem(void);
+extern void *popsharedmem(void);
+
+/**
+ * Get the most recent key event, if there is one.
+ *
+ * @param poll the keycode to write out to
+ * @return 0 if there was no key event, in which case `poll` was not changed, or
+ * 1 if there was an event and the caller should read from `poll`.
+ */
+extern int keypoll(struct keycode *poll);
 
 /**
  * Poweroff the system.

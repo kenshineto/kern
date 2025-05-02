@@ -1,6 +1,7 @@
 #include <comus/user.h>
 #include <comus/cpu.h>
 #include <comus/syscalls.h>
+#include <comus/input.h>
 #include <comus/drivers/acpi.h>
 #include <comus/drivers/gpu.h>
 #include <comus/drivers/pit.h>
@@ -397,6 +398,26 @@ static int sys_allocshared(void)
 	return 0;
 }
 
+// NOTE: observes AND consumes the key event
+static int sys_keypoll(void)
+{
+	ARG1(struct keycode *, keyev);
+	RET(int, waspressed);
+
+	void *ouraddr = kmapuseraddr(pcb->memctx, keyev, sizeof(struct keycode));
+
+	if (keycode_pop(ouraddr)) {
+		kunmapaddr(ouraddr);
+		*waspressed = false;
+		return 0;
+	}
+
+	kunmapaddr(ouraddr);
+
+	*waspressed = true;
+	return 0;
+}
+
 static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_exit] = sys_exit,
 	[SYS_waitpid] = sys_waitpid,
@@ -420,6 +441,7 @@ static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_ticks] = sys_ticks,
 	[SYS_allocshared] = sys_allocshared,
 	[SYS_popsharedmem] = sys_popsharedmem,
+	[SYS_keypoll] = sys_keypoll,
 };
 
 void syscall_handler(void)
