@@ -27,3 +27,5 @@ SYSCALL sbrk SYS_sbrk
 SYSCALL poweroff SYS_poweroff
 SYSCALL drm SYS_drm
 SYSCALL ticks SYS_ticks
+SYSCALL allocshared SYS_allocshared
+SYSCALL popsharedmem SYS_popsharedmem

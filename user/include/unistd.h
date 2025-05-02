@@ -187,6 +187,29 @@ extern void *brk(const void *addr);
 extern void *sbrk(intptr_t increment);
 
 /**
+ * Allocate a number of pages shared with another PID. Does not map the pages
+ * into the other process's vtable until the other process calls popsharedmem().
+ *
+ * @param num_pages number of pages to allocate
+ * @param other_pid pid of other process
+ * @return pointer to the virtual address which will be accessible by both,
+ * after popsharedmem() is called.
+ */
+extern void* allocshared(size_t num_pages, int other_pid);
+
+/**
+ * Checks if another process has tried to share memory with us, and return it.
+ * No size information is returned, it is only guaranteed that there is at least
+ * one page in the shared allocation. To get around this, the sharer can write
+ * a size number to the start of the first page.
+ *
+ * @return page aligned pointer to the start of the shared pages, or NULL if no
+ * process has tried to share with us, or NULL if we the shared virtual address
+ * space is already occupied in the caller's pagetable.
+ */
+extern void* popsharedmem(void);
+
+/**
  * Poweroff the system.
  *
  * @return 1 on failure
