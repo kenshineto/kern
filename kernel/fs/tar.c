@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <comus/fs.h>
 #include <lib.h>
 

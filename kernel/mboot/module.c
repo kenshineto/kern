@@ -33,7 +33,7 @@ void *mboot_get_initrd(size_t *len)
 		return NULL;
 
 	mod = (struct multiboot_tag_module *)tag;
-	phys = (void *) (uintptr_t) mod->mod_start;
+	phys = (void *)(uintptr_t)mod->mod_start;
 	initrd_len = mod->mod_end - mod->mod_start;
 
 	// map addr

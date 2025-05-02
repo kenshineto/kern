@@ -100,9 +100,9 @@ void virtaddr_init(struct virt_ctx *ctx)
 	ctx->used_node_count = 0;
 	ctx->is_allocating = false;
 
-	virtaddr_take(ctx, (void *)kernel_start,
-				  ((uint64_t)kernel_end - (uint64_t)kernel_start) / PAGE_SIZE +
-					  1);
+	virtaddr_take(ctx, (void *)0,
+				  ((uint64_t)kernel_end + PAGE_SIZE - 1) / PAGE_SIZE *
+					  PAGE_SIZE);
 }
 
 int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new)

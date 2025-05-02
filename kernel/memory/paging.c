@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 
@@ -353,7 +354,7 @@ static volatile struct pt *pt_alloc(volatile struct pd *pPD, void *vADDR,
 	}
 
 	pPT = alloc_phys_page();
-	if (pPD == NULL)
+	if (pPT == NULL)
 		return NULL;
 
 	vPT = PT_MAP(pPT);

@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
@@ -62,7 +63,7 @@ static long page_idx(void *page)
 
 static inline bool bitmap_get(size_t i)
 {
-	return (bitmap[i / 64] >> i % 64) & 1;
+	return (bitmap[i / 64] >> (i % 64)) & 1;
 }
 
 static inline void bitmap_set(size_t i, bool v)
@@ -71,9 +72,9 @@ static inline void bitmap_set(size_t i, bool v)
 		free_memory -= PAGE_SIZE;
 	else
 		free_memory += PAGE_SIZE;
-	int idx = i / 64;
-	bitmap[idx] &= ~(1 << i % 64);
-	bitmap[idx] |= (v << i % 64);
+	size_t idx = i / 64;
+	bitmap[idx] &= ~(1 << (i % 64));
+	bitmap[idx] |= (v << (i % 64));
 }
 
 void *alloc_phys_page(void)
@@ -105,9 +106,17 @@ void *alloc_phys_pages_exact(size_t pages)
 				free_region_start = i;
 			n_contiguous++;
 			if (n_contiguous == pages) {
+				void *pADDR;
+				pADDR = page_at(free_region_start);
+
+				if (pADDR == NULL) {
+					n_contiguous = 0;
+					continue;
+				}
+
 				for (size_t j = 0; j < pages; j++)
 					bitmap_set(free_region_start + j, true);
-				return page_at(free_region_start);
+				return pADDR;
 			}
 		} else
 			n_contiguous = 0;
@@ -118,6 +127,7 @@ void *alloc_phys_pages_exact(size_t pages)
 
 struct phys_page_slice alloc_phys_page_withextra(size_t max_pages)
 {
+	panic("please dont use this its broken i think?!\n");
 	if (max_pages == 0)
 		return PHYS_PAGE_SLICE_NULL;
 
@@ -160,6 +170,7 @@ void free_phys_page(void *ptr)
 
 void free_phys_pages_slice(struct phys_page_slice slice)
 {
+	panic("please dont use this its broken i think?!\n");
 	free_phys_pages(slice.pagestart, slice.num_pages);
 }
 

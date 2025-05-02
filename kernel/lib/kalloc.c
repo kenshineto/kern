@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 
@@ -34,7 +35,8 @@ static struct page_header *get_header(void *ptr)
 
 static void *alloc_new(size_t size)
 {
-	size_t pages = ((size + header_len + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
+	size_t pages =
+		((size + header_len + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
 
 	void *addr = kalloc_pages(pages);
 	void *mem = (char *)addr + header_len;
