@@ -12,6 +12,7 @@ GRUB ?= grub-mkrescue
 QEMUOPTS += -cdrom $(BIN)/$(ISO) \
 		    -no-reboot \
 		    -drive format=raw,file=user/bin/initrd.tar \
+		    -audiodev pa,id=speaker -machine pcspk-audiodev=speaker \
 		    -serial mon:stdio \
 		    -m 4G \
 		    -name kern

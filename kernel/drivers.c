@@ -10,7 +10,7 @@
 
 void drivers_init(void)
 {
-	pit_set_divider(1193); // 1ms
+	pit_set_freq(CHAN_TIMER, 1000); // 1ms
 	uart_init();
 	ps2_init();
 	pci_init();

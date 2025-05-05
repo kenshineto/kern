@@ -264,6 +264,11 @@ __attribute__((noreturn, format(printf, 3, 4))) void
 __panic(unsigned int line, const char *file, const char *format, ...);
 
 /**
+ * Loop kernel in fatal notifier (beep and blink caps lock key)
+ */
+__attribute__((noreturn)) void fatal_loop(void);
+
+/**
  * Fill dst with a stack trace consisting of return addresses in order
  * from top to bottom
  *
