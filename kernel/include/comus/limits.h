@@ -7,10 +7,14 @@
  */
 
 /// number of pts to identity map the kernel (1pt = 2MB)
-#define N_IDENT_PTS 4 // max 512 (1G)
+#define N_IDENT_PTS 64 // max 512 (1G)
 
 /// max number of processes
 #define N_PROCS 256
+
+/// process limits
+#define N_OPEN_FILES 64
+#define N_ARGS 64
 
 /// max nubmer of pci devices
 #define N_PCI_DEV 256

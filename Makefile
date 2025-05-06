@@ -11,7 +11,8 @@ GRUB ?= grub-mkrescue
 
 QEMUOPTS += -cdrom $(BIN)/$(ISO) \
 		    -no-reboot \
-		    -drive format=raw,file=user/bin/forkman \
+		    -drive format=raw,file=user/bin/initrd.tar \
+		    -audiodev pa,id=speaker -machine pcspk-audiodev=speaker \
 		    -serial mon:stdio \
 		    -m 4G \
 		    -name kern
@@ -55,5 +56,6 @@ $(BIN)/$(ISO): build config/grub.cfg
 	mkdir -p $(BIN)/iso/boot/grub
 	cp config/grub.cfg $(BIN)/iso/boot/grub
 	cp kernel/bin/kernel $(BIN)/iso/boot
+	cp user/bin/initrd.tar $(BIN)/iso/boot
 	$(GRUB) -o $(BIN)/$(ISO) bin/iso 2>/dev/null
 

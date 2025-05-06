@@ -4,6 +4,8 @@
 
 static EFI_GRAPHICS_OUTPUT_PROTOCOL *gop = NULL;
 
+#define MAX_H_RES 1920
+
 EFI_STATUS efi_load_gop(EFI_SYSTEM_TABLE *ST)
 {
 	EFI_STATUS status = EFI_SUCCESS;
@@ -32,6 +34,8 @@ EFI_STATUS efi_load_gop(EFI_SYSTEM_TABLE *ST)
 		status = gop->QueryMode(gop, i, &SizeOfInfo, &info);
 		if (info->PixelFormat != PixelBlueGreenRedReserved8BitPerColor &&
 			info->PixelFormat != PixelRedGreenBlueReserved8BitPerColor)
+			continue;
+		if (info->HorizontalResolution > MAX_H_RES)
 			continue;
 		if (info->HorizontalResolution > width) {
 			width = info->HorizontalResolution;

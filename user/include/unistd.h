@@ -11,6 +11,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <sys/types.h>
 
 /* System Call Definitions */
 
@@ -33,7 +34,7 @@ enum {
 	O_RDONLY = 0x02,
 	O_WRONLY = 0x04,
 	O_APPEND = 0x08,
-	O_RDWR = O_RDONLY | O_WRONLY,
+	O_RDWR = 0x010,
 };
 
 /**
@@ -73,11 +74,9 @@ extern int fork(void);
  *
  * @param prog - program table index of the program to exec
  * @param args - the command-line argument vector
- *
- * Does not return if it succeeds; if it returns, something has
- * gone wrong.
+ * @returns error code on failure
  */
-extern void exec(const char *filename, char **args);
+extern int exec(const char *filename, const char **args);
 
 /**
  * open a stream with a given filename
@@ -91,8 +90,9 @@ extern int open(const char *filename, int flags);
  * closes a stream with the given file descriptior
  *
  * @param fd - the file descriptior of the open stream
+ * @returns 0 on success, error code on invalid fd
  */
-extern void close(int fd);
+extern int close(int fd);
 
 /**
  * read into a buffer from a stream
@@ -122,7 +122,7 @@ extern int write(int fd, const void *buffer, size_t nbytes);
  * @param whence - whence to seek
  * @return 0 on success, or an error code
  */
-extern int seek(int fd, long int off, int whence);
+extern off_t seek(int fd, off_t off, int whence);
 
 /**
  * gets the pid of the calling process

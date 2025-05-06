@@ -22,6 +22,44 @@ void kreport(void)
 	gpu_report();
 }
 
+void load_init(void)
+{
+	struct file_system *fs;
+	struct file *file;
+	const char *init_vector[] = { NULL };
+
+	if (pcb_alloc(&init_pcb)) {
+		WARN("failed to alloc init pcb");
+		return;
+	}
+
+	// get root fs
+	fs = fs_get_root_file_system();
+	if (fs == NULL) {
+		WARN("failed to get root fs");
+		return;
+	}
+
+	// get init bin
+	if (fs->open(fs, "bin/init", O_RDONLY, &file)) {
+		WARN("cannot find init elf");
+		return;
+	}
+
+	if (user_load(init_pcb, file, init_vector, kernel_mem_ctx)) {
+		WARN("init elf failed to load! bad bad BAD!!");
+		file->close(file);
+		return;
+	}
+
+	// close file
+	file->close(file);
+
+	// schedule and dispatch init
+	schedule(init_pcb);
+	dispatch();
+}
+
 __attribute__((noreturn)) void main(long magic, volatile void *mboot)
 {
 	// initalize idt and pic
@@ -49,11 +87,7 @@ __attribute__((noreturn)) void main(long magic, volatile void *mboot)
 	kreport();
 
 	// load init process
-	pcb_alloc(&init_pcb);
-	if (user_load(init_pcb, &fs_disks[0]))
-		panic("failed to load init");
+	load_init();
 
-	// schedule and dispatch init
-	schedule(init_pcb);
-	dispatch();
+	panic("failed to load init");
 }

@@ -1,6 +1,8 @@
 #include <lib.h>
 #include <stdarg.h>
 #include <comus/asm.h>
+#include <comus/drivers/ps2.h>
+#include <comus/drivers/spkr.h>
 
 __attribute__((noreturn)) void __panic(unsigned int line, const char *file,
 									   const char *format, ...)
@@ -16,6 +18,15 @@ __attribute__((noreturn)) void __panic(unsigned int line, const char *file,
 	log_backtrace();
 #endif
 
-	while (1)
-		halt();
+	fatal_loop();
+}
+
+__attribute__((noreturn)) void fatal_loop(void)
+{
+	while (1) {
+		spkr_play_tone(1000);
+		kspin_milliseconds(200);
+		spkr_quiet();
+		kspin_milliseconds(800);
+	}
 }

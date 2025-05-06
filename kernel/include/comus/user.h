@@ -9,13 +9,15 @@
 #ifndef USER_H_
 #define USER_H_
 
+#include "comus/memory.h"
 #include <comus/procs.h>
 #include <comus/fs.h>
 
 /**
  * Load a user elf program from a file into a pcb
  */
-int user_load(struct pcb *pcb, struct disk *disk);
+int user_load(struct pcb *pcb, struct file *file, const char **args,
+			  mem_ctx_t args_ctx);
 
 /**
  * Clone a user process. Used for fork().

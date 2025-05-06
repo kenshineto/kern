@@ -30,12 +30,13 @@
 #define SYS_poweroff 17
 #define SYS_drm 18
 #define SYS_ticks 19
-#define SYS_allocshared 20
-#define SYS_popsharedmem 21
-#define SYS_keypoll 22
+#define SYS_seek 20
+#define SYS_allocshared 21
+#define SYS_popsharedmem 22
+#define SYS_keypoll 23
 
 // UPDATE THIS DEFINITION IF MORE SYSCALLS ARE ADDED!
-#define N_SYSCALLS 23
+#define N_SYSCALLS 24
 
 // interrupt vector entry for system calls
 #define VEC_SYSCALL 0x80

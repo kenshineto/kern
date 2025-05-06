@@ -1,3 +1,5 @@
+#include "comus/drivers/spkr.h"
+#include "lib/klib.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
@@ -64,10 +66,11 @@ void idt_init(void)
 
 		uint64_t isr = (uint64_t)isr_stub_table[vector];
 		// interrupts before 0x20 are for cpu exceptions
+		uint64_t gate_type = (isr < 0x20) ? GATE_64BIT_TRAP : GATE_64BIT_INT;
 
 		entry->kernel_cs = 0x08; // offset of 1 into GDT
 		entry->ist = 0;
-		entry->flags = PRESENT | RING0 | GATE_64BIT_INT;
+		entry->flags = PRESENT | RING0 | gate_type;
 		entry->isr_low = isr & 0xffff;
 		entry->isr_mid = (isr >> 16) & 0xffff;
 		entry->isr_high = (isr >> 32) & 0xffffffff;
@@ -148,9 +151,7 @@ __attribute__((noreturn)) void idt_exception_handler(uint64_t exception,
 
 	log_backtrace_ex((void *)state->rip, (void *)state->rbp);
 
-	while (1) {
-		halt();
-	}
+	fatal_loop();
 }
 
 void isr_save(struct cpu_regs *regs)

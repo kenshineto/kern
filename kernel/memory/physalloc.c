@@ -1,11 +1,14 @@
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
+#include <comus/mboot.h>
+#include <stdint.h>
 
 #include "physalloc.h"
 
 extern char kernel_start[];
 extern char kernel_end[];
+static void *kernel_real_end = NULL;
 
 // between memory_start and kernel_start will be the bitmap
 static uintptr_t memory_start = 0;
@@ -26,19 +29,20 @@ static const char *segment_type_str[] = {
 
 static int n_pages(const struct memory_segment *m)
 {
-	return m->len / PAGE_SIZE;
+	return (m->len + PAGE_SIZE - 1) / PAGE_SIZE;
 }
 
-static void *page_at(int i)
+static void *page_at(size_t i)
 {
-	int cur_page = 0;
+	size_t cur_page = 0;
+	const struct memory_segment *m = page_start;
 	for (uint64_t idx = 0; idx < segment_count; idx++) {
-		const struct memory_segment *m = page_start;
-		int pages = n_pages(m);
+		size_t pages = n_pages(m);
 		if (i - cur_page < pages) {
 			return (void *)(m->addr + (PAGE_SIZE * (i - cur_page)));
 		}
 		cur_page += pages;
+		m++;
 	}
 	return NULL;
 }
@@ -47,8 +51,8 @@ static long page_idx(void *page)
 {
 	uintptr_t addr = (uintptr_t)page;
 	int cur_page = 0;
+	const struct memory_segment *m = page_start;
 	for (uint64_t idx = 0; idx < segment_count; idx++) {
-		const struct memory_segment *m = page_start;
 		if (addr < m->addr) {
 			return -1;
 		}
@@ -56,13 +60,14 @@ static long page_idx(void *page)
 			return cur_page + ((addr - m->addr) / PAGE_SIZE);
 		}
 		cur_page += n_pages(m);
+		m++;
 	}
 	return -1;
 }
 
 static inline bool bitmap_get(size_t i)
 {
-	return (bitmap[i / 64] >> i % 64) & 1;
+	return (bitmap[i / 64] >> (i % 64)) & 1;
 }
 
 static inline void bitmap_set(size_t i, bool v)
@@ -71,9 +76,9 @@ static inline void bitmap_set(size_t i, bool v)
 		free_memory -= PAGE_SIZE;
 	else
 		free_memory += PAGE_SIZE;
-	int idx = i / 64;
-	bitmap[idx] &= ~(1 << i % 64);
-	bitmap[idx] |= (v << i % 64);
+	size_t idx = i / 64;
+	bitmap[idx] &= ~(1 << (i % 64));
+	bitmap[idx] |= (v << (i % 64));
 }
 
 void *alloc_phys_page(void)
@@ -105,9 +110,17 @@ void *alloc_phys_pages_exact(size_t pages)
 				free_region_start = i;
 			n_contiguous++;
 			if (n_contiguous == pages) {
+				void *pADDR;
+				pADDR = page_at(free_region_start);
+
+				if (pADDR == NULL) {
+					n_contiguous = 0;
+					continue;
+				}
+
 				for (size_t j = 0; j < pages; j++)
 					bitmap_set(free_region_start + j, true);
-				return page_at(free_region_start);
+				return pADDR;
 			}
 		} else
 			n_contiguous = 0;
@@ -118,6 +131,7 @@ void *alloc_phys_pages_exact(size_t pages)
 
 struct phys_page_slice alloc_phys_page_withextra(size_t max_pages)
 {
+	panic("please dont use this its broken i think?!\n");
 	if (max_pages == 0)
 		return PHYS_PAGE_SLICE_NULL;
 
@@ -160,6 +174,7 @@ void free_phys_page(void *ptr)
 
 void free_phys_pages_slice(struct phys_page_slice slice)
 {
+	panic("please dont use this its broken i think?!\n");
 	free_phys_pages(slice.pagestart, slice.num_pages);
 }
 
@@ -200,7 +215,7 @@ static struct memory_segment clamp_segment(const struct memory_segment *segment)
 	if (memory_start)
 		start = memory_start;
 	else
-		start = (uintptr_t)kernel_end;
+		start = (uintptr_t)kernel_real_end;
 
 	if (segment->addr < start) {
 		addr = start;
@@ -232,6 +247,10 @@ void physalloc_init(struct memory_map *map)
 
 	segment_count = 0;
 
+	kernel_real_end = mboot_end();
+	if ((char *)kernel_real_end < kernel_end)
+		kernel_real_end = kernel_end;
+
 	for (uint32_t i = 0; i < map->entry_count; i++) {
 		struct memory_segment *segment = &map->entries[i];
 
@@ -245,7 +264,7 @@ void physalloc_init(struct memory_map *map)
 
 	long bitmap_pages = (page_count / 64 / PAGE_SIZE) + 1;
 	long bitmap_size = bitmap_pages * PAGE_SIZE;
-	bitmap = (uint64_t *)page_align((uintptr_t)kernel_end);
+	bitmap = (uint64_t *)page_align((uintptr_t)kernel_real_end);
 
 	long page_area_size = segment_count * sizeof(struct memory_segment);
 	char *page_area_addr = (char *)bitmap + bitmap_size;

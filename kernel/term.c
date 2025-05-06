@@ -7,8 +7,10 @@
 // terminal data
 static char buffer[TERM_MAX_WIDTH * TERM_MAX_HEIGHT];
 static uint16_t buffer_line = UINT16_MAX;
-static uint16_t width = 80; // baseline vga text mode until resized
-static uint16_t height = 25;
+static uint16_t last_width = 80,
+				width = 80; // baseline vga text mode until resized
+static uint16_t last_height = 25, height = 25;
+static uint16_t scrolling = 0;
 static uint16_t x = 0;
 static uint16_t y = 0;
 
@@ -140,10 +142,26 @@ void term_redraw(void)
 
 	for (uint16_t j = 0; j < height; j++) {
 		for (uint16_t i = 0; i < width; i++) {
-			char c = buffer[BUFIDX(i, j)];
+			char c;
+
+			c = buffer[BUFIDX(i, j)];
+
+			// if screen hasnet changed size
+			// dont redraw what we dont need to redraw
+			if (last_width == height && last_width == width) {
+				char prev;
+				prev = buffer[BUFIDX(i, (j - scrolling))];
+				if (c == prev)
+					continue;
+			}
+
 			gpu_draw_char(c, i, j);
 		}
 	}
+
+	last_width = width;
+	last_height = height;
+	scrolling = 0;
 }
 
 void term_scroll(uint16_t lines)
@@ -151,6 +169,8 @@ void term_scroll(uint16_t lines)
 	if (!lines)
 		return;
 	buffer_line += lines;
+	term_clear_line(y);
+	scrolling = lines;
 	term_redraw();
 }
 

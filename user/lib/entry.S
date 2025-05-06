@@ -5,7 +5,6 @@
 	.section .text
 	.code64
 _start:
-	call main
-	subq	$16, %rsp # ???
-	pushq	%rax
+	call	main
+	movq	%rax, %rdi
 	call	exit

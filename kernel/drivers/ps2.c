@@ -266,3 +266,18 @@ int ps2_init(void)
 	sti();
 	return 0;
 }
+
+int ps2_set_leds(uint8_t state)
+{
+	uint8_t result;
+
+	if (!(has_mouse || has_kbd))
+		return 1;
+
+	ps2ctrl_out_cmd(0xED);
+	ps2ctrl_out_data(state);
+	if ((result = ps2ctrl_in()) != 0xFA)
+		return 1;
+
+	return 0;
+}

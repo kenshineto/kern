@@ -5,7 +5,6 @@
 #include "physalloc.h"
 #include "paging.h"
 #include "memory.h"
-#include <stdint.h>
 
 // PAGE MAP LEVEL 4 ENTRY
 struct pml4e {
@@ -258,8 +257,10 @@ static volatile struct pml4 *pml4_alloc(void)
 	volatile struct pml4 *pPML4, *vPML4;
 
 	pPML4 = alloc_phys_page();
-	if (pPML4 == NULL)
+	if (pPML4 == NULL) {
+		ERROR("Could not allocate PML4");
 		return NULL;
+	}
 
 	vPML4 = PML4_MAP(pPML4);
 	memsetv(vPML4, 0, sizeof(struct pml4));
@@ -287,8 +288,10 @@ static volatile struct pdpt *pdpt_alloc(volatile struct pml4 *pPML4,
 	}
 
 	pPDPT = alloc_phys_page();
-	if (pPML4 == NULL)
+	if (pPDPT == NULL) {
+		ERROR("Could not allocate PDPT");
 		return NULL;
+	}
 
 	vPDPT = PDPT_MAP(pPDPT);
 	memsetv(vPDPT, 0, sizeof(struct pdpt));
@@ -320,8 +323,10 @@ static volatile struct pd *pd_alloc(volatile struct pdpt *pPDPT, void *vADDR,
 	}
 
 	pPD = alloc_phys_page();
-	if (pPDPT == NULL)
+	if (pPD == NULL) {
+		ERROR("Could not allocate PD");
 		return NULL;
+	}
 
 	vPD = PD_MAP(pPD);
 	memsetv(vPD, 0, sizeof(struct pd));
@@ -353,8 +358,10 @@ static volatile struct pt *pt_alloc(volatile struct pd *pPD, void *vADDR,
 	}
 
 	pPT = alloc_phys_page();
-	if (pPD == NULL)
+	if (pPT == NULL) {
+		ERROR("Could not allocate PT");
 		return NULL;
+	}
 
 	vPT = PT_MAP(pPT);
 	memsetv(vPT, 0, sizeof(struct pt));
@@ -910,11 +917,15 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	// get page aligned (or allocate) vitural address
 	if (virt == NULL)
 		virt = virtaddr_alloc(&ctx->virtctx, pages);
-	if (virt == NULL)
+	if (virt == NULL) {
+		ERROR("Could not alloc vitural address for %zu pages", pages);
 		return NULL;
+	}
 
-	if (virtaddr_take(&ctx->virtctx, virt, pages))
+	if (virtaddr_take(&ctx->virtctx, virt, pages)) {
+		ERROR("Could not take vitural address: %p", virt);
 		return NULL;
+	}
 
 	assert((uint64_t)virt % PAGE_SIZE == 0,
 		   "mem_mapaddr: vitural address not page aligned");
@@ -922,6 +933,7 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, aligned_phys,
 				  F_PRESENT | flags, pages)) {
 		virtaddr_free(&ctx->virtctx, virt);
+		ERROR("Could not map pages");
 		return NULL;
 	}
 
@@ -1025,64 +1037,90 @@ void *mem_alloc_pages(mem_ctx_t ctx, size_t count, unsigned int flags)
 void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 						 unsigned int flags)
 {
-	size_t pages_needed = count;
+	void *phys = NULL;
 
-	struct phys_page_slice prev_phys_block = PHYS_PAGE_SLICE_NULL;
-	struct phys_page_slice phys_pages;
-
-	if (virtaddr_take(&ctx->virtctx, virt, count))
+	if (virtaddr_take(&ctx->virtctx, virt, count)) {
+		ERROR("Could not take vitural address: %p", virt);
 		return NULL;
+	}
 
-	while (pages_needed > 0) {
-		phys_pages = alloc_phys_page_withextra(pages_needed);
-		if (phys_pages.pagestart == NULL) {
-			goto mem_alloc_pages_at_fail;
-		}
+	phys = alloc_phys_pages_exact(count);
+	if (phys == NULL) {
+		ERROR("Could not allocate %zu physical pages", count);
+		goto fail;
+	}
 
-		{
-			// allocate the first page and store in it the physical address of the
-			// previous chunk of pages
-			// TODO: skip this if there are already enough pages from first alloc
-			void *pageone = kmapaddr(phys_pages.pagestart, NULL, 1,
-									 F_PRESENT | F_WRITEABLE);
-			if (pageone == NULL) {
-				panic("kernel out of virtual memory");
-			}
-			*((struct phys_page_slice *)pageone) = prev_phys_block;
-			prev_phys_block = phys_pages;
-			kunmapaddr(pageone);
-		}
-
-		// index into virtual page array at index [count - pages_needed]
-		void *vaddr = ((uint8_t *)virt) + ((count - pages_needed) * PAGE_SIZE);
-
-		assert(pages_needed >= phys_pages.num_pages, "overflow");
-		pages_needed -= phys_pages.num_pages;
-
-		if (map_pages((volatile struct pml4 *)ctx->pml4, vaddr,
-					  phys_pages.pagestart, flags, phys_pages.num_pages)) {
-			goto mem_alloc_pages_at_fail;
-		}
+	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, phys, flags,
+				  count)) {
+		ERROR("Could not map pages");
+		goto fail;
 	}
 
 	return virt;
 
-mem_alloc_pages_at_fail:
-	while (prev_phys_block.pagestart) {
-		void *virtpage = kmapaddr(prev_phys_block.pagestart, NULL, 1,
-								  F_PRESENT | F_WRITEABLE);
-		if (!virtpage) {
-			// memory corruption, most likely a bug
-			// could also ERROR here and exit with leak
-			panic("unable to free memory from failed mem_alloc_pages_at call");
-		}
-		struct phys_page_slice prev = *(struct phys_page_slice *)virtpage;
-		prev_phys_block = prev;
-		free_phys_pages_slice(prev);
-		kunmapaddr(virtpage);
-	}
-
+fail:
+	free_phys_pages(phys, count);
+	virtaddr_free(&ctx->virtctx, virt);
 	return NULL;
+
+	//	size_t pages_needed = count;
+	//
+	//	struct phys_page_slice prev_phys_block = PHYS_PAGE_SLICE_NULL;
+	//	struct phys_page_slice phys_pages;
+	//
+	//	if (virtaddr_take(&ctx->virtctx, virt, count))
+	//		return NULL;
+	//
+	//	while (pages_needed > 0) {
+	//		phys_pages = alloc_phys_page_withextra(pages_needed);
+	//		if (phys_pages.pagestart == NULL) {
+	//			goto mem_alloc_pages_at_fail;
+	//		}
+	//
+	//		{
+	//			// allocate the first page and store in it the physical address of the
+	//			// previous chunk of pages
+	//			// TODO: skip this if there are already enough pages from first alloc
+	//			void *pageone = kmapaddr(phys_pages.pagestart, NULL, 1,
+	//									 F_PRESENT | F_WRITEABLE);
+	//			if (pageone == NULL) {
+	//				panic("kernel out of virtual memory");
+	//			}
+	//			*((struct phys_page_slice *)pageone) = prev_phys_block;
+	//			prev_phys_block = phys_pages;
+	//			kunmapaddr(pageone);
+	//		}
+	//
+	//		// index into virtual page array at index [count - pages_needed]
+	//		void *vaddr = ((uint8_t *)virt) + ((count - pages_needed) * PAGE_SIZE);
+	//
+	//		assert(pages_needed >= phys_pages.num_pages, "overflow");
+	//		pages_needed -= phys_pages.num_pages;
+	//
+	//		if (map_pages((volatile struct pml4 *)ctx->pml4, vaddr,
+	//					  phys_pages.pagestart, flags, phys_pages.num_pages)) {
+	//			goto mem_alloc_pages_at_fail;
+	//		}
+	//	}
+	//
+	//	return virt;
+	//
+	//mem_alloc_pages_at_fail:
+	//	while (prev_phys_block.pagestart) {
+	//		void *virtpage = kmapaddr(prev_phys_block.pagestart, NULL, 1,
+	//								  F_PRESENT | F_WRITEABLE);
+	//		if (!virtpage) {
+	//			// memory corruption, most likely a bug
+	//			// could also ERROR here and exit with leak
+	//			panic("unable to free memory from failed mem_alloc_pages_at call");
+	//		}
+	//		struct phys_page_slice prev = *(struct phys_page_slice *)virtpage;
+	//		prev_phys_block = prev;
+	//		free_phys_pages_slice(prev);
+	//		kunmapaddr(virtpage);
+	//	}
+	//
+	//	return NULL;
 }
 
 void mem_free_pages(mem_ctx_t ctx, const void *virt)

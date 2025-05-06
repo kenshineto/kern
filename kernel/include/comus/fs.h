@@ -28,7 +28,7 @@ struct disk {
 	/// internal disk device
 	union {
 		struct {
-			char *start;
+			uint8_t *start;
 			size_t len;
 		} rd;
 		ide_device_t ide;
@@ -137,15 +137,24 @@ struct file {
 	/// file type
 	enum file_type f_type;
 	/// read from the file
-	int (*read)(struct file *file, char *buffer, size_t nbytes);
+	int (*read)(struct file *file, void *buffer, size_t nbytes);
 	/// write into the file
-	int (*write)(struct file *file, const char *buffer, size_t nbytes);
+	int (*write)(struct file *file, const void *buffer, size_t nbytes);
 	/// seeks the file
 	int (*seek)(struct file *file, long int offset, int whence);
 	/// get directory entry at index
 	int (*ents)(struct file *file, struct dirent *dirent, size_t dir_index);
 	/// closes a file
 	void (*close)(struct file *file);
+};
+
+/// open flags
+enum {
+	O_CREATE = 0x01,
+	O_RDONLY = 0x02,
+	O_WRONLY = 0x04,
+	O_APPEND = 0x08,
+	O_RDWR = 0x10,
 };
 
 /// file system vtable, used for opening
@@ -200,7 +209,7 @@ struct file_system {
 	/// filesystem name
 	const char *fs_name;
 	/// opens a file
-	int (*open)(struct file_system *fs, const char *fullpath,
+	int (*open)(struct file_system *fs, const char *fullpath, int flags,
 				struct file **out);
 	/// stats a file
 	int (*stat)(struct file_system *fs, const char *fullpath,

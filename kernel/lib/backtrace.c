@@ -50,10 +50,9 @@ void log_backtrace_ex(void *ip, void *bp)
 	if (!VALID(frame))
 		return;
 	kputs("Stack trace:\n");
-	kprintf("  %p\t%s\n", ip, mboot_get_elf_sym((uint64_t)ip));
+	kprintf("  %p\n", ip);
 	while (VALID(frame)) {
-		kprintf("  %p\t%s\n", frame->rip,
-				mboot_get_elf_sym((uint64_t)frame->rip));
+		kprintf("  %p\n", frame->rip);
 		frame = frame->rbp;
 	}
 }

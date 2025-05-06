@@ -1,3 +1,4 @@
+#include "lib/kio.h"
 #include <comus/fs.h>
 #include <comus/procs.h>
 #include <comus/memory.h>
@@ -20,7 +21,7 @@ static uint8_t *load_buffer = NULL;
 #define USER_DATA 0x20
 #define RING3 3
 
-static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
+static int user_load_segment(struct pcb *pcb, struct file *file, int idx)
 {
 	Elf64_Phdr hdr;
 	size_t mem_bytes, mem_pages;
@@ -49,12 +50,22 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 
 	// allocate memory in user process
 	if (mem_alloc_pages_at(pcb->memctx, mem_pages, (void *)hdr.p_vaddr,
-						   F_WRITEABLE | F_UNPRIVILEGED) == NULL)
+						   F_WRITEABLE | F_UNPRIVILEGED) == NULL) {
+		ERROR("Could not allocate memory for elf segment");
 		return 1;
+	}
 
 	mapADDR = kmapuseraddr(pcb->memctx, (void *)hdr.p_vaddr, mem_bytes);
-	if (mapADDR == NULL)
+	if (mapADDR == NULL) {
+		ERROR("Could load memory for elf segment");
 		return 1;
+	}
+
+	// seek to start of segment
+	if (file->seek(file, hdr.p_offset, SEEK_SET) < 0) {
+		ERROR("Could not load elf segment");
+		return 1;
+	}
 
 	// load data
 	size_t total_read = 0;
@@ -62,12 +73,14 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 		size_t read = BLOCK_SIZE;
 		if (read > file_bytes - total_read)
 			read = file_bytes - total_read;
-		if ((read = disk_read(disk, hdr.p_offset + total_read, read,
-							  load_buffer)) < 1) {
+		TRACE("Reading %zu bytes...", read);
+		if ((read = file->read(file, load_buffer, read)) < 1) {
 			kunmapaddr(mapADDR);
+			ERROR("Could not load elf segment");
 			return 1;
 		}
-		memcpy(mapADDR + total_read, load_buffer, read);
+		TRACE("Read %zu bytes", read);
+		memcpyv(mapADDR + total_read, load_buffer, read);
 		total_read += read;
 	}
 
@@ -79,19 +92,24 @@ static int user_load_segment(struct pcb *pcb, struct disk *disk, int idx)
 	return 0;
 }
 
-static int user_load_segments(struct pcb *pcb, struct disk *disk)
+static int user_load_segments(struct pcb *pcb, struct file *file)
 {
 	int ret = 0;
 
 	pcb->heap_start = NULL;
 	pcb->heap_len = 0;
 
-	if (load_buffer == NULL)
-		if ((load_buffer = kalloc(BLOCK_SIZE)) == NULL)
+	if (load_buffer == NULL) {
+		load_buffer = kalloc(BLOCK_SIZE);
+		if (load_buffer == NULL) {
+			ERROR("Could not allocate user load buffer");
 			return 1;
+		}
+	}
 
+	TRACE("Loading %u elf segments", pcb->n_elf_segments);
 	for (int i = 0; i < pcb->n_elf_segments; i++)
-		if ((ret = user_load_segment(pcb, disk, i)))
+		if ((ret = user_load_segment(pcb, file, i)))
 			return ret;
 
 	if (pcb->heap_start == NULL) {
@@ -107,12 +125,12 @@ static int validate_elf_hdr(struct pcb *pcb)
 	Elf64_Ehdr *ehdr = &pcb->elf_header;
 
 	if (strncmp((const char *)ehdr->e_ident, ELFMAG, SELFMAG)) {
-		WARN("Invalid ELF File.");
+		ERROR("Invalid ELF File.");
 		return 1;
 	}
 
 	if (ehdr->e_ident[EI_CLASS] != ELFCLASS64) {
-		WARN("Unsupported ELF Class.");
+		ERROR("Unsupported ELF Class.");
 		return 1;
 	}
 
@@ -122,17 +140,17 @@ static int validate_elf_hdr(struct pcb *pcb)
 	}
 
 	if (ehdr->e_machine != EM_X86_64) {
-		WARN("Unsupported ELF File target.");
+		ERROR("Unsupported ELF File target.");
 		return 1;
 	}
 
 	if (ehdr->e_ident[EI_VERSION] != EV_CURRENT) {
-		WARN("Unsupported ELF File version.");
+		ERROR("Unsupported ELF File version.");
 		return 1;
 	}
 
 	if (ehdr->e_phnum > N_ELF_SEGMENTS) {
-		WARN("Too many ELF segments.");
+		ERROR("Too many ELF segments.");
 		return 1;
 	}
 
@@ -144,35 +162,90 @@ static int validate_elf_hdr(struct pcb *pcb)
 	return 0;
 }
 
-static int user_load_elf(struct pcb *pcb, struct disk *disk)
+static int user_load_elf(struct pcb *pcb, struct file *file)
 {
 	int ret = 0;
 
-	ret = disk_read(disk, 0, sizeof(Elf64_Ehdr), &pcb->elf_header);
-	if (ret < 0)
+	if (file->seek(file, 0, SEEK_SET) < 0) {
+		ERROR("Cannot read ELF header.");
 		return 1;
+	}
+	ret = file->read(file, &pcb->elf_header, sizeof(Elf64_Ehdr));
+	if (ret < 0) {
+		ERROR("Cannot read ELF header.");
+		return 1;
+	}
 
 	if (validate_elf_hdr(pcb))
 		return 1;
 
 	pcb->n_elf_segments = pcb->elf_header.e_phnum;
-	ret = disk_read(disk, pcb->elf_header.e_phoff,
-					sizeof(Elf64_Phdr) * pcb->elf_header.e_phnum,
-					&pcb->elf_segments);
-	if (ret < 0)
+	if (file->seek(file, pcb->elf_header.e_phoff, SEEK_SET) < 0) {
+		ERROR("Cannot read ELF segemts");
 		return 1;
+	}
+	ret = file->read(file, &pcb->elf_segments,
+					 sizeof(Elf64_Phdr) * pcb->elf_header.e_phnum);
+	if (ret < 0) {
+		ERROR("Cannot read ELF segemts");
+		return 1;
+	}
 
 	return 0;
 }
 
-static int user_setup_stack(struct pcb *pcb)
+static int user_setup_stack(struct pcb *pcb, const char **args,
+							mem_ctx_t args_ctx)
 {
-	// allocate stack
+	/* args */
+	int argbytes = 0;
+	int argc = 0;
+
+	mem_ctx_switch(args_ctx);
+
+	while (args[argc] != NULL) {
+		int n = strlen(args[argc]) + 1;
+		if ((argbytes + n) > USER_STACK_LEN) {
+			// oops - ignore this and any others
+			break;
+		}
+		argbytes += n;
+		argc++;
+	}
+
+	// round to nearest multiple of 8
+	argbytes = (argbytes + 7) & 0xfffffffffffffff8;
+
+	// allocate arg strings on kernel stack
+	char argstrings[argbytes];
+	char *argv[argc + 1];
+	memset(argstrings, 0, sizeof(argstrings));
+	memset(argv, 0, sizeof(argv));
+
+	// Next, duplicate the argument strings, and create pointers to
+	// each one in our argv.
+	char *tmp = argstrings;
+	for (int i = 0; i < argc; ++i) {
+		int nb = strlen(args[i]) + 1;
+		strcpy(tmp, args[i]);
+		argv[i] = tmp;
+		tmp += nb;
+	}
+
+	// trailing NULL pointer
+	argv[argc] = NULL;
+
+	mem_ctx_switch(kernel_mem_ctx);
+
+	/* stack */
 	if (mem_alloc_pages_at(pcb->memctx, USER_STACK_LEN / PAGE_SIZE,
 						   (void *)(USER_STACK_TOP - USER_STACK_LEN),
-						   F_WRITEABLE | F_UNPRIVILEGED) == NULL)
+						   F_WRITEABLE | F_UNPRIVILEGED) == NULL) {
+		ERROR("Could not allocate user stack");
 		return 1;
+	}
 
+	/* regs */
 	memset(&pcb->regs, 0, sizeof(struct cpu_regs));
 
 	// pgdir
@@ -183,7 +256,7 @@ static int user_setup_stack(struct pcb *pcb)
 	pcb->regs.es = USER_DATA | RING3;
 	pcb->regs.ds = USER_DATA | RING3;
 	// registers
-	pcb->regs.rdi = 0; // argc
+	pcb->regs.rdi = argc; // argc
 	pcb->regs.rsi = 0; // argv
 	// intruction pointer
 	pcb->regs.rip = pcb->elf_header.e_entry;
@@ -199,10 +272,11 @@ static int user_setup_stack(struct pcb *pcb)
 	return 0;
 }
 
-int user_load(struct pcb *pcb, struct disk *disk)
+int user_load(struct pcb *pcb, struct file *file, const char **args,
+			  mem_ctx_t args_ctx)
 {
 	// check inputs
-	if (pcb == NULL || disk == NULL)
+	if (pcb == NULL || file == NULL)
 		return 1;
 
 	// allocate memory context
@@ -211,15 +285,15 @@ int user_load(struct pcb *pcb, struct disk *disk)
 		goto fail;
 
 	// load elf information
-	if (user_load_elf(pcb, disk))
+	if (user_load_elf(pcb, file))
 		goto fail;
 
 	// load segments into memory
-	if (user_load_segments(pcb, disk))
+	if (user_load_segments(pcb, file))
 		goto fail;
 
 	// setup process stack
-	if (user_setup_stack(pcb))
+	if (user_setup_stack(pcb, args, args_ctx))
 		goto fail;
 
 	// success
