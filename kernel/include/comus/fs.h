@@ -28,7 +28,7 @@ struct disk {
 	/// internal disk device
 	union {
 		struct {
-			char *start;
+			uint8_t *start;
 			size_t len;
 		} rd;
 		ide_device_t ide;
@@ -137,9 +137,9 @@ struct file {
 	/// file type
 	enum file_type f_type;
 	/// read from the file
-	int (*read)(struct file *file, char *buffer, size_t nbytes);
+	int (*read)(struct file *file, void *buffer, size_t nbytes);
 	/// write into the file
-	int (*write)(struct file *file, const char *buffer, size_t nbytes);
+	int (*write)(struct file *file, const void *buffer, size_t nbytes);
 	/// seeks the file
 	int (*seek)(struct file *file, long int offset, int whence);
 	/// get directory entry at index

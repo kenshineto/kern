@@ -113,7 +113,7 @@ static int tar_locate(struct file_system *fs, const char *path,
 	return 1;
 }
 
-int tar_read(struct file *in, char *buf, size_t len)
+int tar_read(struct file *in, void *buf, size_t len)
 {
 	struct tar_file *file = (struct tar_file *)in;
 	size_t max_bytes = file->len - file->offset;
@@ -135,7 +135,7 @@ int tar_read(struct file *in, char *buf, size_t len)
 	return bytes;
 }
 
-int tar_write(struct file *in, const char *buf, size_t len)
+int tar_write(struct file *in, const void *buf, size_t len)
 {
 	(void)in;
 	(void)buf;
