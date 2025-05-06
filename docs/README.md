@@ -20,6 +20,12 @@ amd64
 
 Multiboot (Legacy / UEFI)
 
+## Docstrings
+
+Kernel function docstrings MUST be located in the headers.
+
+Docstrings for global functions MAY be in the source c files.
+
 ## Startup
 
 1. Multiboot loads kernel into either `_start` or `_start_efi`
