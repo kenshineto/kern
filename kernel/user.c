@@ -79,6 +79,7 @@ static int user_load_segment(struct pcb *pcb, struct file *file, int idx)
 			ERROR("Could not load elf segment");
 			return 1;
 		}
+		TRACE("Read %zu bytes", read);
 		memcpyv(mapADDR + total_read, load_buffer, read);
 		total_read += read;
 	}
