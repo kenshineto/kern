@@ -83,7 +83,6 @@ int tar_read(struct file *f, void *buffer, size_t len)
 /// @param sect_return the sector to be outputted
 /// @param outHeader tar_header output for file found.
 /// @return NOERROR_TAR or ERROR_TAR
-<<<<<<< HEAD
 int find_file(struct file_system *fs, const char *filepath, size_t *sect,
 			  size_t *sect_return, struct tar_header *outHeader)
 {
@@ -106,6 +105,7 @@ int find_file(struct file_system *fs, const char *filepath, size_t *sect,
 				1;
 			continue;
 		} else {
+			// found it
 			*outHeader = hdr;
 			*sect_return = curr_sect;
 			if (sect != NULL) {
@@ -135,76 +135,13 @@ int find_file_redux(struct file_system *fs, const char *filepath, size_t *sect,
 		if (memcmp(hdr.name, filepath,
 				   MIN(strlen(filepath), strlen(hdr.name))) != 0) {
 			// didn't find it.
-=======
-int find_file(struct file_system *fs, const char *filepath, size_t *sect, size_t *sect_return, struct tar_header *outHeader) {
-    struct tar_header hdr;
-    size_t curr_sect;
-    if(sect == NULL) {
-        curr_sect = 0;
-    } else {
-        curr_sect = *sect;
-    }
-    while (1 == 1) {
-        // if read_tar_header errors
-        if(read_tar_header(fs->fs_disk, curr_sect, &hdr) != 0) {
-            return ERROR_TAR;
-        }
-        if(memcmp(hdr.name, filepath, strlen(filepath) + 1) != 0) {
-            // didn't find it.
-            curr_sect += ((strtoull(hdr.fileSize, NULL, 8) + TAR_SIZE - 1)/TAR_SIZE) + 1;
-            continue;
-        } else {
-            // found it
-            *outHeader = hdr;
-            *sect_return = curr_sect;
-            if(sect != NULL) {
-                sect += curr_sect;
-            }
-            return NOERROR_TAR;
-        }
-
-    }
-    return ERROR_TAR;
-}
-
-// similar to find_file, but with a partition
-int find_file_redux(struct file_system *fs, const char *filepath, size_t *sect, size_t *sect_return, struct tar_header *outHeader) {
-    struct tar_header hdr;
-    size_t curr_sect;
-    if(sect == NULL) {
-        curr_sect = 0;
-    } else {
-        curr_sect = *sect;
-    }
-    while (1 == 1) {
-        if(read_tar_header(fs->fs_disk, curr_sect, &hdr) != 0) {
-            return ERROR_TAR;
-        }
-        if(memcmp(hdr.name, filepath, MIN(strlen(filepath), strlen(hdr.name))) != 0) {
-            // didn't find it.
-            
-            curr_sect += ((strtoull(hdr.fileSize, NULL, 8) + TAR_SIZE - 1)/TAR_SIZE) + 1;
-            continue;
-        } else {
-            // found it
-            *outHeader = hdr;
-            *sect_return = curr_sect;
-            if(sect != NULL) {
-                sect += curr_sect + ((strtoull(hdr.fileSize, NULL, 8) + TAR_SIZE - 1)/TAR_SIZE) + 1;
-            }
-            return NOERROR_TAR;
-
-        }
-
-    }
-    return ERROR_TAR; // it should never actually reach here.
->>>>>>> 4e6e859 (edited a bit of documentation for tar.c)
 
 			curr_sect +=
 				((strtoull(hdr.fileSize, NULL, 8) + TAR_SIZE - 1) / TAR_SIZE) +
 				1;
 			continue;
 		} else {
+			// found it
 			*outHeader = hdr;
 			*sect_return = curr_sect;
 			if (sect != NULL) {
@@ -225,11 +162,7 @@ void tar_close(struct file *f)
 	kfree(f);
 }
 
-<<<<<<< HEAD
-/// @brief
-=======
 /// @brief does seek on the tar file
->>>>>>> 4e6e859 (edited a bit of documentation for tar.c)
 /// @param f the file to perform seek
 /// @param offsetAdd what to add/adjust to the offset
 /// @param theSeek what kind of seek we are doing
@@ -251,11 +184,7 @@ int tar_seek(struct file *f, long int offsetAdd, int theSeek)
 	}
 }
 
-<<<<<<< HEAD
-/// @brief
-=======
 /// @brief placeholder write function (tar doesn't do this)
->>>>>>> 4e6e859 (edited a bit of documentation for tar.c)
 /// @param f the file to write to (in theory)
 /// @param buffer the buffer to write from (in theory)
 /// @param len the length of the buffer to be written into (in theory)
@@ -286,14 +215,8 @@ int tar_ents(struct file *f, struct dirent *ent, size_t entry)
 	if (tf->file.f_type != F_DIR)
 		return ERROR_TAR;
 	if (read_tar_header(tf->fs->fs_disk, sect, &dir)) {
-<<<<<<< HEAD
 		return ERROR_TAR;
 	}
-
-=======
-        return ERROR_TAR;
-    }
->>>>>>> 4e6e859 (edited a bit of documentation for tar.c)
 	while (1) {
 		if (find_file_redux(tf->fs, dir.name, &sect_off, &sect, &hdr))
 			return ERROR_TAR;
@@ -317,7 +240,6 @@ int tar_ents(struct file *f, struct dirent *ent, size_t entry)
 /// @param flags in this case, just used to check whether the file is set to read only, to make sure it is correct
 /// @param out the file, ready to be acted upon, with the other functions loaded onto it.
 /// @return NOERROR_TAR or ERROR_TAR
-<<<<<<< HEAD
 int tar_open(struct file_system *fs, const char *fullpath, int flags,
 			 struct file **out)
 {
@@ -328,8 +250,9 @@ int tar_open(struct file_system *fs, const char *fullpath, int flags,
 	if (flags != O_RDONLY) {
 		return ERROR_TAR;
 	}
-	newFile = kalloc(sizeof(struct tar_file));
-
+	newFile =
+		kalloc(sizeof(struct tar_file)); // allocate memory to the new file.
+	// sets the values for the opened file.
 	newFile->file.f_type = F_REG;
 	newFile->fs = fs;
 	newFile->file.read = tar_read;
@@ -340,28 +263,6 @@ int tar_open(struct file_system *fs, const char *fullpath, int flags,
 	newFile->offset = 0;
 	newFile->len = strtoull(hdr.fileSize, NULL, 8);
 	newFile->sect = sect_result;
-=======
-int tar_open(struct file_system *fs, const char *fullpath, int flags, struct file **out) {
-    struct tar_header hdr;
-    struct tar_file *newFile;
-    size_t sect_result;
-    find_file(fs, fullpath, NULL, &sect_result, &hdr);
-    if(flags != O_RDONLY) {
-        return ERROR_TAR;
-    }
-    newFile = kalloc(sizeof(struct tar_file)); // allocate memory to the new file.
-    // sets the values for the opened file.
-    newFile->file.f_type = F_REG;
-    newFile->fs = fs;
-    newFile->file.read = tar_read;
-    newFile->file.close = tar_close;
-    newFile->file.write = tar_write; // doesn't actually work;
-    newFile->file.ents = tar_ents;
-    newFile->file.seek = tar_seek;
-    newFile->offset = 0;
-    newFile->len = strtoull(hdr.fileSize, NULL, 8);
-    newFile->sect = sect_result;
->>>>>>> 4e6e859 (edited a bit of documentation for tar.c)
 
 	*out = (struct file *)newFile;
 	return NOERROR_TAR;
@@ -372,7 +273,6 @@ int tar_open(struct file_system *fs, const char *fullpath, int flags, struct fil
 /// @param fullpath the full filepath of the file
 /// @param out the stats for the file found
 /// @return NOERROR_TAR OR ERROR_TAR
-<<<<<<< HEAD
 int tar_stat(struct file_system *fs, const char *fullpath, struct stat *out)
 {
 	struct tar_header hdr;
@@ -384,26 +284,10 @@ int tar_stat(struct file_system *fs, const char *fullpath, struct stat *out)
 	} else if (hdr.type_flag == DIRTYPE) {
 		out->s_type = F_DIR;
 	} else {
-		// wth
+		// shouldn't reach here, but we have to account for if it does.
 		return ERROR_TAR;
 	}
 	return NOERROR_TAR;
-=======
-int tar_stat(struct file_system *fs, const char *fullpath, struct stat *out) {
-    struct tar_header hdr;
-    size_t sect_result;
-    find_file(fs, fullpath, NULL, &sect_result, &hdr);
-    out->s_length = strtoull(hdr.fileSize, NULL, 8); 
-    if(hdr.type_flag == REGTYPE) {
-        out->s_type = F_REG;
-    } else if(hdr.type_flag == DIRTYPE) {
-        out->s_type = F_DIR;
-    } else {
-        // shouldn't reach here, but we have to account for if it does.
-        return ERROR_TAR;
-    }
-    return NOERROR_TAR;
->>>>>>> 4e6e859 (edited a bit of documentation for tar.c)
 }
 
 /// @brief use tar for the filesystem.
