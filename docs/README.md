@@ -20,6 +20,12 @@ amd64
 
 Multiboot (Legacy / UEFI)
 
-## Moduels
+## Startup
 
-See MODULES.md
+1. Multiboot loads kernel into either `_start` or `_start_efi`
+  -  Kernel identity maps during legacy boot (`_start`)
+2. Kernel loads GDT, and far jobs into `main`
+3. `main` loads the modules `cpu`, `mboot`, `memory`, `drivers`, `fs`, `pcb` in order.
+  - See MODULES.md
+4. Kernel loads init process (`bin/init`)
+5. Init loads user programs (sendoff!)
