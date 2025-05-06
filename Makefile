@@ -39,8 +39,8 @@ gdb:
 	gdb -q -n -x config/gdbinit
 
 build:
-	make -s -C kernel
-	make -s -C user
+	make -s -C kernel build
+	make -s -C user build
 
 clean:
 	rm -fr $(BIN)
