@@ -1,8 +1,9 @@
 -c
 -std=c11
--Ikernel/include
+-Iinclude
 -ffreestanding
 -fno-builtin
+-nostdlib
 -Wall
 -Wextra
 -pedantic

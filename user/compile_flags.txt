@@ -3,6 +3,7 @@
 -Iinclude
 -ffreestanding
 -fno-builtin
+-nostdlib
 -Wall
 -Wextra
 -pedantic
