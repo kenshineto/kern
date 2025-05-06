@@ -18,7 +18,6 @@ Read intel / amd manual for more information.
 
 ## Memory Layout
 
-|----------------|----------------|
 | Start Address  | Data           |
 |----------------|----------------|
 | 0MB            | BIOS Reserved  |
@@ -27,7 +26,6 @@ Read intel / amd manual for more information.
 | ...            | User Program   |
 | ...            | User Heap      |
 | 0x7fffffffffff | User Stack Top |
-|----------------|----------------|
 
 ## Memory Modules
 
