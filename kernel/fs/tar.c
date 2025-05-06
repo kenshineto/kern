@@ -59,7 +59,7 @@ int read_tar_header(struct disk *disk, uint32_t sect, struct tar_header *hdr) {
 /// @param buffer 
 /// @param len 
 /// @return 
-int tar_read(struct file *f, char *buffer, size_t len) {
+int tar_read(struct file *f, void *buffer, size_t len) {
     struct tar_file *tf = (struct tar_file*) f;
     long size = MIN((tf->len - tf->offset), len);
     if(tf->file.f_type != F_REG || size < 1) {
@@ -138,7 +138,7 @@ void tar_close(struct file *f) {
     kfree(f); 
 }
 
-int tar_seek(struct file *f, int offsetAdd, int theSeek) {
+int tar_seek(struct file *f, long int offsetAdd, int theSeek) {
     struct tar_file *tf = (struct tar_file*) f;
     if(theSeek == SEEK_SET) {
         tf->offset = offsetAdd;
@@ -154,7 +154,7 @@ int tar_seek(struct file *f, int offsetAdd, int theSeek) {
 
 }
 
-int tar_write(struct file *f, const char *buffer, size_t len) {
+int tar_write(struct file *f, const void *buffer, size_t len) {
     // tar doesn't do write lol. This is just here so there is something to send to write
     (void)f;
     (void)buffer;
@@ -233,13 +233,16 @@ int tar_ents(struct file *f, struct dirent *ent, size_t entry)
 }
 
 // opens up the tar file at fullpath, and puts it in out.
-int tar_open(struct file_system *fs, const char *fullpath, struct file **out) {
+int tar_open(struct file_system *fs, const char *fullpath, int flags, struct file **out) {
     struct tar_header hdr;
     struct tar_file *newFile;
     size_t sect_result;
     find_file(fs, fullpath, NULL, &sect_result, &hdr);
+    if(flags != O_RDONLY) {
+        return ERROR_TAR;
+    }
     newFile = kalloc(sizeof(struct tar_file));
-    //newFile->file = idk;
+
     newFile->file.f_type = F_REG;
     newFile->fs = fs;
     newFile->file.read = tar_read;
