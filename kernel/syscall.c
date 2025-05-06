@@ -3,6 +3,7 @@
 #include <comus/user.h>
 #include <comus/cpu.h>
 #include <comus/syscalls.h>
+#include <comus/input.h>
 #include <comus/drivers/acpi.h>
 #include <comus/drivers/gpu.h>
 #include <comus/drivers/pit.h>
@@ -482,6 +483,99 @@ static int sys_ticks(void)
 	return 0;
 }
 
+static int sys_popsharedmem(void)
+{
+	RET(void *, res_mem);
+	*res_mem = NULL;
+
+	if (pcb->shared_mem == NULL) {
+		return 1;
+	}
+
+	struct pcb *const sharer = pcb_find_pid(pcb->shared_mem_source);
+	if (sharer == NULL) {
+		// process died or something since sharing
+		pcb->shared_mem = NULL;
+		return 1;
+	}
+
+	void *result =
+		mem_mapaddr(pcb->memctx, mem_get_phys(sharer->memctx, pcb->shared_mem),
+					pcb->shared_mem, pcb->shared_mem_pages * PAGE_SIZE,
+					F_WRITEABLE | F_UNPRIVILEGED);
+
+	// if (!result) {
+	//  alert the other process that we cannot get its allocation?
+	// 	mem_free_pages(pcb->memctx, alloced);
+	// 	return 1;
+	// }
+
+	*res_mem = result;
+
+	pcb->shared_mem = NULL;
+
+	return 0;
+}
+
+static int sys_allocshared(void)
+{
+	ARG1(size_t, num_pages);
+	ARG2(unsigned short, otherpid); // same as pid_t
+	RET(void *, res_mem);
+	*res_mem = NULL;
+	assert(sizeof(unsigned short) == sizeof(pid_t),
+		   "out of date sys_memshare syscall, pid_t changed?");
+
+	if (otherpid == pcb->pid || otherpid == 0) {
+		return 1;
+	}
+
+	struct pcb *const otherpcb = pcb_find_pid(otherpid);
+	if (otherpcb == NULL) {
+		// no such target process exists
+		return 1;
+	}
+	if (otherpcb->shared_mem != NULL) {
+		// it has yet to consume the last allocshared given to it
+		return 1;
+	}
+
+	void *alloced =
+		mem_alloc_pages(pcb->memctx, num_pages, F_WRITEABLE | F_UNPRIVILEGED);
+
+	if (!alloced) {
+		return 1;
+	}
+
+	otherpcb->shared_mem = alloced;
+	otherpcb->shared_mem_source = pcb->pid;
+	otherpcb->shared_mem_pages = num_pages;
+
+	*res_mem = alloced;
+
+	return 0;
+}
+
+// NOTE: observes AND consumes the key event
+static int sys_keypoll(void)
+{
+	ARG1(struct keycode *, keyev);
+	RET(int, waspressed);
+
+	void *ouraddr = kmapuseraddr(pcb->memctx, keyev, sizeof(struct keycode));
+
+	if (keycode_pop(ouraddr)) {
+		kunmapaddr(ouraddr);
+		*waspressed = false;
+		return 0;
+	}
+
+	kunmapaddr(ouraddr);
+
+	*waspressed = true;
+	return 0;
+}
+
 static int sys_seek(void)
 {
 	RET(long int, ret);
@@ -498,6 +592,7 @@ static int sys_seek(void)
 	return 0;
 }
 
+// clang-format off
 static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_exit] = sys_exit,		 [SYS_waitpid] = sys_waitpid,
 	[SYS_fork] = sys_fork,		 [SYS_exec] = sys_exec,
@@ -509,8 +604,10 @@ static int (*syscall_tbl[N_SYSCALLS])(void) = {
 	[SYS_sleep] = sys_sleep,	 [SYS_brk] = sys_brk,
 	[SYS_sbrk] = sys_sbrk,		 [SYS_poweroff] = sys_poweroff,
 	[SYS_drm] = sys_drm,		 [SYS_ticks] = sys_ticks,
-	[SYS_seek] = sys_seek,
+	[SYS_seek] = sys_seek,       [SYS_allocshared] = sys_allocshared,
+	[SYS_popsharedmem] = sys_popsharedmem, [SYS_keypoll] = sys_keypoll,
 };
+// clang-format on
 
 void syscall_handler(void)
 {

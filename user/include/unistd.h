@@ -15,6 +15,14 @@
 
 /* System Call Definitions */
 
+// NOTE: needs to match kernel input.h
+struct keycode {
+	char key;
+	char flags;
+};
+
+typedef unsigned short pid_t;
+
 enum {
 	S_SET = 0,
 	S_CUR = 1,
@@ -183,6 +191,38 @@ extern void *brk(const void *addr);
  * @return the previos program break on success, or NULL on failure
  */
 extern void *sbrk(intptr_t increment);
+
+/**
+ * Allocate a number of pages shared with another PID. Does not map the pages
+ * into the other process's vtable until the other process calls popsharedmem().
+ *
+ * @param num_pages number of pages to allocate
+ * @param other_pid pid of other process
+ * @return pointer to the virtual address which will be accessible by both,
+ * after popsharedmem() is called.
+ */
+extern void *allocshared(size_t num_pages, int other_pid);
+
+/**
+ * Checks if another process has tried to share memory with us, and return it.
+ * No size information is returned, it is only guaranteed that there is at least
+ * one page in the shared allocation. To get around this, the sharer can write
+ * a size number to the start of the first page.
+ *
+ * @return page aligned pointer to the start of the shared pages, or NULL if no
+ * process has tried to share with us, or NULL if we the shared virtual address
+ * space is already occupied in the caller's pagetable.
+ */
+extern void *popsharedmem(void);
+
+/**
+ * Get the most recent key event, if there is one.
+ *
+ * @param poll the keycode to write out to
+ * @return 0 if there was no key event, in which case `poll` was not changed, or
+ * 1 if there was an event and the caller should read from `poll`.
+ */
+extern int keypoll(struct keycode *poll);
 
 /**
  * Poweroff the system.

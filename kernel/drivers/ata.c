@@ -252,6 +252,7 @@ static enum ide_error ide_channel_poll(struct ide_channel *channel,
 	if (advanced_check) {
 		uint8_t state = ide_channel_read(channel, ATA_REG_STATUS);
 
+        // check for errors or faults
 		if (state & ATA_SR_ERROR) {
 			return IDE_ERROR_POLL_STATUS_REGISTER_ERROR;
 		}
@@ -260,7 +261,7 @@ static enum ide_error ide_channel_poll(struct ide_channel *channel,
 			return IDE_ERROR_POLL_DEVICE_FAULT;
 		}
 
-		// BSY = 0; DF = 0; ERR = 0 so we should check for DRQ now.
+        // then check if drive is ready
 		if ((state & ATA_SR_DRIVEREQUESTREADY) == 0) {
 			return IDE_ERROR_POLL_DRIVE_REQUEST_NOT_READY;
 		}
@@ -322,7 +323,7 @@ static void ide_error_print(struct ide_device *dev, const enum ide_error err)
 static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 						   uint32_t BAR3, uint32_t BAR4)
 {
-	// 1- Detect I/O Ports which interface IDE Controller:
+	// calculate which io ports interface with the IDE controller
 	ide_channels[ATA_PRIMARY] = (struct ide_channel){
 		.io_base = (BAR0 & 0xFFFFFFFC) + 0x1F0 * (!BAR0),
 		.control_base = (BAR1 & 0xFFFFFFFC) + 0x3F6 * (!BAR1),
@@ -334,11 +335,13 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 		.bus_master_ide_base = (BAR4 & 0xFFFFFFFC) + 8,
 	};
 
-	// 2- Disable IRQs:
+    // disable irqs
 	ide_channel_write(channel(ATA_PRIMARY), ATA_REG_CONTROL, 2);
 	ide_channel_write(channel(ATA_SECONDARY), ATA_REG_CONTROL, 2);
 
-	// 3- Detect ATA-ATAPI Devices:
+    // detect disks by writing CMD_IDENTIFY to each one and checking for err.
+    // if device exists, ask for its ID space and copy out info about the
+    // device into the ide_device struct
 	uint32_t device_count = 0;
 	for (uint8_t channel_idx = 0; channel_idx < 2; channel_idx++) {
 		// drive idx is like device_count but it starts at 0 per channel
@@ -362,7 +365,7 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 			kspin_milliseconds(1);
 
 			if (ide_channel_read(chan, ATA_REG_STATUS) == 0) {
-				continue; // if status == 0, no device.
+				continue; // if status == 0, no device
 			}
 
 			bool ata_err = false;
@@ -383,7 +386,7 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 				}
 			}
 
-			// probe for ATAPI devices, if needed
+			// probe for ATAPI devices, though they aren't implemented
 			uint8_t type = IDE_ATA;
 			if (ata_err) {
 				uint8_t cl = ide_channel_read(chan, ATA_REG_LBA1);
@@ -396,7 +399,7 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 					WARN("ATAPI device found but ATAPI is not supported");
 					type = IDE_ATAPI;
 				} else {
-					// unknown type (may not be a device).
+					// unknown type (may not be a device?)
 					continue;
 				}
 
@@ -425,16 +428,16 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 
 			// get size (depends on address mode):
 			if (dev->supported_command_sets & (1 << 26)) {
-				// device uses 48-bit addressing:
+				// lba48 
 				dev->size_in_sectors =
 					*((uint32_t *)(id_space_buf + ATA_IDENT_MAX_LBA_EXT));
 			} else {
-				// device uses CHS or 28-bit dddressing:
+				// lba28
 				dev->size_in_sectors =
 					*((uint32_t *)(id_space_buf + ATA_IDENT_MAX_LBA));
 			}
 
-			// string indicates model of device (Western Digital HDD, SONY DVD-RW...)
+			// string indicates model of device like "Western Digital HDD" etc
 			for (uint8_t i = 0; i < 40; i += 2) {
 				dev->model_str[i] = id_space_buf[ATA_IDENT_MODEL + i + 1];
 				dev->model_str[i + 1] = id_space_buf[ATA_IDENT_MODEL + i];
@@ -460,13 +463,13 @@ enum access_mode {
 static uint8_t get_ata_cmd_for_access(enum lba_mode lba_mode,
 									  enum access_mode mode)
 {
-	// routine that is followed:
-	// If ( DMA & LBA48)   DO_DMA_EXT;
-	// If ( DMA & LBA28)   DO_DMA_LBA;
-	// If ( DMA & LBA28)   DO_DMA_CHS;
-	// If (!DMA & LBA48)   DO_PIO_EXT;
-	// If (!DMA & LBA28)   DO_PIO_LBA;
-	// If (!DMA & !LBA#)   DO_PIO_CHS;
+    // outline of the algorithm:
+	// If ( dma & lba48)   DO_DMA_EXT;
+	// If ( dma & lba28)   DO_DMA_LBA;
+	// If ( dma & lba28)   DO_DMA_CHS;
+	// If (!dma & lba48)   DO_PIO_EXT;
+	// If (!dma & lba28)   DO_PIO_LBA;
+	// If (!dma & !lba#)   DO_PIO_CHS;
 
 	if (mode == READ) {
 		switch (lba_mode) {
@@ -500,7 +503,7 @@ static uint8_t get_ata_cmd_for_access(enum lba_mode lba_mode,
 		// if (lba_mode == 2 && dma == 1 && direction == 1)
 		// 	cmd = ATA_CMD_WRITE_DMA_EXT;
 	}
-	// NOTE: unreachable
+    panic("unreachable");
 	return -1;
 }
 
@@ -520,7 +523,8 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 	ide_channel_write(chan, ATA_REG_CONTROL,
 					  chan->no_interrupt = (ide_irq_invoked = 0x0) + 0x02);
 
-	// select one from LBA28, LBA48 or CHS
+	// select one from lba28, lba48 or CHS, and fill lba_io with the parameters
+	// for the disk access command
 	if (lba >= 0x10000000 || numsects > UINT8_MAX) {
 		// drive should support LBA in this case, or you are giving a bad LBA
 		lba_mode = LBA48;
@@ -561,7 +565,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 	if (dev->drive_idx > 1)
 		panic("unexpected drive_idx");
 
-	// select Drive from the controller
+	// select our drive
 	if (lba_mode == CHS) {
 		ide_channel_write(chan, ATA_REG_HDDEVSEL,
 						  0xA0 | (dev->drive_idx << 4) | head);
@@ -572,7 +576,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 		ide_channel_write(chan, ATA_REG_HDDEVSEL, 0x40 | (dev->drive_idx << 4));
 	}
 
-	// write Parameters
+	// actually write the parameters
 	if (lba_mode == LBA48) {
 		ide_channel_write(chan, ATA_REG_SECCOUNT1, (numsects >> 8) & 0xff);
 		ide_channel_write(chan, ATA_REG_LBA3, lba_io[3]);
@@ -589,7 +593,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 
 	// TODO: if (dma) { ... } else {
 	if (mode == READ) {
-		// PIO read
+		// just read all the bytes of the sectors out of the io port
 		for (size_t i = 0; i < numsects; i++) {
 			enum ide_error ret = ide_channel_poll(chan, 1);
 			if (ret)
@@ -599,7 +603,7 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 			rep_inw(chan->io_base, &buf[i * 256], 256);
 		}
 	} else {
-		// PIO write
+		// just write all the bytes of the sectors into the io port
 		for (size_t i = 0; i < numsects; i++) {
 			enum ide_error err = ide_channel_poll(chan, 0);
 #if LOG_LEVEL >= LOG_LVL_WARN
@@ -610,13 +614,15 @@ static enum ide_error ide_device_ata_access(struct ide_device *dev,
 #endif
 			rep_outw(chan->io_base, &buf[i * 256], 256);
 		}
+
+		// flush the cache to fully complete the write
 		ide_channel_write(chan, ATA_REG_COMMAND,
 						  (uint8_t[]){ ATA_CMD_CACHE_FLUSH, ATA_CMD_CACHE_FLUSH,
 									   ATA_CMD_CACHE_FLUSH_EXT }[lba_mode]);
 		enum ide_error err = ide_channel_poll(chan, 0);
 #if LOG_LEVEL >= LOG_LVL_WARN
 		if (err) {
-			WARN("DRIVE WRITE FAILED:");
+			WARN("DRIVE WRITE FAILED, CACHE FLUSH ERR:");
 			ide_error_print(dev, err);
 		}
 #endif
@@ -647,7 +653,9 @@ enum ide_error ide_device_read_sectors(ide_device_t dev_identifier,
 		// for (i = 0; i < numsects; i++)
 		//    err = ide_atapi_read(drive, lba + i, 1, es, edi + (i*2048));
 		//panic("atapi unimplemented- todo");
-		return 1;
+
+        // soft error instead of panic
+		return IDE_ERROR_UNIMPLEMENTED;
 	}
 
 	if (err) {
