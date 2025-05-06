@@ -107,3 +107,29 @@ Stores loaded process information and scheduler
     - acessed though syscall_queue[SYS_num]
 
 See PCB.md for pcb information.
+
+# syscall.c
+
+Syscall implentation functions for each syscall
+
+See SYSCALLS.md
+
+# term.c
+
+Manages text terminal. All text printed to standard out or err will be printed
+to this terminal.
+
+- contains a terminal buffer for allowing scrolling of the screen
+- manages redrawing the terminal when scrolling or changing terminal handler
+  - vga text mode v.s. gpu framebuffer
+
+# user.c
+
+Loads user ELF binaries into memory and initalizes them into a PCB.
+
+See PCB.md
+
+- `user_load` - load a user process form the filesystem into memory
+- `user_clone` - clones the user process
+- `user_cleanup` - cleans up a user process
+
