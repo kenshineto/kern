@@ -23,12 +23,10 @@ __attribute__((noreturn)) void __panic(unsigned int line, const char *file,
 
 __attribute__((noreturn)) void fatal_loop(void)
 {
-	while(1) {
+	while (1) {
 		spkr_play_tone(1000);
-		ps2_set_leds(0x4);
 		kspin_milliseconds(200);
 		spkr_quiet();
-		ps2_set_leds(0x0);
 		kspin_milliseconds(800);
 	}
 }

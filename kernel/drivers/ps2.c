@@ -272,7 +272,7 @@ int ps2_set_leds(uint8_t state)
 	uint8_t result;
 
 	if (!(has_mouse || has_kbd))
-			return 1;
+		return 1;
 
 	ps2ctrl_out_cmd(0xED);
 	ps2ctrl_out_data(state);
