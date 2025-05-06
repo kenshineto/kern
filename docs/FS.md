@@ -13,7 +13,3 @@ File system handling
 Tar file system implementation (uses USTar).
 - allows for file operations
 - notably, tar does not allow for writing
-
-## ramfs.c
-
-Unused
