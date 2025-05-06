@@ -252,7 +252,7 @@ static enum ide_error ide_channel_poll(struct ide_channel *channel,
 	if (advanced_check) {
 		uint8_t state = ide_channel_read(channel, ATA_REG_STATUS);
 
-        // check for errors or faults
+		// check for errors or faults
 		if (state & ATA_SR_ERROR) {
 			return IDE_ERROR_POLL_STATUS_REGISTER_ERROR;
 		}
@@ -261,7 +261,7 @@ static enum ide_error ide_channel_poll(struct ide_channel *channel,
 			return IDE_ERROR_POLL_DEVICE_FAULT;
 		}
 
-        // then check if drive is ready
+		// then check if drive is ready
 		if ((state & ATA_SR_DRIVEREQUESTREADY) == 0) {
 			return IDE_ERROR_POLL_DRIVE_REQUEST_NOT_READY;
 		}
@@ -335,13 +335,13 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 		.bus_master_ide_base = (BAR4 & 0xFFFFFFFC) + 8,
 	};
 
-    // disable irqs
+	// disable irqs
 	ide_channel_write(channel(ATA_PRIMARY), ATA_REG_CONTROL, 2);
 	ide_channel_write(channel(ATA_SECONDARY), ATA_REG_CONTROL, 2);
 
-    // detect disks by writing CMD_IDENTIFY to each one and checking for err.
-    // if device exists, ask for its ID space and copy out info about the
-    // device into the ide_device struct
+	// detect disks by writing CMD_IDENTIFY to each one and checking for err.
+	// if device exists, ask for its ID space and copy out info about the
+	// device into the ide_device struct
 	uint32_t device_count = 0;
 	for (uint8_t channel_idx = 0; channel_idx < 2; channel_idx++) {
 		// drive idx is like device_count but it starts at 0 per channel
@@ -428,7 +428,7 @@ static void ide_initialize(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2,
 
 			// get size (depends on address mode):
 			if (dev->supported_command_sets & (1 << 26)) {
-				// lba48 
+				// lba48
 				dev->size_in_sectors =
 					*((uint32_t *)(id_space_buf + ATA_IDENT_MAX_LBA_EXT));
 			} else {
@@ -463,7 +463,7 @@ enum access_mode {
 static uint8_t get_ata_cmd_for_access(enum lba_mode lba_mode,
 									  enum access_mode mode)
 {
-    // outline of the algorithm:
+	// outline of the algorithm:
 	// If ( dma & lba48)   DO_DMA_EXT;
 	// If ( dma & lba28)   DO_DMA_LBA;
 	// If ( dma & lba28)   DO_DMA_CHS;
@@ -503,7 +503,7 @@ static uint8_t get_ata_cmd_for_access(enum lba_mode lba_mode,
 		// if (lba_mode == 2 && dma == 1 && direction == 1)
 		// 	cmd = ATA_CMD_WRITE_DMA_EXT;
 	}
-    panic("unreachable");
+	panic("unreachable");
 	return -1;
 }
 
@@ -654,7 +654,7 @@ enum ide_error ide_device_read_sectors(ide_device_t dev_identifier,
 		//    err = ide_atapi_read(drive, lba + i, 1, es, edi + (i*2048));
 		//panic("atapi unimplemented- todo");
 
-        // soft error instead of panic
+		// soft error instead of panic
 		return IDE_ERROR_UNIMPLEMENTED;
 	}
 

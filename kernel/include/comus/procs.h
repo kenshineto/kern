@@ -76,10 +76,10 @@ struct pcb {
 	uint64_t wakeup;
 	uint8_t exit_status;
 
-    // pipe to check for shared memory
-    void* shared_mem;
-    size_t shared_mem_pages;
-    pid_t shared_mem_source;
+	// pipe to check for shared memory
+	void *shared_mem;
+	size_t shared_mem_pages;
+	pid_t shared_mem_source;
 };
 
 /// ordering of pcb queues

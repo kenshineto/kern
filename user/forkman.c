@@ -260,7 +260,7 @@ static int client_entry(sharedmem *shared)
 		for (size_t i = 0; i < shared->player_vel.x; ++i) {
 			size_t x = shared->player_pos.x + 1;
 			size_t y = shared->player_pos.y + 1;
-            // boundscheck to consider outside tiles to be solid
+			// boundscheck to consider outside tiles to be solid
 			if (is_inbounds(x, y) && tile_at(shared, x, y)->type != TILE_AIR) {
 				break;
 			}
