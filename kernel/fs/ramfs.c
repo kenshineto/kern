@@ -1,5 +1,5 @@
-/*#include <comus/fs.h>
-#include <lib.h>
+#include <comus/fs.h>
+/*#include <lib.h>
 //#include <comus/tar.h>
 //#include <string.h>
 #include <comus/ramfs.h>
@@ -36,7 +36,7 @@ int ramfs_delete(const char *name) {
         kfree(allTheFiles[i].data);
         for(int j = i; j < numberOfFiles; j++) {
             allTheFiles[j] = allTheFiles[j+1];
-            numberOfFiles -= 1; 
+            numberOfFiles -= 1;
         }
         return NOERROR;
 
@@ -62,7 +62,7 @@ int ramfs_write(const char *name, char *buffer) {
 }
 
 // here we return the index of the file as well.
-/*int ramfs_find_file(root *r, const char *fullpath, const char *name, file *out, directory *outDirectory) {
+*int ramfs_find_file(root *r, const char *fullpath, const char *name, file *out, directory *outDirectory) {
     directory *location = r->root;
     if(ramfs_find_directory(r, fullpath, name, location) == NOERROR) {
         for(int i = 0; i < location->file_count; i++) {
@@ -89,14 +89,14 @@ int ramfs_find_directory(root *r, const char *fullpath, const char *name, direct
                 location = location->directories[i];
                 wasItFound = true;
                 break;
-                
+
             }
         }
         if(!wasItFound) {
             return ERROR;
         }
         tempPath = strtok(NULL, "/");
-        
+
     }
     out = location;
     return NOERROR;
@@ -142,7 +142,7 @@ int ramfs_delete_file(root *r, const char *fullpath, const char *name) {
             return NOERROR;
         }
         return ERROR;
-        
+
     }
     return ERROR;
 }
@@ -155,7 +155,7 @@ int ramfs_delete_directory() {
 }
 
 int ramfs_write() {
-    
+
 }
 
 
