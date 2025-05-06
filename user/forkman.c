@@ -49,13 +49,28 @@ typedef struct {
 	enum tile_type type;
 } tile;
 
+#define CLIENT_BIT (1)
+#define SERVER_BIT (2)
+#define CLIENT_WAITING_BIT (1)
+#define SERVER_WAITING_BIT (2)
+
+typedef struct {
+	volatile uint8_t inner;
+} spinlock;
+
+enum key_state {
+	KEY_STATE_PRESSED,
+	KEY_STATE_UNPRESSED,
+	// TODO: JUST_PRESSED and JUST_RELEASED
+};
+
 typedef struct {
 	volatile size_t frame;
 	volatile size_t dummy_counter;
-	volatile int lock;
 	volatile uint8_t client_barrier;
 	volatile uint8_t server_barrier;
-	volatile uint8_t key_status[255];
+	volatile enum key_state key_status[255];
+	spinlock player_lock;
 	volatile vec player_pos;
 	volatile vec player_vel;
 	volatile tile tiles[GAME_HEIGHT_TILES * GAME_WIDTH_TILES];
@@ -66,7 +81,9 @@ static int display_server_entry(sharedmem *);
 static int client_entry(sharedmem *);
 static void barrier_wait(sharedmem *, int isclient);
 static volatile tile *tile_at(sharedmem *, size_t x, size_t y);
-static long abs(long);
+static int is_inbounds(size_t x, size_t y);
+static void spinlock_lock(volatile spinlock *lock, int isclient);
+static void spinlock_unlock(volatile spinlock *lock, int isclient);
 
 int main(void)
 {
@@ -176,13 +193,6 @@ static void init_level(sharedmem *shared)
 	shared->player_pos = (vec){ .x = 5 * TILE_WIDTH, .y = 5 * TILE_HEIGHT };
 }
 
-static long abs(long i)
-{
-	if (i < 0)
-		return i * -1;
-	return i;
-}
-
 static size_t get_total_time(size_t tick_start) // arbitrary units
 {
 	// 60 is arbitrary pretend fps
@@ -199,30 +209,25 @@ static int display_server_entry(sharedmem *shared)
 
 	fb.size = (fb.width * fb.height * fb.bpp) / 8;
 
-	size_t last_frame = 1;
-
 	barrier_wait(shared, 0);
 
 	while (1) {
-		if (shared->frame == last_frame)
-			continue;
-
 		struct keycode keycode;
 
 		if (keypoll(&keycode)) {
 			if (keycode.flags & KC_FLAG_KEY_DOWN) {
-				shared->key_status[(uint8_t)keycode.key] = 1;
+				shared->key_status[(uint8_t)keycode.key] = KEY_STATE_PRESSED;
 			}
 			if (keycode.flags & KC_FLAG_KEY_UP) {
-				shared->key_status[(uint8_t)keycode.key] = 0;
+				shared->key_status[(uint8_t)keycode.key] = KEY_STATE_UNPRESSED;
 			}
 		}
 
 		draw_tiles(shared, &fb);
-		draw_player(&fb, shared->player_pos);
 
-		last_frame += 1;
-		shared->frame = last_frame;
+		spinlock_lock(&shared->player_lock, 0);
+		draw_player(&fb, shared->player_pos);
+		spinlock_unlock(&shared->player_lock, 0);
 	}
 
 	return 0;
@@ -232,19 +237,15 @@ static int client_entry(sharedmem *shared)
 {
 	init_level(shared);
 
-	size_t last_frame = shared->frame;
-
 	size_t start_ticks = ticks();
 
 	double last_time = get_total_time(start_ticks);
 
 	barrier_wait(shared, 1);
 	do {
-		if (last_frame == shared->frame)
-			continue;
-
 		double time = get_total_time(start_ticks);
 		double delta_time = time - last_time;
+		spinlock_lock(&shared->player_lock, 1);
 
 		shared->player_vel.y -= 9.8 * delta_time;
 
@@ -259,21 +260,21 @@ static int client_entry(sharedmem *shared)
 		for (size_t i = 0; i < shared->player_vel.x; ++i) {
 			size_t x = shared->player_pos.x + 1;
 			size_t y = shared->player_pos.y + 1;
-			if (tile_at(shared, x, y)->type != TILE_AIR) {
+            // boundscheck to consider outside tiles to be solid
+			if (is_inbounds(x, y) && tile_at(shared, x, y)->type != TILE_AIR) {
 				break;
 			}
 			shared->player_pos.x += 1;
 			shared->player_pos.y += 1;
 		}
 
-		if (shared->key_status[KEY_SPACE]) {
+		if (shared->key_status[KEY_SPACE] == KEY_STATE_PRESSED) {
 			shared->player_vel.y = 10;
-		} else if (shared->key_status[KEY_B]) {
+		} else if (shared->key_status[KEY_B] == KEY_STATE_PRESSED) {
 			shared->player_vel.y = -10;
 		}
+		spinlock_unlock(&shared->player_lock, 1);
 
-		last_frame += 1;
-		shared->frame = last_frame;
 	} while (1);
 
 	return 0;
@@ -281,14 +282,63 @@ static int client_entry(sharedmem *shared)
 
 static volatile tile *tile_at(sharedmem *shared, size_t x, size_t y)
 {
-	const size_t idx = x + (y * GAME_WIDTH_TILES);
 #ifdef DBG
-	if (idx > GAME_WIDTH_TILES * GAME_HEIGHT_TILES) {
+	if (!is_inbounds(x, y)) {
 		printf("out of bounds");
 		exit(0);
 	}
 #endif
+	const size_t idx = x + (y * GAME_WIDTH_TILES);
 	return shared->tiles + idx;
+}
+
+static int is_inbounds(size_t x, size_t y)
+{
+	const size_t idx = x + (y * GAME_WIDTH_TILES);
+	return idx < (GAME_WIDTH_TILES * GAME_HEIGHT_TILES);
+}
+
+static void spinlock_lock(volatile spinlock *lock, int isclient)
+{
+	const uint8_t bit = isclient ? CLIENT_BIT : SERVER_BIT;
+	const uint8_t otherbit = isclient ? SERVER_BIT : CLIENT_BIT;
+
+	// wait for us to be the only waiter
+	while (1) {
+		if (lock->inner == 0) {
+			lock->inner |= bit;
+			// recover from the possibility that something happened between that
+			// if statement and the |= operation. check for other bits being set
+			if ((lock->inner ^ bit) != 0) {
+				// okay, somebody messed with something, undo what we did and
+				// keep waiting
+				lock->inner ^= bit;
+				continue;
+			}
+
+			// okay all good, we are the exclusive owner
+			break;
+		}
+	}
+
+#ifdef DBG
+	// when we own the lock, only our bit should be active and the other proc's
+	// bit should not be active
+	if (lock->inner & otherbit || !(lock->inner & bit)) {
+		printf("SPINLOCK BAD\n");
+		exit(1);
+	}
+#endif
+}
+
+static void spinlock_unlock(volatile spinlock *lock, int isclient)
+{
+	const uint8_t bit = isclient ? CLIENT_BIT : SERVER_BIT;
+
+	// assume our thread of execution (process) is the only one changing our
+	// bit. this can be screwed over if the other process lies about whether
+	// it is server or client
+	lock->inner ^= bit;
 }
 
 static void barrier_wait(sharedmem *shared, int isclient)
