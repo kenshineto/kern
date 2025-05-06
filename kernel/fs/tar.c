@@ -142,15 +142,16 @@ int tar_seek(struct file *f, long int offsetAdd, int theSeek) {
     struct tar_file *tf = (struct tar_file*) f;
     if(theSeek == SEEK_SET) {
         tf->offset = offsetAdd;
+        return tf->offset;
     } else if(theSeek == SEEK_CUR) {
         tf->offset = tf->offset + offsetAdd;
+        return tf->offset;
     } else if(theSeek ==SEEK_END) {
         tf->offset = tf->len + offsetAdd;
+        return tf->offset;
     } else {
-        return ERROR_TAR;
+        return -1;
     }
-    return NOERROR_TAR;
-
 
 }
 
