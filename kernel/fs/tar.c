@@ -55,8 +55,8 @@ int read_tar_header(struct disk *disk, uint32_t sect, struct tar_header *hdr) {
 }
 
 /// @brief 
-/// @param f 
-/// @param buffer 
+/// @param f the file to be read
+/// @param buffer the buffer that the content of the file is read into
 /// @param len 
 /// @return 
 int tar_read(struct file *f, void *buffer, size_t len) {
@@ -65,7 +65,7 @@ int tar_read(struct file *f, void *buffer, size_t len) {
     if(tf->file.f_type != F_REG || size < 1) {
         return ERROR_TAR;
     }
-    size = disk_read(tf->fs->fs_disk, tf->sect+1 * TAR_SIZE + tf->offset, size, buffer);
+    size = disk_read(tf->fs->fs_disk, (tf->sect+1) * TAR_SIZE + tf->offset, size, buffer);
     tf->offset += size;
     return size;
 }
