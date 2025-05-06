@@ -145,32 +145,31 @@ int virtaddr_clone(struct virt_ctx *old, struct virt_ctx *new)
 
 static void merge_back(struct virt_ctx *ctx, struct virt_addr_node *node)
 {
-	while (node->prev) {
-		if (node->is_alloc != node->prev->is_alloc)
+	struct virt_addr_node *prev;
+	for (prev = node->prev; prev != NULL; prev = prev->prev) {
+		if (prev->is_alloc)
 			break;
-		struct virt_addr_node *temp = node->prev;
-		node->start = temp->start;
-		node->prev = temp->prev;
-		if (temp->prev)
-			temp->prev->next = node;
-		free_node(ctx, temp);
+		node->start = prev->start;
+		node->prev = prev->prev;
+		if (node->prev)
+			node->prev->next = node;
+		free_node(ctx, prev);
 	}
-	if (node->prev == NULL) {
+	if (node->prev == NULL)
 		ctx->start_node = node;
-	}
 }
 
 static void merge_forward(struct virt_ctx *ctx, struct virt_addr_node *node)
 {
-	while (node->next) {
-		if (node->is_alloc != node->next->is_alloc)
+	struct virt_addr_node *next;
+	for (next = node->next; next != NULL; next = next->next) {
+		if (next->is_alloc)
 			break;
-		struct virt_addr_node *temp = node->next;
-		node->end = temp->end;
-		node->next = temp->next;
-		if (temp->next)
-			temp->next->prev = node;
-		free_node(ctx, temp);
+		node->end = next->end;
+		node->next = next->next;
+		if (node->next)
+			node->next->prev = node;
+		free_node(ctx, next);
 	}
 }
 
@@ -263,7 +262,6 @@ long virtaddr_free(struct virt_ctx *ctx, const void *virtaddr)
 		if (node->start == virt) {
 			int length = node->end - node->start;
 			int pages = length / PAGE_SIZE;
-			// FIXME: ???
 			node->is_alloc = false;
 			merge_back(ctx, node);
 			merge_forward(ctx, node);
