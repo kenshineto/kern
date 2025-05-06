@@ -1,4 +1,3 @@
-#include "lib/kio.h"
 #include <comus/drivers/pit.h>
 #include <comus/syscalls.h>
 #include <comus/memory.h>
