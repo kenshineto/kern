@@ -1,4 +1,4 @@
-#include "comus/memory.h"
+#include <comus/memory.h>
 #include <comus/mboot.h>
 
 #include "mboot.h"
@@ -16,7 +16,7 @@ struct multiboot_tag_module {
 static void *mapped_addr = NULL;
 size_t initrd_len;
 
-void *mboot_get_initrd(size_t *len)
+void *mboot_get_initrd_phys(size_t *len)
 {
 	struct multiboot_tag_module *mod;
 	void *tag, *phys;
@@ -36,11 +36,21 @@ void *mboot_get_initrd(size_t *len)
 	phys = (void *)(uintptr_t)mod->mod_start;
 	initrd_len = mod->mod_end - mod->mod_start;
 
+	*len = initrd_len;
+	return phys;
+}
+
+void *mboot_get_initrd(size_t *len)
+{
+	// get phys
+	void *phys = mboot_get_initrd_phys(len);
+	if (phys == NULL)
+		return NULL;
+
 	// map addr
 	mapped_addr = kmapaddr(phys, NULL, initrd_len, F_PRESENT | F_WRITEABLE);
 	if (mapped_addr == NULL)
 		return NULL;
 
-	*len = initrd_len;
 	return mapped_addr;
 }

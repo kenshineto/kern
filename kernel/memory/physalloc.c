@@ -1,12 +1,14 @@
-#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 #include <comus/asm.h>
+#include <comus/mboot.h>
+#include <stdint.h>
 
 #include "physalloc.h"
 
 extern char kernel_start[];
 extern char kernel_end[];
+static void *kernel_real_end = NULL;
 
 // between memory_start and kernel_start will be the bitmap
 static uintptr_t memory_start = 0;
@@ -30,16 +32,17 @@ static int n_pages(const struct memory_segment *m)
 	return (m->len + PAGE_SIZE - 1) / PAGE_SIZE;
 }
 
-static void *page_at(int i)
+static void *page_at(size_t i)
 {
-	int cur_page = 0;
+	size_t cur_page = 0;
+	const struct memory_segment *m = page_start;
 	for (uint64_t idx = 0; idx < segment_count; idx++) {
-		const struct memory_segment *m = page_start;
-		int pages = n_pages(m);
+		size_t pages = n_pages(m);
 		if (i - cur_page < pages) {
 			return (void *)(m->addr + (PAGE_SIZE * (i - cur_page)));
 		}
 		cur_page += pages;
+		m++;
 	}
 	return NULL;
 }
@@ -48,8 +51,8 @@ static long page_idx(void *page)
 {
 	uintptr_t addr = (uintptr_t)page;
 	int cur_page = 0;
+	const struct memory_segment *m = page_start;
 	for (uint64_t idx = 0; idx < segment_count; idx++) {
-		const struct memory_segment *m = page_start;
 		if (addr < m->addr) {
 			return -1;
 		}
@@ -57,6 +60,7 @@ static long page_idx(void *page)
 			return cur_page + ((addr - m->addr) / PAGE_SIZE);
 		}
 		cur_page += n_pages(m);
+		m++;
 	}
 	return -1;
 }
@@ -211,7 +215,7 @@ static struct memory_segment clamp_segment(const struct memory_segment *segment)
 	if (memory_start)
 		start = memory_start;
 	else
-		start = (uintptr_t)kernel_end;
+		start = (uintptr_t)kernel_real_end;
 
 	if (segment->addr < start) {
 		addr = start;
@@ -243,6 +247,10 @@ void physalloc_init(struct memory_map *map)
 
 	segment_count = 0;
 
+	kernel_real_end = mboot_end();
+	if ((char *)kernel_real_end < kernel_end)
+		kernel_real_end = kernel_end;
+
 	for (uint32_t i = 0; i < map->entry_count; i++) {
 		struct memory_segment *segment = &map->entries[i];
 
@@ -256,7 +264,7 @@ void physalloc_init(struct memory_map *map)
 
 	long bitmap_pages = (page_count / 64 / PAGE_SIZE) + 1;
 	long bitmap_size = bitmap_pages * PAGE_SIZE;
-	bitmap = (uint64_t *)page_align((uintptr_t)kernel_end);
+	bitmap = (uint64_t *)page_align((uintptr_t)kernel_real_end);
 
 	long page_area_size = segment_count * sizeof(struct memory_segment);
 	char *page_area_addr = (char *)bitmap + bitmap_size;

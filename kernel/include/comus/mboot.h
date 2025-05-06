@@ -47,4 +47,14 @@ EFI_HANDLE mboot_get_efi_hdl(void);
  */
 void *mboot_get_initrd(size_t *len);
 
+/**
+ * Returns the physical pointer to the loaded init ram disk with size given by len
+ */
+void *mboot_get_initrd_phys(size_t *len);
+
+/**
+ * Gets the end of the mboot pointer
+ */
+void *mboot_end(void);
+
 #endif /* mboot.h */
