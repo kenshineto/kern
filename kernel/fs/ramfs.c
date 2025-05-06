@@ -1,4 +1,4 @@
-#include <comus/fs.h>
+/*#include <comus/fs.h>
 #include <lib.h>
 //#include <comus/tar.h>
 //#include <string.h>

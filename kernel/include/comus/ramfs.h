@@ -1,4 +1,4 @@
-#include <comus/fs.h>
+/*#include <comus/fs.h>
 #ifndef RAMFS_H_
 #define RAMFS_H_
 #define MAX_FILES 32
