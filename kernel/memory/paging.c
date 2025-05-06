@@ -1,4 +1,3 @@
-#include "lib/kio.h"
 #include <lib.h>
 #include <comus/memory.h>
 
@@ -6,7 +5,6 @@
 #include "physalloc.h"
 #include "paging.h"
 #include "memory.h"
-#include <stdint.h>
 
 // PAGE MAP LEVEL 4 ENTRY
 struct pml4e {
@@ -259,8 +257,10 @@ static volatile struct pml4 *pml4_alloc(void)
 	volatile struct pml4 *pPML4, *vPML4;
 
 	pPML4 = alloc_phys_page();
-	if (pPML4 == NULL)
+	if (pPML4 == NULL) {
+		ERROR("Could not allocate PML4");
 		return NULL;
+	}
 
 	vPML4 = PML4_MAP(pPML4);
 	memsetv(vPML4, 0, sizeof(struct pml4));
@@ -288,8 +288,10 @@ static volatile struct pdpt *pdpt_alloc(volatile struct pml4 *pPML4,
 	}
 
 	pPDPT = alloc_phys_page();
-	if (pPML4 == NULL)
+	if (pPDPT == NULL) {
+		ERROR("Could not allocate PDPT");
 		return NULL;
+	}
 
 	vPDPT = PDPT_MAP(pPDPT);
 	memsetv(vPDPT, 0, sizeof(struct pdpt));
@@ -321,8 +323,10 @@ static volatile struct pd *pd_alloc(volatile struct pdpt *pPDPT, void *vADDR,
 	}
 
 	pPD = alloc_phys_page();
-	if (pPDPT == NULL)
+	if (pPD == NULL) {
+		ERROR("Could not allocate PD");
 		return NULL;
+	}
 
 	vPD = PD_MAP(pPD);
 	memsetv(vPD, 0, sizeof(struct pd));
@@ -354,8 +358,10 @@ static volatile struct pt *pt_alloc(volatile struct pd *pPD, void *vADDR,
 	}
 
 	pPT = alloc_phys_page();
-	if (pPT == NULL)
+	if (pPT == NULL) {
+		ERROR("Could not allocate PT");
 		return NULL;
+	}
 
 	vPT = PT_MAP(pPT);
 	memsetv(vPT, 0, sizeof(struct pt));
@@ -911,11 +917,15 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	// get page aligned (or allocate) vitural address
 	if (virt == NULL)
 		virt = virtaddr_alloc(&ctx->virtctx, pages);
-	if (virt == NULL)
+	if (virt == NULL) {
+		ERROR("Could not alloc vitural address for %zu pages", pages);
 		return NULL;
+	}
 
-	if (virtaddr_take(&ctx->virtctx, virt, pages))
+	if (virtaddr_take(&ctx->virtctx, virt, pages)) {
+		ERROR("Could not take vitural address: %p", virt);
 		return NULL;
+	}
 
 	assert((uint64_t)virt % PAGE_SIZE == 0,
 		   "mem_mapaddr: vitural address not page aligned");
@@ -923,6 +933,7 @@ void *mem_mapaddr(mem_ctx_t ctx, void *phys, void *virt, size_t len,
 	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, aligned_phys,
 				  F_PRESENT | flags, pages)) {
 		virtaddr_free(&ctx->virtctx, virt);
+		ERROR("Could not map pages");
 		return NULL;
 	}
 
@@ -1028,20 +1039,29 @@ void *mem_alloc_pages_at(mem_ctx_t ctx, size_t count, void *virt,
 {
 	void *phys = NULL;
 
-	if (virtaddr_take(&ctx->virtctx, virt, count))
-		return NULL;
-
-	phys = alloc_phys_pages_exact(count);
-	if (phys == NULL)
-		return NULL;
-
-	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, phys, flags,
-				  count)) {
-		free_phys_pages(phys, count);
+	if (virtaddr_take(&ctx->virtctx, virt, count)) {
+		ERROR("Could not take vitural address: %p", virt);
 		return NULL;
 	}
 
+	phys = alloc_phys_pages_exact(count);
+	if (phys == NULL) {
+		ERROR("Could not allocate %zu physical pages", count);
+		goto fail;
+	}
+
+	if (map_pages((volatile struct pml4 *)ctx->pml4, virt, phys, flags,
+				  count)) {
+		ERROR("Could not map pages");
+		goto fail;
+	}
+
 	return virt;
+
+fail:
+	free_phys_pages(phys, count);
+	virtaddr_free(&ctx->virtctx, virt);
+	return NULL;
 
 	//	size_t pages_needed = count;
 	//
