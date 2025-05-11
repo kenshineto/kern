@@ -2,6 +2,22 @@
 
 Comus is a kernel!
 
+## Contributors
+
+1. Freya Murphy <freya@freyacat.org>
+2. Tristan Miller <trimill@trimill.xyz>
+3. Simon Kadesh <simon@kade.sh>
+4. Ian McFarlane <i.mcfarlane2002@gmail.com>
+5. Galen Sagarin <gsp5307@rit.edu>
+
+## License
+
+This project is licensed under the [GNU General Public License, version 2](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html).
+
+## Source Code
+
+https://g.freya.cat/freya/comus
+
 ## Dependencies
 
 To build comus, a c11 compiler is required, along with the gnu assembler
@@ -29,16 +45,12 @@ Run `make fmt` to format the source code.
 
 For development on NixOS run `nix develop` in the source directory.
 
+## Docs
+
+See `docs/`
+
 ## UEFI
 
 Add `UEFI=1` as an argument to the makefile to build and run in UEFI.
 
 Requires the nix flake.
-
-## Docs
-
-See `docs/`
-
-## License
-
-This project is licensed under the GPLv2
